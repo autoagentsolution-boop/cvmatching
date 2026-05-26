@@ -52,4 +52,7 @@ export type { DropZoneProps } from './drop-zone';
 export { MarkdownView } from './markdown-view';
 export type { MarkdownViewProps } from './markdown-view';
 
+export { Textarea } from './textarea';
+export type { TextareaProps } from './textarea';
+
 // Phase 2+ reserved: Table, Pagination
