@@ -1,6 +1,7 @@
 import { FormPageLayout } from '@/components/layouts';
 import { PageHeader } from '@/components/ui';
 import { getSession } from '@/lib/get-session';
+import { ResultsSection } from '@/features/results/results-section';
 import { AnalyzeActions } from './analyze-actions';
 import { AnalysisParametersBlock } from './analysis-parameters-block';
 import { CvInputBlock } from './cv-input-block';
@@ -45,6 +46,7 @@ export async function AnalyzePage({ searchParams }: AnalyzePageProps) {
       </div>
 
       <AnalysisParametersBlock />
+      <ResultsSection />
     </FormPageLayout>
   );
 }
