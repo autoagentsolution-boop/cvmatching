@@ -3,9 +3,14 @@ import type { Session } from 'next-auth';
 
 /**
  * Server-side helper to retrieve the current session.
- * Wraps auth() for easier mocking in tests and future cross-cutting logic.
- * Call from server components, route handlers, or server actions only.
+ * Returns null on any auth() failure (missing secret, provider misconfig) so
+ * the UI can degrade gracefully to a logged-out state in dev without crashing.
+ * Production must configure AUTH_SECRET + Google credentials for real sessions.
  */
 export async function getSession(): Promise<Session | null> {
-  return auth();
+  try {
+    return await auth();
+  } catch {
+    return null;
+  }
 }
