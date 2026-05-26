@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CV Fit Scoring Assistant — LLM Edition</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --panel-soft: #f8fafc;
+      --text: #172033;
+      --muted: #637083;
+      --border: #dce3ee;
+      --primary: #275efe;
+      --primary-soft: #e8eeff;
+      --success: #147a48;
+      --success-soft: #e8f7ef;
+      --warning: #a16207;
+      --warning-soft: #fff7db;
+      --danger: #b42318;
+      --danger-soft: #fff0ee;
+      --purple: #6d28d9;
+      --purple-soft: #f3e8ff;
+      --shadow: 0 18px 48px rgba(24, 39, 75, 0.08);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top left, rgba(39, 94, 254, 0.10), transparent 32rem),
+                  radial-gradient(circle at top right, rgba(109, 40, 217, 0.08), transparent 28rem),
+                  var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+    .app { max-width: 1320px; margin: 0 auto; padding: 32px 20px 56px; }
+    .hero { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr); gap: 18px; align-items: stretch; margin-bottom: 22px; }
+    .hero-card, .panel { background: rgba(255,255,255,0.95); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+    .hero-card { padding: 30px; }
+    h1 { margin: 0 0 10px; font-size: clamp(26px, 4vw, 40px); letter-spacing: -0.04em; line-height: 1.05; }
+    .lead { margin: 0; color: var(--muted); font-size: 15px; max-width: 860px; }
+    .status-card { padding: 22px; display: flex; flex-direction: column; gap: 12px; }
+    .status-title { font-weight: 800; font-size: 15px; }
+    .chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .chip { display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 999px; padding: 6px 10px; font-size: 12px; color: var(--muted); background: #fff; font-weight: 650; }
+    .chip.good { background: var(--success-soft); color: var(--success); border-color: rgba(20,122,72,.18); }
+    .chip.warn { background: var(--warning-soft); color: var(--warning); border-color: rgba(161,98,7,.18); }
+    .chip.info { background: var(--primary-soft); color: var(--primary); border-color: rgba(39,94,254,.18); }
+    .chip.purple { background: var(--purple-soft); color: var(--purple); border-color: rgba(109,40,217,.18); }
+    .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(380px, 0.95fr); gap: 18px; align-items: start; }
+    .panel { padding: 22px; margin-bottom: 18px; }
+    .panel h2 { margin: 0 0 12px; font-size: 18px; letter-spacing: -0.02em; display: flex; align-items: center; gap: 8px; }
+    .panel h2 .num { background: var(--primary); color: #fff; width: 26px; height: 26px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 13px; font-weight: 900; }
+    .panel p.help { color: var(--muted); margin: -4px 0 14px; font-size: 13px; }
+    label { display: block; margin: 14px 0 8px; font-weight: 750; font-size: 13px; }
+    textarea, input[type="text"], input[type="password"], select { width: 100%; border: 1px solid var(--border); background: #fff; border-radius: 12px; padding: 11px 13px; font: inherit; color: var(--text); outline: none; transition: border .15s ease, box-shadow .15s ease; }
+    textarea:focus, input[type="text"]:focus, input[type="password"]:focus, select:focus { border-color: rgba(39,94,254,.55); box-shadow: 0 0 0 4px rgba(39,94,254,.10); }
+    textarea { min-height: 200px; resize: vertical; font-size: 13px; }
+    .small-textarea { min-height: 100px; }
+    input[type=file] { width: 100%; padding: 10px; border: 1px dashed var(--border); border-radius: 12px; background: var(--panel-soft); color: var(--muted); }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+    .actions.sticky { position: sticky; bottom: 12px; background: rgba(255,255,255,.85); backdrop-filter: blur(12px); border: 1px solid var(--border); border-radius: 16px; padding: 10px; z-index: 2; }
+    button { border: none; border-radius: 12px; padding: 11px 16px; font-weight: 800; cursor: pointer; font: inherit; transition: transform .12s ease, opacity .12s ease, box-shadow .12s ease; }
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+    button:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+    button.primary { background: var(--primary); color: white; box-shadow: 0 10px 22px rgba(39,94,254,.22); }
+    button.purple { background: var(--purple); color: white; box-shadow: 0 10px 22px rgba(109,40,217,.22); }
+    button.secondary { background: var(--primary-soft); color: var(--primary); }
+    button.ghost { background: #fff; color: var(--text); border: 1px solid var(--border); }
+    .score-wrap { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 18px; align-items: center; }
+    .score-ring { width: 150px; height: 150px; border-radius: 50%; background: conic-gradient(var(--primary) 0deg, #edf2f8 0deg); display: grid; place-items: center; box-shadow: inset 0 0 0 1px var(--border); }
+    .score-inner { width: 112px; height: 112px; border-radius: 50%; background: #fff; display: grid; place-items: center; text-align: center; box-shadow: inset 0 0 0 1px var(--border); }
+    .score-number { font-size: 34px; font-weight: 900; letter-spacing: -0.04em; }
+    .score-label { color: var(--muted); font-size: 12px; font-weight: 700; margin-top: -8px; }
+    .decision { display: inline-flex; padding: 8px 12px; border-radius: 999px; font-size: 13px; font-weight: 850; margin-bottom: 10px; }
+    .decision.strong { background: var(--success-soft); color: var(--success); }
+    .decision.good { background: var(--primary-soft); color: var(--primary); }
+    .decision.stretch { background: var(--warning-soft); color: var(--warning); }
+    .decision.low { background: var(--danger-soft); color: var(--danger); }
+    .metric-list { display: grid; gap: 9px; margin-top: 14px; }
+    .metric { background: var(--panel-soft); border: 1px solid var(--border); border-radius: 12px; padding: 11px; }
+    .metric-head { display: flex; justify-content: space-between; gap: 12px; font-weight: 800; font-size: 13px; margin-bottom: 7px; }
+    .bar { height: 8px; border-radius: 999px; background: #e8edf5; overflow: hidden; }
+    .fill { height: 100%; width: 0%; background: var(--primary); border-radius: 999px; transition: width .4s ease; }
+    .fill.warn { background: var(--warning); }
+    .fill.danger { background: var(--danger); }
+    .fill.success { background: var(--success); }
+    .list { display: grid; gap: 8px; margin: 10px 0 0; }
+    .item { padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: #fff; font-size: 13px; }
+    .item strong { display: block; margin-bottom: 4px; }
+    .item.critical { border-left: 4px solid var(--danger); background: var(--danger-soft); }
+    .item.moderate { border-left: 4px solid var(--warning); background: var(--warning-soft); }
+    .item.minor { border-left: 4px solid var(--primary); background: var(--primary-soft); }
+    .item.strength { border-left: 4px solid var(--success); background: var(--success-soft); }
+    .item.flag { border-left: 4px solid var(--danger); background: var(--danger-soft); }
+    .tag { display: inline-flex; font-size: 11px; font-weight: 800; border-radius: 999px; padding: 4px 8px; margin-right: 5px; margin-bottom: 5px; background: var(--panel-soft); border: 1px solid var(--border); color: var(--muted); }
+    .tag.match { background: var(--success-soft); color: var(--success); border-color: rgba(20,122,72,.20); }
+    .tag.partial { background: var(--warning-soft); color: var(--warning); border-color: rgba(161,98,7,.20); }
+    .tag.missing { background: var(--danger-soft); color: var(--danger); border-color: rgba(180,35,24,.20); }
+    .gap-type { font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 6px; margin-left: 6px; vertical-align: middle; text-transform: uppercase; letter-spacing: 0.04em; }
+    .gap-type.wording { background: #fff; color: var(--primary); border: 1px solid var(--primary); }
+    .gap-type.real { background: #fff; color: var(--danger); border: 1px solid var(--danger); }
+    pre.report { white-space: pre-wrap; word-break: break-word; background: #0f172a; color: #e2e8f0; border-radius: 14px; padding: 16px; font-size: 12px; max-height: 520px; overflow: auto; }
+    .markdown-preview { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 18px; max-height: 720px; overflow: auto; font-size: 14px; }
+    .markdown-preview h1 { font-size: 22px; margin: 4px 0 12px; letter-spacing: -0.02em; }
+    .markdown-preview h2 { font-size: 17px; margin: 18px 0 8px; letter-spacing: -0.02em; }
+    .markdown-preview h3 { font-size: 14px; margin: 14px 0 6px; }
+    .markdown-preview ul { margin: 4px 0 10px; padding-left: 22px; }
+    .markdown-preview li { margin: 3px 0; }
+    .markdown-preview p { margin: 6px 0; }
+    .markdown-preview hr { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .three { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .notice { padding: 12px 13px; background: var(--warning-soft); color: #7c4a03; border: 1px solid rgba(161,98,7,.18); border-radius: 12px; font-size: 13px; margin-top: 12px; }
+    .notice.info { background: var(--primary-soft); color: var(--primary); border-color: rgba(39,94,254,.18); }
+    .footer-note { color: var(--muted); font-size: 12px; margin: 16px 2px 0; }
+    .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0 4px; }
+    .stat { background: var(--panel-soft); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; }
+    .stat-value { font-size: 24px; font-weight: 900; letter-spacing: -0.03em; }
+    .stat-label { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+    .stat.danger .stat-value { color: var(--danger); }
+    .stat.success .stat-value { color: var(--success); }
+    .stat.primary .stat-value { color: var(--primary); }
+    .stat.purple .stat-value { color: var(--purple); }
+    .loading { display: inline-flex; align-items: center; gap: 8px; }
+    .spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+    .spinner.dark { border: 2px solid rgba(39,94,254,.2); border-top-color: var(--primary); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .api-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; background: var(--success-soft); color: var(--success); border: 1px solid rgba(20,122,72,.2); }
+    .api-pill.off { background: var(--danger-soft); color: var(--danger); border-color: rgba(180,35,24,.2); }
+    details > summary { cursor: pointer; font-weight: 800; padding: 8px 0; }
+    .empty { padding: 24px; text-align: center; color: var(--muted); font-size: 13px; background: var(--panel-soft); border: 1px dashed var(--border); border-radius: 12px; }
+    .toggle-row { display: flex; gap: 6px; margin-top: 10px; }
+    .toggle-row button { flex: 1; padding: 8px; font-size: 12px; }
+    .toggle-row button.active { background: var(--primary); color: #fff; }
+    .toggle-row button:not(.active) { background: #fff; color: var(--text); border: 1px solid var(--border); }
+    @media (max-width: 980px) { .hero, .grid, .score-wrap, .two, .three, .stat-row { grid-template-columns: 1fr; } .score-ring { margin: 0 auto; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="hero">
+      <div class="hero-card">
+        <h1>CV Fit Scoring Assistant <span style="color:var(--purple);font-size:.55em;letter-spacing:0">— LLM Edition</span></h1>
+        <p class="lead">Paste a Job Description and your CV, get an LLM-powered fit analysis: detailed score breakdown, gap severity, recruiter screening probability, red flags, and on-demand truthful CV rewrite.</p>
+      </div>
+      <div class="hero-card status-card">
+        <div class="status-title">LLM Provider <span id="apiPill" class="api-pill off">Not configured</span></div>
+        <div class="chip-row">
+          <span class="chip info" id="providerChip">Provider: --</span>
+          <span class="chip" id="modelChip">Model: --</span>
+        </div>
+        <p class="help" style="margin:0;color:var(--muted);font-size:12px">Bring your own API key. Key is never sent anywhere except the chosen provider. Stored only in your browser if you tick "Remember".</p>
+        <button class="ghost" style="font-size:12px;padding:8px 12px" onclick="toggleSettings()">Configure API ↓</button>
+      </div>
+    </section>
+
+    <section class="panel" id="settingsPanel" style="display:none">
+      <h2><span class="num">⚙</span> LLM Settings</h2>
+      <div class="three">
+        <div>
+          <label>Provider</label>
+          <select id="provider" onchange="onProviderChange()">
+            <option value="gemini">Google Gemini</option>
+            <option value="openai">OpenAI</option>
+            <option value="custom">Custom (OpenAI-compatible)</option>
+          </select>
+        </div>
+        <div>
+          <label>Model</label>
+          <input id="model" type="text" placeholder="e.g. gemini-2.0-flash" />
+        </div>
+        <div>
+          <label>Temperature</label>
+          <input id="temperature" type="text" value="0.3" />
+        </div>
+      </div>
+      <div class="two">
+        <div>
+          <label>API Key</label>
+          <input id="apiKey" type="password" placeholder="Paste your API key" />
+        </div>
+        <div id="baseUrlRow" style="display:none">
+          <label>Base URL (for Custom provider)</label>
+          <input id="baseUrl" type="text" placeholder="https://openrouter.ai/api/v1" />
+        </div>
+      </div>
+      <label style="display:inline-flex;align-items:center;gap:8px;margin-top:14px;font-weight:650">
+        <input type="checkbox" id="rememberKey" /> Remember API key in this browser (localStorage)
+      </label>
+      <div class="actions">
+        <button class="primary" onclick="saveSettings()">Save Settings</button>
+        <button class="ghost" onclick="testConnection()" id="testBtn">Test Connection</button>
+        <button class="ghost" onclick="clearStoredKey()">Clear Stored Key</button>
+      </div>
+      <div class="notice info" style="margin-top:14px">
+        <strong>Quick start:</strong> Gemini has a generous free tier — get a key at <code>aistudio.google.com</code>. Default model: <code>gemini-2.0-flash</code>. For OpenAI use <code>gpt-4o-mini</code>. Custom provider works with OpenRouter, Groq, Together, etc.
+      </div>
+    </section>
+
+    <section class="grid">
+      <div>
+        <div class="panel">
+          <h2><span class="num">1</span> Job Description</h2>
+          <p class="help">Paste the JD text. File upload supports TXT directly. DOCX via Mammoth CDN.</p>
+          <input type="file" id="jdFile" accept=".txt,.docx" />
+          <label for="jobUrl">Public job URL / source note</label>
+          <input id="jobUrl" type="text" placeholder="Optional: paste job URL or source name" />
+          <label for="jdText">Job Description text</label>
+          <textarea id="jdText" placeholder="Paste job description here..."></textarea>
+        </div>
+        <div class="panel">
+          <h2><span class="num">2</span> Candidate CV / Profile</h2>
+          <p class="help">Paste CV text. Add real experience profile to compare CV visibility vs actual experience.</p>
+          <input type="file" id="cvFile" accept=".txt,.docx" />
+          <label for="cvText">CV text</label>
+          <textarea id="cvText" placeholder="Paste CV text here..."></textarea>
+          <label for="profileText">Optional real experience profile</label>
+          <textarea id="profileText" class="small-textarea" placeholder="Add real experience not fully shown in CV, e.g. AWS, Airflow, ERP, API, leadership, AI projects..."></textarea>
+          <div class="two">
+            <div>
+              <label for="targetRole">Target role family</label>
+              <select id="targetRole">
+                <option value="auto">Auto-detect from JD</option>
+                <option value="data_engineer">Data Engineer</option>
+                <option value="data_platform">Data Platform / Infrastructure</option>
+                <option value="manager">Data Engineer Manager</option>
+                <option value="pm_delivery">Project / Delivery / Operations Lead</option>
+                <option value="solution">Solution Architect / Pre-sales</option>
+                <option value="software">Software Engineer (generic)</option>
+                <option value="other">Other / Let LLM decide</option>
+              </select>
+            </div>
+            <div>
+              <label for="strictness">Scoring strictness</label>
+              <select id="strictness">
+                <option value="balanced">Balanced</option>
+                <option value="strict">Strict (recruiter-grade)</option>
+                <option value="friendly">Friendly (encouraging)</option>
+              </select>
+            </div>
+          </div>
+          <label for="language">Output language</label>
+          <select id="language">
+            <option value="en">English</option>
+            <option value="vi">Tiếng Việt</option>
+            <option value="auto">Match JD language</option>
+          </select>
+          <div class="actions sticky">
+            <button class="primary" onclick="analyze()" id="analyzeBtn">Analyze Fit</button>
+            <button class="secondary" onclick="loadSample()">Load Sample</button>
+            <button class="ghost" onclick="clearAll()">Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel">
+          <h2><span class="num">3</span> Fit Score</h2>
+          <div class="score-wrap">
+            <div class="score-ring" id="scoreRing">
+              <div class="score-inner">
+                <div>
+                  <div class="score-number" id="overallScore">--</div>
+                  <div class="score-label">/100</div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="decision good" id="decision">Waiting for analysis</div>
+              <div id="summaryText" style="font-size:14px;color:var(--muted)">Add a JD and CV, configure LLM, then click Analyze Fit.</div>
+            </div>
+          </div>
+
+          <div class="stat-row">
+            <div class="stat primary"><div class="stat-value" id="cvVisStat">--</div><div class="stat-label">CV Visibility</div></div>
+            <div class="stat success"><div class="stat-value" id="realExpStat">--</div><div class="stat-label">Real Experience</div></div>
+            <div class="stat danger"><div class="stat-value" id="riskStat">--</div><div class="stat-label">Risk</div></div>
+          </div>
+
+          <div class="stat-row">
+            <div class="stat purple"><div class="stat-value" id="screeningStat">--</div><div class="stat-label">Screening Pass %</div></div>
+            <div class="stat"><div class="stat-value" id="interviewStat">--</div><div class="stat-label">Interview Readiness</div></div>
+            <div class="stat"><div class="stat-value" id="atsStat">--</div><div class="stat-label">ATS Keyword %</div></div>
+          </div>
+
+          <div class="metric-list" id="metricList"></div>
+        </div>
+
+        <div class="panel">
+          <h2><span class="num">4</span> Strengths, Gaps & Red Flags</h2>
+          <details open><summary>Strengths (what to lead with)</summary><div class="list" id="strengthsList"><div class="empty">No strengths yet.</div></div></details>
+          <details open style="margin-top:8px"><summary>Gaps (with severity & type)</summary><div class="list" id="gapsList"><div class="empty">No gaps yet.</div></div></details>
+          <details style="margin-top:8px"><summary>Red flags (recruiter concerns)</summary><div class="list" id="flagsList"><div class="empty">No red flags yet.</div></div></details>
+        </div>
+
+        <div class="panel">
+          <h2><span class="num">5</span> Requirement Coverage</h2>
+          <div id="coverage"><div class="empty">Run analysis to see requirement coverage.</div></div>
+        </div>
+
+        <div class="panel">
+          <h2><span class="num">6</span> Recommendations</h2>
+          <div id="recommendations" class="list"><div class="empty">Run analysis to see prioritized recommendations.</div></div>
+          <div class="notice">Guardrail: suggested keywords are <strong>add only if true</strong>. Do not add tools or experience you cannot defend in interview.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" style="border: 2px solid var(--purple); background: linear-gradient(135deg, #fff 0%, var(--purple-soft) 100%);">
+      <h2><span class="num" style="background:var(--purple)">7</span> Generate Matched CV <span style="font-size:12px;color:var(--purple);font-weight:700">(on-demand only)</span></h2>
+      <p class="help">This is a <strong>separate LLM call</strong> that rewrites the CV to better match the JD — staying 100% truthful. You must click the button below to generate it. Cost: ~1 extra LLM call.</p>
+      <div class="two">
+        <div>
+          <label>Tone</label>
+          <select id="cvTone">
+            <option value="concise">Concise & professional</option>
+            <option value="impact">Impact-led (metrics first)</option>
+            <option value="recruiter">Recruiter-friendly (ATS keywords)</option>
+            <option value="executive">Executive / leadership</option>
+          </select>
+        </div>
+        <div>
+          <label>Length</label>
+          <select id="cvLength">
+            <option value="short">1 page (concise)</option>
+            <option value="medium" selected>1.5 pages (balanced)</option>
+            <option value="long">2 pages (detailed)</option>
+          </select>
+        </div>
+      </div>
+      <label>Extra instructions (optional)</label>
+      <input id="cvExtra" type="text" placeholder="e.g. emphasize AWS work, hide gap year, keep manager experience prominent..." />
+      <div class="actions">
+        <button class="purple" onclick="generateMatchedCV()" id="genCvBtn" disabled>⚡ Generate Matched CV</button>
+        <button class="ghost" onclick="copyMatchedCV()" id="copyCvBtn" disabled>Copy Markdown</button>
+        <button class="ghost" onclick="downloadMatchedCV()" id="dlCvBtn" disabled>Download .md</button>
+        <button class="ghost" onclick="downloadMatchedCvHtml()" id="dlCvHtmlBtn" disabled>Download HTML</button>
+      </div>
+      <div class="toggle-row" style="display:none" id="cvViewToggle">
+        <button class="active" data-view="preview" onclick="setCvView('preview')">Preview</button>
+        <button data-view="markdown" onclick="setCvView('markdown')">Markdown</button>
+      </div>
+      <div id="matchedCvPreview" class="markdown-preview" style="display:none;margin-top:12px"></div>
+      <pre id="matchedCvRaw" class="report" style="display:none;margin-top:12px">No matched CV yet.</pre>
+      <p id="genCvHint" class="footer-note">Run "Analyze Fit" first to enable this feature. The LLM will use the analysis context to make a smarter rewrite.</p>
+    </section>
+
+    <section class="panel">
+      <h2><span class="num">8</span> Full Markdown Report</h2>
+      <div class="actions" style="margin:0 0 12px">
+        <button class="secondary" onclick="copyReport()">Copy Report</button>
+        <button class="ghost" onclick="downloadReport()">Download Markdown</button>
+        <button class="ghost" onclick="toggleRawJson()">Toggle Raw JSON</button>
+      </div>
+      <pre id="report" class="report">No report yet.</pre>
+      <pre id="rawJson" class="report" style="display:none;margin-top:12px">No raw JSON yet.</pre>
+      <p class="footer-note">File parsing note: TXT is parsed natively. DOCX via Mammoth CDN. For PDF, please copy/paste text manually.</p>
+    </section>
+  </main>
+
+  <script>
+    // ============================================================
+    // STATE
+    // ============================================================
+    const STORAGE_KEY = "cv_fit_app_settings_v1";
+    const DEFAULT_MODELS = {
+      gemini: "gemini-2.0-flash",
+      openai: "gpt-4o-mini",
+      custom: "openai/gpt-4o-mini"
+    };
+    let lastAnalysis = null;
+    let lastMatchedCv = null;
+    let cvView = "preview";
+
+    // ============================================================
+    // SETTINGS
+    // ============================================================
+    function toggleSettings() {
+      const p = document.getElementById("settingsPanel");
+      p.style.display = p.style.display === "none" ? "block" : "none";
+    }
+    function onProviderChange() {
+      const provider = document.getElementById("provider").value;
+      document.getElementById("model").value = DEFAULT_MODELS[provider] || "";
+      document.getElementById("baseUrlRow").style.display = provider === "custom" ? "block" : "none";
+    }
+    function saveSettings() {
+      const provider = document.getElementById("provider").value;
+      const model = document.getElementById("model").value.trim() || DEFAULT_MODELS[provider];
+      const apiKey = document.getElementById("apiKey").value.trim();
+      const baseUrl = document.getElementById("baseUrl").value.trim();
+      const temperature = parseFloat(document.getElementById("temperature").value) || 0.3;
+      const remember = document.getElementById("rememberKey").checked;
+      const settings = { provider, model, baseUrl, temperature, apiKey: remember ? apiKey : "" };
+      if (remember) localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+      else localStorage.removeItem(STORAGE_KEY);
+      window.__sessionSettings = { ...settings, apiKey };
+      refreshApiPill();
+      alert("Settings saved.");
+    }
+    function loadSettings() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const s = JSON.parse(raw);
+        document.getElementById("provider").value = s.provider || "gemini";
+        document.getElementById("model").value = s.model || DEFAULT_MODELS[s.provider || "gemini"];
+        document.getElementById("baseUrl").value = s.baseUrl || "";
+        document.getElementById("temperature").value = s.temperature ?? 0.3;
+        document.getElementById("apiKey").value = s.apiKey || "";
+        document.getElementById("rememberKey").checked = !!s.apiKey;
+        onProviderChange();
+        window.__sessionSettings = s;
+      } catch (e) { console.warn("loadSettings failed", e); }
+      refreshApiPill();
+    }
+    function clearStoredKey() {
+      localStorage.removeItem(STORAGE_KEY);
+      document.getElementById("apiKey").value = "";
+      document.getElementById("rememberKey").checked = false;
+      window.__sessionSettings = null;
+      refreshApiPill();
+      alert("Stored API key cleared.");
+    }
+    function getSettings() {
+      const inMem = window.__sessionSettings;
+      if (inMem && inMem.apiKey) return inMem;
+      const provider = document.getElementById("provider").value;
+      const model = document.getElementById("model").value.trim() || DEFAULT_MODELS[provider];
+      const apiKey = document.getElementById("apiKey").value.trim();
+      const baseUrl = document.getElementById("baseUrl").value.trim();
+      const temperature = parseFloat(document.getElementById("temperature").value) || 0.3;
+      return { provider, model, apiKey, baseUrl, temperature };
+    }
+    function refreshApiPill() {
+      const s = getSettings();
+      const pill = document.getElementById("apiPill");
+      const prov = document.getElementById("providerChip");
+      const mod = document.getElementById("modelChip");
+      if (s.apiKey) { pill.textContent = "Ready"; pill.className = "api-pill"; }
+      else { pill.textContent = "Not configured"; pill.className = "api-pill off"; }
+      prov.textContent = "Provider: " + (s.provider || "--");
+      mod.textContent = "Model: " + (s.model || "--");
+    }
+
+    // ============================================================
+    // LLM CALL LAYER
+    // ============================================================
+    async function callLLM(systemPrompt, userPrompt, expectJson = true) {
+      const s = getSettings();
+      if (!s.apiKey) throw new Error("Missing API key. Open ⚙ LLM Settings.");
+      if (s.provider === "gemini") return callGemini(s, systemPrompt, userPrompt, expectJson);
+      if (s.provider === "openai") return callOpenAICompatible(s, "https://api.openai.com/v1", systemPrompt, userPrompt, expectJson);
+      if (s.provider === "custom") {
+        if (!s.baseUrl) throw new Error("Custom provider needs Base URL.");
+        return callOpenAICompatible(s, s.baseUrl.replace(/\/$/, ""), systemPrompt, userPrompt, expectJson);
+      }
+      throw new Error("Unknown provider: " + s.provider);
+    }
+
+    async function callGemini(s, systemPrompt, userPrompt, expectJson) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(s.model)}:generateContent?key=${encodeURIComponent(s.apiKey)}`;
+      const body = {
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+        generationConfig: {
+          temperature: s.temperature ?? 0.3,
+          maxOutputTokens: 8192,
+          ...(expectJson ? { responseMimeType: "application/json" } : {})
+        }
+      };
+      const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Gemini ${res.status}: ${errText.slice(0, 400)}`);
+      }
+      const data = await res.json();
+      const text = data?.candidates?.[0]?.content?.parts?.map(p => p.text).join("") || "";
+      if (!text) throw new Error("Gemini returned empty content. Possibly blocked by safety filters.");
+      return text;
+    }
+
+    async function callOpenAICompatible(s, baseUrl, systemPrompt, userPrompt, expectJson) {
+      const url = `${baseUrl}/chat/completions`;
+      const body = {
+        model: s.model,
+        temperature: s.temperature ?? 0.3,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        ...(expectJson ? { response_format: { type: "json_object" } } : {})
+      };
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${s.apiKey}` },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`${s.provider} ${res.status}: ${errText.slice(0, 400)}`);
+      }
+      const data = await res.json();
+      return data?.choices?.[0]?.message?.content || "";
+    }
+
+    async function testConnection() {
+      const btn = document.getElementById("testBtn");
+      btn.disabled = true; btn.textContent = "Testing...";
+      try {
+        const txt = await callLLM("You are a test.", "Reply with the word PONG and nothing else.", false);
+        alert("OK — model replied:\n\n" + txt.slice(0, 200));
+      } catch (e) {
+        alert("Connection failed:\n\n" + e.message);
+      } finally {
+        btn.disabled = false; btn.textContent = "Test Connection";
+      }
+    }
+
+    function safeParseJson(text) {
+      try { return JSON.parse(text); } catch (_) {}
+      const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (fenced) { try { return JSON.parse(fenced[1]); } catch (_) {} }
+      const first = text.indexOf("{"); const last = text.lastIndexOf("}");
+      if (first !== -1 && last !== -1 && last > first) {
+        try { return JSON.parse(text.slice(first, last + 1)); } catch (_) {}
+      }
+      throw new Error("Could not parse JSON from LLM response.");
+    }
+
+    // ============================================================
+    // ANALYZE FIT (LLM call #1)
+    // ============================================================
+    const SCORING_SCHEMA = `{
+  "detected_role": "string (e.g. data_engineer | data_platform | manager | pm_delivery | solution | software | other)",
+  "overall_score": "number 0-100",
+  "decision": { "level": "strong|good|stretch|low", "label": "short human-readable verdict" },
+  "summary": "2-3 sentence executive verdict",
+  "sub_scores": {
+    "must_have_requirements": "0-100",
+    "technical_skill_match": "0-100",
+    "production_domain_experience": "0-100",
+    "evidence_strength_in_cv": "0-100",
+    "seniority_leadership_fit": "0-100",
+    "communication_business_fit": "0-100"
+  },
+  "cv_visibility_score": "0-100 (how clearly the CV shows what's needed)",
+  "real_experience_score": "0-100 (using CV + profile, true underlying fit)",
+  "risk_score": "0-100 (recruiter risk; higher = riskier hire)",
+  "recruiter_screening_probability": "0-100 (% chance CV passes first screen as-is)",
+  "interview_readiness_score": "0-100 (how ready candidate is to defend the CV)",
+  "ats_keyword_coverage_percent": "0-100 (estimated ATS keyword density vs JD)",
+  "strengths": [ { "title": "short title", "evidence": "what in the CV proves it", "jd_signal": "matching JD phrase" } ],
+  "gaps": [ { "title": "short gap title", "severity": "critical|moderate|minor", "gap_type": "cv_wording_gap|real_experience_gap", "explanation": "what's missing", "fix_action": "specific next step (add bullet, rephrase, or upskill)" } ],
+  "red_flags": [ { "flag": "short flag", "concern": "why this might worry a recruiter" } ],
+  "must_have_requirements": [ { "requirement": "JD requirement text", "covered": true, "evidence": "quote or phrase", "gap_type": null } ],
+  "keyword_coverage": { "matched": ["..."], "partial": ["..."], "missing": ["..."] },
+  "recommendations": [ { "title": "short title", "action": "concrete action", "priority": "high|medium|low" } ],
+  "suggested_summary_line": "1-2 sentence rewritten CV summary tailored to JD (truthful only)"
+}`;
+
+    function buildScoringPrompt(jdText, cvText, profileText, role, strictness, language, jobUrl) {
+      const langInstr = language === "vi" ? "Respond in Vietnamese (Tiếng Việt) for human-readable fields; keep JSON keys in English."
+                     : language === "auto" ? "Respond in the same language as the JD; keep JSON keys in English."
+                     : "Respond in English.";
+      return `You are an expert technical recruiter and CV reviewer. Analyze how well the candidate's CV/profile matches the Job Description.
+
+=== JOB DESCRIPTION ===
+${jobUrl ? `Source: ${jobUrl}\n` : ""}${jdText}
+
+=== CANDIDATE CV ===
+${cvText}
+
+=== REAL EXPERIENCE PROFILE (extra context not in CV — use to detect "CV wording gap" vs "real experience gap") ===
+${profileText || "(none provided)"}
+
+=== ANALYSIS PARAMETERS ===
+- Target role family: ${role}
+- Scoring strictness: ${strictness}  (strict = recruiter-grade, friendly = encouraging, balanced = neutral)
+- ${langInstr}
+
+=== RULES ===
+1. Do NOT invent candidate experience. Score only on provided text.
+2. Distinguish "cv_wording_gap" (candidate has the experience per profile but CV doesn't show it) vs "real_experience_gap" (candidate truly lacks it).
+3. severity: critical = JD must-have & candidate has no evidence; moderate = partial match or missing nice-to-have; minor = wording polish.
+4. recruiter_screening_probability = % chance the CV passes the first 30-second human/ATS screen AS-IS.
+5. interview_readiness_score = how confident the candidate could defend the CV claims in interview based on real_experience.
+6. ats_keyword_coverage_percent = estimated overlap of JD's important keywords/skills present in the CV text.
+7. Return 4-8 strengths, 4-10 gaps, 0-5 red flags, 4-10 must-have requirements, 4-8 recommendations.
+8. Be concrete. Reference actual phrases from the JD and CV.
+
+Return ONLY a single valid JSON object matching this schema (no commentary, no markdown fences):
+${SCORING_SCHEMA}`;
+    }
+
+    async function analyze() {
+      const jdText = document.getElementById("jdText").value.trim();
+      const cvText = document.getElementById("cvText").value.trim();
+      const profileText = document.getElementById("profileText").value.trim();
+      const strictness = document.getElementById("strictness").value;
+      const role = document.getElementById("targetRole").value;
+      const language = document.getElementById("language").value;
+      const jobUrl = document.getElementById("jobUrl").value.trim();
+      if (!jdText || !cvText) { alert("Please add both Job Description and CV text."); return; }
+      const s = getSettings();
+      if (!s.apiKey) { alert("Please configure LLM API key first (⚙ Configure API)."); toggleSettings(); return; }
+
+      const btn = document.getElementById("analyzeBtn");
+      btn.disabled = true;
+      btn.innerHTML = `<span class="loading"><span class="spinner"></span> Analyzing...</span>`;
+      try {
+        const system = "You are an expert technical recruiter. Always return valid JSON matching the requested schema. Be concrete, honest, and concise.";
+        const prompt = buildScoringPrompt(jdText, cvText, profileText, role, strictness, language, jobUrl);
+        const raw = await callLLM(system, prompt, true);
+        document.getElementById("rawJson").textContent = raw;
+        const parsed = safeParseJson(raw);
+        lastAnalysis = parsed;
+        renderAll(parsed, { jdText, cvText, profileText, role, strictness, language, jobUrl });
+        document.getElementById("genCvBtn").disabled = false;
+        document.getElementById("genCvHint").textContent = "Analysis ready. Click ⚡ Generate Matched CV to create a tailored CV (separate LLM call).";
+      } catch (e) {
+        console.error(e);
+        alert("Analysis failed:\n\n" + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Analyze Fit";
+      }
+    }
+
+    // ============================================================
+    // RENDER
+    // ============================================================
+    function renderAll(data, ctx) {
+      renderScore(data);
+      renderMetrics(data);
+      renderStrengthsGapsFlags(data);
+      renderCoverage(data);
+      renderRecommendations(data);
+      document.getElementById("report").textContent = buildReport(data, ctx);
+    }
+
+    function fillClass(v) {
+      if (v >= 75) return "success";
+      if (v >= 55) return "";
+      if (v >= 35) return "warn";
+      return "danger";
+    }
+
+    function renderScore(d) {
+      const score = clamp0_100(d.overall_score);
+      document.getElementById("overallScore").textContent = score;
+      const color = score >= 75 ? "var(--success)" : score >= 55 ? "var(--primary)" : score >= 35 ? "var(--warning)" : "var(--danger)";
+      document.getElementById("scoreRing").style.background = `conic-gradient(${color} ${score * 3.6}deg, #edf2f8 0deg)`;
+      const dec = d.decision || { level: "good", label: "Analyzed" };
+      const el = document.getElementById("decision"); el.textContent = dec.label || "—"; el.className = "decision " + (dec.level || "good");
+      document.getElementById("summaryText").innerHTML = `Detected role: <strong>${escapeHtml(d.detected_role || "—")}</strong>. ${escapeHtml(d.summary || "")}`;
+      document.getElementById("cvVisStat").textContent = clamp0_100(d.cv_visibility_score);
+      document.getElementById("realExpStat").textContent = clamp0_100(d.real_experience_score);
+      document.getElementById("riskStat").textContent = clamp0_100(d.risk_score);
+      document.getElementById("screeningStat").textContent = clamp0_100(d.recruiter_screening_probability) + "%";
+      document.getElementById("interviewStat").textContent = clamp0_100(d.interview_readiness_score);
+      document.getElementById("atsStat").textContent = clamp0_100(d.ats_keyword_coverage_percent) + "%";
+    }
+
+    function renderMetrics(d) {
+      const list = document.getElementById("metricList");
+      const labels = {
+        must_have_requirements: "Must-have requirements",
+        technical_skill_match: "Technical skill match",
+        production_domain_experience: "Production / domain experience",
+        evidence_strength_in_cv: "Evidence strength in CV",
+        seniority_leadership_fit: "Seniority / leadership fit",
+        communication_business_fit: "Communication / business fit"
+      };
+      const sub = d.sub_scores || {};
+      list.innerHTML = "";
+      for (const k of Object.keys(labels)) {
+        const v = clamp0_100(sub[k]);
+        const div = document.createElement("div");
+        div.className = "metric";
+        div.innerHTML = `<div class="metric-head"><span>${labels[k]}</span><span>${v}/100</span></div><div class="bar"><div class="fill ${fillClass(v)}" style="width:${v}%"></div></div>`;
+        list.appendChild(div);
+      }
+    }
+
+    function renderStrengthsGapsFlags(d) {
+      const strengths = d.strengths || [];
+      const gaps = d.gaps || [];
+      const flags = d.red_flags || [];
+      const sEl = document.getElementById("strengthsList");
+      sEl.innerHTML = strengths.length
+        ? strengths.map(x => `<div class="item strength"><strong>${escapeHtml(x.title || "")}</strong>${escapeHtml(x.evidence || "")}${x.jd_signal ? `<div style="margin-top:4px;font-size:11px;color:var(--success)">JD signal: ${escapeHtml(x.jd_signal)}</div>` : ""}</div>`).join("")
+        : `<div class="empty">No notable strengths detected.</div>`;
+      const gEl = document.getElementById("gapsList");
+      gEl.innerHTML = gaps.length
+        ? gaps.map(x => {
+            const sev = (x.severity || "minor").toLowerCase();
+            const gt = x.gap_type === "real_experience_gap" ? "real" : "wording";
+            const gtLabel = x.gap_type === "real_experience_gap" ? "REAL GAP" : "CV WORDING";
+            return `<div class="item ${sev}"><strong>${escapeHtml(x.title || "")}<span class="gap-type ${gt}">${gtLabel}</span></strong>${escapeHtml(x.explanation || "")}${x.fix_action ? `<div style="margin-top:6px;font-size:12px"><strong style="display:inline">Fix:</strong> ${escapeHtml(x.fix_action)}</div>` : ""}</div>`;
+          }).join("")
+        : `<div class="empty">No notable gaps detected.</div>`;
+      const fEl = document.getElementById("flagsList");
+      fEl.innerHTML = flags.length
+        ? flags.map(x => `<div class="item flag"><strong>⚠ ${escapeHtml(x.flag || "")}</strong>${escapeHtml(x.concern || "")}</div>`).join("")
+        : `<div class="empty">No red flags detected.</div>`;
+    }
+
+    function renderCoverage(d) {
+      const el = document.getElementById("coverage");
+      const kc = d.keyword_coverage || { matched: [], partial: [], missing: [] };
+      const mh = d.must_have_requirements || [];
+      const block = (title, items, cls) => `<div style="margin-bottom:12px"><strong>${title}</strong><div style="margin-top:6px">${items.length ? items.map(x => `<span class="tag ${cls}">${escapeHtml(x)}</span>`).join("") : `<span class="tag">None</span>`}</div></div>`;
+      const reqBlock = `<div style="margin-top:12px"><strong>Must-have requirement coverage</strong><div class="list" style="margin-top:6px">${mh.length ? mh.map(r => {
+        const cls = r.covered ? "match" : "missing";
+        const gt = r.gap_type === "real_experience_gap" ? `<span class="gap-type real">REAL GAP</span>` : r.gap_type === "cv_wording_gap" ? `<span class="gap-type wording">CV WORDING</span>` : "";
+        return `<div class="item"><strong><span class="tag ${cls}">${r.covered ? "✓" : "✗"}</span> ${escapeHtml(r.requirement || "")} ${gt}</strong>${r.evidence ? `Evidence: ${escapeHtml(r.evidence)}` : "No evidence in CV."}</div>`;
+      }).join("") : `<div class="empty">No must-have requirements parsed.</div>`}</div></div>`;
+      el.innerHTML = block("Matched keywords", kc.matched || [], "match")
+                   + block("Partial keywords", kc.partial || [], "partial")
+                   + block("Missing keywords", kc.missing || [], "missing")
+                   + reqBlock;
+    }
+
+    function renderRecommendations(d) {
+      const el = document.getElementById("recommendations");
+      const recs = d.recommendations || [];
+      if (!recs.length) { el.innerHTML = `<div class="empty">No recommendations.</div>`; return; }
+      const order = { high: 0, medium: 1, low: 2 };
+      const sorted = [...recs].sort((a, b) => (order[a.priority] ?? 3) - (order[b.priority] ?? 3));
+      el.innerHTML = sorted.map(r => {
+        const cls = r.priority === "high" ? "critical" : r.priority === "medium" ? "moderate" : "minor";
+        const tag = `<span class="tag ${r.priority === "high" ? "missing" : r.priority === "medium" ? "partial" : "match"}">${(r.priority || "low").toUpperCase()}</span>`;
+        return `<div class="item ${cls}"><strong>${tag} ${escapeHtml(r.title || "")}</strong>${escapeHtml(r.action || "")}</div>`;
+      }).join("");
+    }
+
+    function buildReport(d, ctx) {
+      const lines = [];
+      lines.push(`# CV Fit Scoring Report (LLM)`);
+      lines.push("");
+      if (ctx.jobUrl) lines.push(`Source: ${ctx.jobUrl}`);
+      lines.push(`Detected role: ${d.detected_role || "—"}`);
+      lines.push(`Overall Fit Score: ${clamp0_100(d.overall_score)}/100 — ${d.decision?.label || ""}`);
+      lines.push(`CV Visibility: ${clamp0_100(d.cv_visibility_score)}/100  |  Real Experience: ${clamp0_100(d.real_experience_score)}/100  |  Risk: ${clamp0_100(d.risk_score)}/100`);
+      lines.push(`Screening Pass Probability: ${clamp0_100(d.recruiter_screening_probability)}%  |  Interview Readiness: ${clamp0_100(d.interview_readiness_score)}/100  |  ATS Keyword Coverage: ${clamp0_100(d.ats_keyword_coverage_percent)}%`);
+      lines.push("");
+      lines.push(`## Executive Summary`); lines.push(d.summary || ""); lines.push("");
+      lines.push(`## Score Breakdown`);
+      const sub = d.sub_scores || {};
+      for (const [k, v] of Object.entries(sub)) lines.push(`- ${k.replace(/_/g, " ")}: ${clamp0_100(v)}/100`);
+      lines.push("");
+      lines.push(`## Strengths`);
+      (d.strengths || []).forEach(x => lines.push(`- **${x.title || ""}** — ${x.evidence || ""}${x.jd_signal ? ` _(JD: ${x.jd_signal})_` : ""}`));
+      if (!(d.strengths || []).length) lines.push("- None.");
+      lines.push("");
+      lines.push(`## Gaps`);
+      (d.gaps || []).forEach(x => lines.push(`- [${(x.severity || "minor").toUpperCase()}][${(x.gap_type || "—").replace(/_/g, " ")}] **${x.title || ""}** — ${x.explanation || ""}${x.fix_action ? `  \n  Fix: ${x.fix_action}` : ""}`));
+      if (!(d.gaps || []).length) lines.push("- None.");
+      lines.push("");
+      lines.push(`## Red Flags`);
+      (d.red_flags || []).forEach(x => lines.push(`- **${x.flag || ""}** — ${x.concern || ""}`));
+      if (!(d.red_flags || []).length) lines.push("- None.");
+      lines.push("");
+      lines.push(`## Must-Have Requirements`);
+      (d.must_have_requirements || []).forEach(r => lines.push(`- [${r.covered ? "✓" : "✗"}] ${r.requirement || ""}${r.evidence ? ` — ${r.evidence}` : ""}${r.gap_type ? ` _(${r.gap_type.replace(/_/g, " ")})_` : ""}`));
+      lines.push("");
+      lines.push(`## Keyword Coverage`);
+      const kc = d.keyword_coverage || {};
+      lines.push(`- Matched: ${(kc.matched || []).join(", ") || "—"}`);
+      lines.push(`- Partial: ${(kc.partial || []).join(", ") || "—"}`);
+      lines.push(`- Missing: ${(kc.missing || []).join(", ") || "—"}`);
+      lines.push("");
+      lines.push(`## Recommendations`);
+      (d.recommendations || []).forEach(r => lines.push(`- [${(r.priority || "low").toUpperCase()}] **${r.title || ""}** — ${r.action || ""}`));
+      lines.push("");
+      if (d.suggested_summary_line) { lines.push(`## Suggested CV Summary Line`); lines.push(`> ${d.suggested_summary_line}`); lines.push(""); }
+      return lines.join("\n");
+    }
+
+    // ============================================================
+    // GENERATE MATCHED CV (LLM call #2 — only on click)
+    // ============================================================
+    async function generateMatchedCV() {
+      if (!lastAnalysis) { alert("Run Analyze Fit first."); return; }
+      const jdText = document.getElementById("jdText").value.trim();
+      const cvText = document.getElementById("cvText").value.trim();
+      const profileText = document.getElementById("profileText").value.trim();
+      const tone = document.getElementById("cvTone").value;
+      const length = document.getElementById("cvLength").value;
+      const extra = document.getElementById("cvExtra").value.trim();
+      const language = document.getElementById("language").value;
+      const s = getSettings();
+      if (!s.apiKey) { alert("Please configure LLM API key first."); toggleSettings(); return; }
+
+      const btn = document.getElementById("genCvBtn");
+      btn.disabled = true;
+      btn.innerHTML = `<span class="loading"><span class="spinner"></span> Generating CV...</span>`;
+
+      const analysisSummary = `Overall fit ${clamp0_100(lastAnalysis.overall_score)}/100. ` +
+        `Decision: ${lastAnalysis.decision?.label || ""}. ` +
+        `Top gaps: ${(lastAnalysis.gaps || []).slice(0, 5).map(g => `${g.title} (${g.severity}, ${g.gap_type})`).join("; ") || "none"}. ` +
+        `Top strengths: ${(lastAnalysis.strengths || []).slice(0, 5).map(g => g.title).join("; ") || "none"}. ` +
+        `Missing keywords: ${(lastAnalysis.keyword_coverage?.missing || []).join(", ") || "none"}.`;
+
+      const langInstr = language === "vi" ? "Write the CV in Vietnamese."
+                     : language === "auto" ? "Write the CV in the same language as the JD."
+                     : "Write the CV in English.";
+
+      const toneInstr = {
+        concise: "Concise and professional. Short bullets, no fluff.",
+        impact: "Impact-led. Lead every bullet with measurable outcome / metric.",
+        recruiter: "ATS-friendly. Mirror JD keywords where truthful. Use scannable bullets.",
+        executive: "Executive tone. Emphasize ownership, scope, leadership, business outcomes."
+      }[tone];
+      const lengthInstr = { short: "Target 1 page.", medium: "Target 1.5 pages.", long: "Target 2 pages." }[length];
+
+      const system = "You are an expert CV writer. You NEVER invent skills, tools, or experience. You may only rephrase or surface what is already in the candidate's text. Output clean Markdown only.";
+      const prompt = `Rewrite the candidate's CV to better match the Job Description, while staying 100% truthful.
+
+=== JOB DESCRIPTION ===
+${jdText}
+
+=== ORIGINAL CV ===
+${cvText}
+
+=== REAL EXPERIENCE PROFILE (true experience that may not be in the CV — you MAY surface this) ===
+${profileText || "(none provided)"}
+
+=== PRIOR ANALYSIS CONTEXT ===
+${analysisSummary}
+
+=== STYLE ===
+- Tone: ${toneInstr}
+- Length: ${lengthInstr}
+- ${langInstr}
+${extra ? `- Extra instructions: ${extra}` : ""}
+
+=== HARD RULES ===
+1. DO NOT invent skills, tools, certifications, employers, or experience the candidate does not have.
+2. You MAY rephrase existing bullets using JD keywords IF the underlying experience is true.
+3. You MAY surface real experience from the profile that wasn't in the CV.
+4. Use action + tool + scope + outcome bullets. Quantify where the original text gives numbers.
+5. Structure: # Name & headline, ## Summary (3–4 lines), ## Key Skills (grouped), ## Experience (top 3–5 roles with bullets), ## Education / Certifications (if present), ## Tools.
+6. End with "## Changes Made" — list:
+   - what you emphasized or rephrased to match the JD (cite the JD signal)
+   - what you intentionally did NOT add (gaps that remain real risks for interview)
+
+Output ONLY Markdown. No preamble, no code fences.`;
+
+      try {
+        const md = await callLLM(system, prompt, false);
+        lastMatchedCv = md.replace(/^```(?:markdown|md)?\s*\n?/i, "").replace(/\n```\s*$/i, "").trim();
+        document.getElementById("matchedCvPreview").innerHTML = renderMarkdown(lastMatchedCv);
+        document.getElementById("matchedCvRaw").textContent = lastMatchedCv;
+        document.getElementById("cvViewToggle").style.display = "flex";
+        setCvView("preview");
+        document.getElementById("copyCvBtn").disabled = false;
+        document.getElementById("dlCvBtn").disabled = false;
+        document.getElementById("dlCvHtmlBtn").disabled = false;
+        document.getElementById("genCvHint").textContent = "Matched CV generated. Review the 'Changes Made' section to see what was emphasized and what gaps remain.";
+      } catch (e) {
+        alert("Generation failed:\n\n" + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "⚡ Generate Matched CV";
+      }
+    }
+
+    function setCvView(v) {
+      cvView = v;
+      document.getElementById("matchedCvPreview").style.display = v === "preview" ? "block" : "none";
+      document.getElementById("matchedCvRaw").style.display = v === "markdown" ? "block" : "none";
+      document.querySelectorAll("#cvViewToggle button").forEach(b => b.classList.toggle("active", b.dataset.view === v));
+    }
+
+    function copyMatchedCV() {
+      if (!lastMatchedCv) return;
+      navigator.clipboard.writeText(lastMatchedCv).then(() => alert("Matched CV copied."));
+    }
+    function downloadMatchedCV() {
+      if (!lastMatchedCv) return;
+      downloadBlob(lastMatchedCv, "matched_cv.md", "text/markdown");
+    }
+    function downloadMatchedCvHtml() {
+      if (!lastMatchedCv) return;
+      const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Matched CV</title><style>body{font-family:Inter,system-ui,sans-serif;max-width:780px;margin:40px auto;padding:0 24px;line-height:1.55;color:#172033}h1{font-size:26px;letter-spacing:-.02em}h2{font-size:18px;border-bottom:1px solid #dce3ee;padding-bottom:4px;margin-top:24px}ul{padding-left:20px}li{margin:4px 0}</style></head><body>${renderMarkdown(lastMatchedCv)}</body></html>`;
+      downloadBlob(html, "matched_cv.html", "text/html");
+    }
+
+    // ============================================================
+    // MARKDOWN MINI RENDERER (no deps)
+    // ============================================================
+    function renderMarkdown(md) {
+      const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const lines = md.split(/\r?\n/);
+      let html = ""; let inList = false; let inBQ = false;
+      const closeList = () => { if (inList) { html += "</ul>"; inList = false; } };
+      const closeBQ = () => { if (inBQ) { html += "</blockquote>"; inBQ = false; } };
+      const inline = t => esc(t)
+        .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+        .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+        .replace(/`([^`]+)`/g, "<code>$1</code>")
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+      for (const raw of lines) {
+        const l = raw.trimEnd();
+        if (/^###\s+/.test(l)) { closeList(); closeBQ(); html += `<h3>${inline(l.replace(/^###\s+/, ""))}</h3>`; }
+        else if (/^##\s+/.test(l)) { closeList(); closeBQ(); html += `<h2>${inline(l.replace(/^##\s+/, ""))}</h2>`; }
+        else if (/^#\s+/.test(l)) { closeList(); closeBQ(); html += `<h1>${inline(l.replace(/^#\s+/, ""))}</h1>`; }
+        else if (/^\s*[-*]\s+/.test(l)) { closeBQ(); if (!inList) { html += "<ul>"; inList = true; } html += `<li>${inline(l.replace(/^\s*[-*]\s+/, ""))}</li>`; }
+        else if (/^>\s?/.test(l)) { closeList(); if (!inBQ) { html += "<blockquote>"; inBQ = true; } html += `<p>${inline(l.replace(/^>\s?/, ""))}</p>`; }
+        else if (/^---+$/.test(l)) { closeList(); closeBQ(); html += "<hr>"; }
+        else if (l.trim() === "") { closeList(); closeBQ(); }
+        else { closeList(); closeBQ(); html += `<p>${inline(l)}</p>`; }
+      }
+      closeList(); closeBQ();
+      return html;
+    }
+
+    // ============================================================
+    // FILE HANDLING
+    // ============================================================
+    async function handleFile(inputId, targetId) {
+      const file = document.getElementById(inputId).files[0];
+      if (!file) return;
+      const ext = file.name.split(".").pop().toLowerCase();
+      try {
+        if (ext === "txt") {
+          document.getElementById(targetId).value = await file.text();
+        } else if (ext === "docx") {
+          await loadScript("https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js");
+          const buffer = await file.arrayBuffer();
+          const result = await window.mammoth.extractRawText({ arrayBuffer: buffer });
+          document.getElementById(targetId).value = result.value.trim();
+        } else {
+          alert("For PDF in this MVP, please copy/paste text manually, or use DOCX/TXT upload.");
+        }
+      } catch (err) {
+        alert("File parsing failed. Please copy/paste the text manually. Error: " + err.message);
+      }
+    }
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        if ([...document.scripts].some(s => s.src === src)) return resolve();
+        const s = document.createElement("script");
+        s.src = src; s.onload = resolve; s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
+
+    // ============================================================
+    // UTILITIES
+    // ============================================================
+    function clamp0_100(v) { v = Number(v); if (isNaN(v)) return 0; return Math.max(0, Math.min(100, Math.round(v))); }
+    function escapeHtml(str) { return String(str ?? "").replace(/[&<>"']/g, s => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"})[s]); }
+    function copyReport() { navigator.clipboard.writeText(document.getElementById("report").textContent).then(() => alert("Report copied.")); }
+    function downloadReport() { downloadBlob(document.getElementById("report").textContent, "cv_fit_scoring_report.md", "text/markdown"); }
+    function toggleRawJson() { const p = document.getElementById("rawJson"); p.style.display = p.style.display === "none" ? "block" : "none"; }
+    function downloadBlob(content, filename, type) { const blob = new Blob([content], { type }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url); }
+    function clearAll() {
+      ["jdText","cvText","profileText","jobUrl","cvExtra"].forEach(id => document.getElementById(id).value = "");
+      document.getElementById("overallScore").textContent = "--";
+      document.getElementById("report").textContent = "No report yet.";
+      document.getElementById("rawJson").textContent = "No raw JSON yet.";
+      document.getElementById("metricList").innerHTML = "";
+      document.getElementById("coverage").innerHTML = `<div class="empty">Run analysis to see requirement coverage.</div>`;
+      document.getElementById("recommendations").innerHTML = `<div class="empty">Run analysis to see prioritized recommendations.</div>`;
+      document.getElementById("strengthsList").innerHTML = `<div class="empty">No strengths yet.</div>`;
+      document.getElementById("gapsList").innerHTML = `<div class="empty">No gaps yet.</div>`;
+      document.getElementById("flagsList").innerHTML = `<div class="empty">No red flags yet.</div>`;
+      document.getElementById("decision").textContent = "Waiting for analysis";
+      document.getElementById("decision").className = "decision good";
+      document.getElementById("summaryText").textContent = "Add a JD and CV, configure LLM, then click Analyze Fit.";
+      ["cvVisStat","realExpStat","riskStat","screeningStat","interviewStat","atsStat"].forEach(id => document.getElementById(id).textContent = "--");
+      document.getElementById("scoreRing").style.background = "conic-gradient(var(--primary) 0deg, #edf2f8 0deg)";
+      document.getElementById("matchedCvPreview").innerHTML = "";
+      document.getElementById("matchedCvRaw").textContent = "No matched CV yet.";
+      document.getElementById("matchedCvPreview").style.display = "none";
+      document.getElementById("matchedCvRaw").style.display = "none";
+      document.getElementById("cvViewToggle").style.display = "none";
+      document.getElementById("genCvBtn").disabled = true;
+      document.getElementById("copyCvBtn").disabled = true;
+      document.getElementById("dlCvBtn").disabled = true;
+      document.getElementById("dlCvHtmlBtn").disabled = true;
+      document.getElementById("genCvHint").textContent = "Run \"Analyze Fit\" first to enable this feature.";
+      lastAnalysis = null; lastMatchedCv = null;
+    }
+
+    function loadSample() {
+      document.getElementById("jdText").value = `Scope of Work:
+1. Data Platform
+• Own reliability and performance of data infrastructure on AWS and SingleStore.
+• Zero downtime tolerance - if the platform goes down, AI agents and client products go dark.
+• Build infrastructure that lets AI agents query and act on production data safely.
+• Set up monitoring, alerting, and self-healing that catches problems before humans do.
+• Manage access control infrastructure including MCP server integrations for AI systems.
+
+2. Data Engineering
+• Build and maintain production data pipelines serving both human and AI consumers.
+• Design orchestration and scheduling that handles dependencies and fails gracefully.
+• Integrate ERP systems, product databases, and third-party APIs into one coherent layer.
+• Own data quality - validation, testing, and anomaly detection built into every pipeline.
+
+Requirements:
+• 5+ years building and operating production data systems that businesses depend on daily.
+• Deep hands-on AWS experience (S3, Lambda, Step Functions, or equivalent).
+• Strong SQL and experience with analytical databases (SingleStore, ClickHouse, or similar).
+• Production pipeline orchestration (Airflow, Apache Dolphin, Step Functions).
+• Solid understanding of networking, security, and access control at the infrastructure level.`;
+      document.getElementById("cvText").value = `Senior Data Engineer / Data Engineer Manager with 7 years of experience in data engineering and 4+ years in management.
+Worked across more than 300 migration and data delivery projects, supported teams of around 8 people, and handled data volumes ranging from 100K to millions of records.
+Strong in SQL, database investigation, source-to-target mapping, validation controls, reconciliation, cutover support, and post-go-live issue handling.
+Experience with Pentaho ETL, PostgreSQL, SQL Server, Oracle, MySQL, Python basic/moderate, Power Automate, data migration, issue troubleshooting, production data incidents, stakeholder coordination, process control, runbooks, checklists, and delivery risk management.
+Working knowledge of AWS, Azure, GCP fundamentals, Spark concepts, data warehouse concepts, Airflow concepts, and CI/CD fundamentals.
+Fluent English.`;
+      document.getElementById("profileText").value = `Real experience profile: strong SQL, data validation, reconciliation, migration delivery, issue investigation, process control, support tooling, and people leadership. Limited production AWS infrastructure and no direct SingleStore, MCP, or Bedrock Agents project yet.`;
+      document.getElementById("targetRole").value = "auto";
+    }
+
+    // ============================================================
+    // BOOT
+    // ============================================================
+    document.getElementById("jdFile").addEventListener("change", () => handleFile("jdFile", "jdText"));
+    document.getElementById("cvFile").addEventListener("change", () => handleFile("cvFile", "cvText"));
+    loadSettings();
+    // Update pill on input changes
+    ["provider", "model", "apiKey", "baseUrl"].forEach(id => {
+      document.getElementById(id).addEventListener("input", refreshApiPill);
+      document.getElementById(id).addEventListener("change", refreshApiPill);
+    });
+  </script>
+</body>
+</html>

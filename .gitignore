@@ -1,0 +1,43 @@
+# Dependencies
+**/node_modules/
+
+# Next.js build output
+**/.next/
+**/out/
+
+# Vercel
+**/.vercel/
+
+# Env files (except example)
+**/.env
+**/.env.*
+!**/.env.example
+
+# Logs
+**/*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Large binary artifacts (already extracted to CVEXRefactor/)
+stitch_ai_resume_optimizer.zip
+
+# Claude local settings (rules are tracked, local prefs are not)
+.claude/settings.local.json
+.claude/skills/
+.claude/agents/
+
+# TypeScript build
+**/*.tsbuildinfo
+**/next-env.d.ts

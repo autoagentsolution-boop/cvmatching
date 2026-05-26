@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ResumeRefine | Analysis Insights</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-low": "#f2f4f6",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-container": "#3980f4",
+                        "error": "#ba1a1a",
+                        "outline-variant": "#c6c6cd",
+                        "on-background": "#191c1e",
+                        "surface-container": "#eceef0",
+                        "surface-tint": "#565e74",
+                        "surface-container-highest": "#e0e3e5",
+                        "surface": "#f7f9fb",
+                        "surface-container-lowest": "#ffffff",
+                        "outline": "#76777d",
+                        "on-primary-container": "#7c839b",
+                        "on-tertiary-fixed": "#001a42",
+                        "on-error": "#ffffff",
+                        "surface-dim": "#d8dadc",
+                        "secondary-container": "#6bff8f",
+                        "tertiary-fixed": "#d8e2ff",
+                        "on-secondary-fixed-variant": "#005321",
+                        "tertiary": "#000000",
+                        "on-surface-variant": "#45464d",
+                        "on-error-container": "#93000a",
+                        "on-secondary-container": "#007432",
+                        "surface-bright": "#f7f9fb",
+                        "background": "#f7f9fb",
+                        "primary-fixed-dim": "#bec6e0",
+                        "on-primary-fixed-variant": "#3f465c",
+                        "surface-variant": "#e0e3e5",
+                        "secondary": "#006e2f",
+                        "primary-fixed": "#dae2fd",
+                        "secondary-fixed-dim": "#4ae176",
+                        "inverse-primary": "#bec6e0",
+                        "on-tertiary-fixed-variant": "#004395",
+                        "tertiary-container": "#001a42",
+                        "inverse-on-surface": "#eff1f3",
+                        "surface-container-high": "#e6e8ea",
+                        "secondary-fixed": "#6bff8f",
+                        "on-secondary": "#ffffff",
+                        "primary-container": "#131b2e",
+                        "on-primary-fixed": "#131b2e",
+                        "on-surface": "#191c1e",
+                        "on-secondary-fixed": "#002109",
+                        "primary": "#000000",
+                        "error-container": "#ffdad6",
+                        "on-tertiary": "#ffffff",
+                        "inverse-surface": "#2d3133",
+                        "tertiary-fixed-dim": "#adc6ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "base": "8px",
+                        "section-gap": "80px",
+                        "gutter": "24px",
+                        "margin-desktop": "40px",
+                        "margin-mobile": "16px",
+                        "container-max": "1280px"
+                    },
+                    "fontFamily": {
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "label-md": ["Inter"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "body-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "display-lg": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["24px", {"lineHeight": "1.3", "fontWeight": "700"}],
+                        "label-md": ["14px", {"lineHeight": "1.4", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.25", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "label-sm": ["12px", {"lineHeight": "1.4", "letterSpacing": "0.03em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "1.4", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #f7f9fb;
+            color: #191c1e;
+            font-family: 'Inter', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.5);
+        }
+        .progress-ring-circle {
+            transition: stroke-dashoffset 0.35s;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+    </style>
+</head>
+<body class="flex min-h-screen overflow-x-hidden">
+<!-- SideNavBar (Hidden on Mobile) -->
+<aside class="hidden md:flex flex-col h-screen fixed left-0 w-64 bg-surface-container-low border-r border-outline-variant p-base z-50">
+<div class="flex items-center gap-3 px-4 py-6 mb-8">
+<div class="w-10 h-10 bg-primary flex items-center justify-center rounded-xl">
+<span class="material-symbols-outlined text-on-primary" data-icon="auto_fix_high">auto_fix_high</span>
+</div>
+<div>
+<h1 class="font-headline-md text-[18px] font-bold text-primary">ResumeRefine</h1>
+<p class="font-label-sm text-on-surface-variant">AI Career Copilot</p>
+</div>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 bg-tertiary-fixed text-on-tertiary-fixed font-bold rounded-lg active:translate-x-1 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-label-md">Analyze</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors active:translate-x-1 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span class="font-label-md">History</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors active:translate-x-1 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="auto_fix_high">auto_fix_high</span>
+<span class="font-label-md">Optimizations</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors active:translate-x-1 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="psychology">psychology</span>
+<span class="font-label-md">Career Path</span>
+</a>
+</nav>
+<div class="mt-auto space-y-2 pt-6 border-t border-outline-variant">
+<button class="w-full py-4 px-4 bg-primary-container text-on-primary rounded-xl font-bold flex items-center justify-center gap-2 mb-4 hover:opacity-90 transition-all">
+<span class="material-symbols-outlined" data-icon="workspace_premium">workspace_premium</span>
+                Upgrade to Pro
+            </button>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="font-label-md">Help</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="font-label-md">Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Canvas -->
+<main class="flex-1 md:ml-64 flex flex-col min-h-screen">
+<!-- TopAppBar -->
+<header class="sticky top-0 z-40 bg-surface shadow-[0_20px_20px_-5px_rgba(15,23,42,0.08)]">
+<div class="flex justify-between items-center px-6 md:px-margin-desktop h-20 w-full max-w-container-max mx-auto">
+<div class="md:hidden flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-2xl" data-icon="menu">menu</span>
+<span class="font-headline-md text-headline-md font-bold text-primary">ResumeRefine</span>
+</div>
+<nav class="hidden md:flex items-center gap-8">
+<a class="text-on-surface-variant hover:text-primary transition-colors font-body-md text-body-md" href="#">Home</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors font-body-md text-body-md" href="#">History</a>
+<a class="text-on-tertiary-container font-bold border-b-2 border-on-tertiary-container pb-1 font-body-md text-body-md" href="#">Profile</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="p-2 rounded-full hover:bg-surface-container-low transition-all active:scale-95">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 rounded-full hover:bg-surface-container-low transition-all active:scale-95">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="settings">settings</span>
+</button>
+<div class="w-10 h-10 rounded-full bg-surface-container-highest overflow-hidden border-2 border-outline-variant">
+<img alt="User avatar" class="w-full h-full object-cover" data-alt="A professional studio portrait of a young male professional in a clean white environment. The lighting is soft and even, highlighting a confident smile and modern attire. High-end photography style with a shallow depth of field, maintaining a minimalist and corporate aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCbMGeCN1AfXA1q9CwzbFaKYu6S1tw481xkF7FYDI_c_M9mZYm0Bs2RwIk5izijgP5leFWCZCLUUwTH_Gl5XBmwUKdxVfGrNAveUEN7P99J0bBIzn5ZQB4w_9MOpfIp920bWJ30qz4NxmG0DAOrVhdA3ysuXXxeruXonoDrSHJ9qh0z6c5m_xTzWRfg4XZR8aYzZnqPKb-H7UZCNKZw2j_IvgE7HmfeJ4dHhdxEy-2IbihiERYE4_mN3zKu86sqKY0sEe2oaGT9kBo"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Content Area -->
+<div class="flex-1 p-6 md:p-margin-desktop max-w-container-max mx-auto w-full space-y-12 pb-24">
+<!-- Bento Layout Header Section -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Main Score Card -->
+<div class="lg:col-span-7 bg-white rounded-3xl p-10 shadow-[0_20px_40px_-15px_rgba(15,23,42,0.06)] flex flex-col md:flex-row items-center gap-12 border border-slate-100 relative overflow-hidden">
+<div class="relative w-48 h-48 flex items-center justify-center">
+<svg class="w-full h-full" viewbox="0 0 100 100">
+<circle class="text-surface-container-low" cx="50" cy="50" fill="transparent" r="42" stroke="currentColor" stroke-width="8"></circle>
+<circle class="text-secondary progress-ring-circle" cx="50" cy="50" fill="transparent" r="42" stroke="currentColor" stroke-dasharray="263.89" stroke-dashoffset="58" stroke-linecap="round" stroke-width="8"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="font-display-lg text-display-lg text-primary">78</span>
+<span class="font-label-md text-on-surface-variant">Match Score</span>
+</div>
+</div>
+<div class="flex-1 space-y-4 text-center md:text-left">
+<h2 class="font-headline-lg text-headline-lg text-primary">Strong Performance!</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Your resume is highly compatible with the Senior Product Designer role. A few targeted optimizations can push you into the top 5% of candidates.</p>
+<div class="flex flex-wrap justify-center md:justify-start gap-2 pt-2">
+<span class="px-3 py-1 bg-secondary-fixed text-on-secondary-fixed text-[12px] font-bold rounded-full">94% Skills Match</span>
+<span class="px-3 py-1 bg-tertiary-fixed text-on-tertiary-fixed text-[12px] font-bold rounded-full">ATS Optimized</span>
+</div>
+</div>
+</div>
+<!-- CTA Card -->
+<div class="lg:col-span-5 bg-primary-container rounded-3xl p-10 flex flex-col justify-center items-center text-center space-y-6 shadow-xl relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-primary-container to-[#1a2b4a] opacity-50"></div>
+<div class="relative z-10">
+<div class="mb-4 inline-flex p-3 bg-on-tertiary-container/20 rounded-2xl">
+<span class="material-symbols-outlined text-on-tertiary-container text-4xl" data-icon="magic_button">magic_button</span>
+</div>
+<h3 class="font-headline-md text-on-primary mb-2">Ready to Apply?</h3>
+<p class="text-on-primary-container font-body-md text-sm mb-6 px-4">Generate a customized CV tailored specifically to this job description's hidden keywords.</p>
+<button class="w-full py-4 px-8 bg-white text-primary font-bold rounded-2xl shadow-lg hover:scale-[1.02] active:scale-95 transition-all duration-200 flex items-center justify-center gap-3">
+                            Generate Matched CV
+                            <span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Detailed Analysis Section -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+<!-- Improvement Suggestions -->
+<div class="space-y-6">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary" data-icon="lightbulb">lightbulb</span>
+<h3 class="font-headline-md text-headline-md">Optimization Paths</h3>
+</div>
+<div class="space-y-4">
+<!-- Suggestion Card -->
+<div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow group">
+<div class="flex gap-4">
+<div class="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary" data-icon="school">school</span>
+</div>
+<div class="space-y-2">
+<h4 class="font-bold text-primary">Strengthen Data Analytics</h4>
+<p class="text-sm text-on-surface-variant font-body-md">The JD emphasizes "A/B Testing" and "Metabase". Consider highlighting these specifically in your experience section.</p>
+<div class="pt-2 flex gap-3">
+<button class="text-[12px] font-bold text-on-tertiary-container flex items-center gap-1 hover:underline">
+                                            View Learning Path
+                                            <span class="material-symbols-outlined text-sm" data-icon="open_in_new">open_in_new</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Suggestion Card -->
+<div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow group">
+<div class="flex gap-4">
+<div class="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary" data-icon="add_task">add_task</span>
+</div>
+<div class="space-y-2">
+<h4 class="font-bold text-primary">Missing Technical Skills</h4>
+<p class="text-sm text-on-surface-variant font-body-md">You're missing "Framer" and "Design Systems Documentation" as keywords. These were mentioned 4 times in the JD.</p>
+<div class="flex flex-wrap gap-2 mt-2">
+<span class="px-2 py-0.5 bg-error-container text-on-error-container text-[11px] font-bold rounded-md">Missing: Framer</span>
+<span class="px-2 py-0.5 bg-error-container text-on-error-container text-[11px] font-bold rounded-md">Missing: Documentation</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Interview Prep -->
+<div class="space-y-6">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-tertiary-container" data-icon="question_answer">question_answer</span>
+<h3 class="font-headline-md text-headline-md">Predictive Interview Questions</h3>
+</div>
+<div class="bg-white rounded-2xl border border-slate-200 overflow-hidden divide-y divide-slate-100 shadow-sm">
+<!-- Question Item -->
+<div class="p-6 hover:bg-surface transition-colors cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<span class="text-[11px] font-bold text-on-primary-container tracking-wider uppercase">Scenario Based</span>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors" data-icon="chevron_right">chevron_right</span>
+</div>
+<p class="font-bold text-primary leading-tight">"Can you describe a time you used data to advocate for a design change that went against stakeholder intuition?"</p>
+</div>
+<!-- Question Item -->
+<div class="p-6 hover:bg-surface transition-colors cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<span class="text-[11px] font-bold text-on-primary-container tracking-wider uppercase">Technical Deep Dive</span>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors" data-icon="chevron_right">chevron_right</span>
+</div>
+<p class="font-bold text-primary leading-tight">"How do you approach creating a scalable design system for a product that serves multiple platforms?"</p>
+</div>
+<!-- Question Item -->
+<div class="p-6 hover:bg-surface transition-colors cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<span class="text-[11px] font-bold text-on-primary-container tracking-wider uppercase">Leadership</span>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors" data-icon="chevron_right">chevron_right</span>
+</div>
+<p class="font-bold text-primary leading-tight">"Tell us about a project where you had to mentor a junior designer. What was the outcome?"</p>
+</div>
+<div class="p-4 bg-surface-container-low text-center">
+<button class="font-label-md text-on-tertiary-container hover:underline">View 12 more questions &amp; AI answers</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Bottom Illustration Section -->
+<section class="mt-section-gap">
+<div class="relative rounded-3xl overflow-hidden h-64 shadow-inner border border-slate-200">
+<img alt="Modern office space" class="w-full h-full object-cover grayscale-[20%] opacity-80" data-alt="An expansive, ultra-modern open-plan office space featuring minimalist white furniture and light wood accents. Large floor-to-ceiling windows fill the room with bright, natural morning light. The atmosphere is calm, professional, and sophisticated, reflecting a high-end corporate culture. A palette of soft greys, whites, and subtle blues dominates the scene." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBEojaH2p4LI6DR1pp1ABsQrWrnIWHls1FMLb3sdRQUu9JlUoU27yO988kvWPyxFptZNjPeDNwsnH0hpiEA8C_iBDmxzN1oz6_rk9A2oxo3myInPKP0m7LD_1dBaymRRrrI8BRD5VFrU4GA25dbI6FzFwz1ejVkE5YUblkj27wwuw_FQ4bXPWafewGSJfTWbijphNMlreFa01TrHoyGtgL2b6OhqFARpWOWdl6lDn7hDrq54QL2dLQCTfhjTOpmyss28wKzp1hsSMs"/>
+<div class="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent"></div>
+<div class="absolute bottom-8 left-8 right-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div>
+<h4 class="font-headline-md text-primary">Your Dream Career Starts Here</h4>
+<p class="text-on-surface-variant max-w-md">92% of users who utilized our tailored CV generator received an interview invitation within 14 days.</p>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Bottom Navigation (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white shadow-[0_-10px_20px_rgba(0,0,0,0.05)] flex justify-around items-center h-16 px-4 z-50">
+<a class="flex flex-col items-center gap-1 text-on-tertiary-container" href="#">
+<span class="material-symbols-outlined" data-icon="analytics" style="font-variation-settings: 'FILL' 1;">analytics</span>
+<span class="text-[10px] font-bold">Analyze</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span class="text-[10px] font-medium">History</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="auto_fix_high">auto_fix_high</span>
+<span class="text-[10px] font-medium">Optimize</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-on-surface-variant" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="text-[10px] font-medium">Profile</span>
+</a>
+</nav>
+<script>
+        // Simple micro-interaction for the radial progress bar
+        document.addEventListener('DOMContentLoaded', () => {
+            const circle = document.querySelector('.progress-ring-circle');
+            const radius = circle.r.baseVal.value;
+            const circumference = radius * 2 * Math.PI;
+            
+            circle.style.strokeDasharray = `${circumference} ${circumference}`;
+            
+            function setProgress(percent) {
+                const offset = circumference - (percent / 100 * circumference);
+                circle.style.strokeDashoffset = offset;
+            }
+            
+            // Initial animation delay
+            setTimeout(() => {
+                setProgress(78);
+            }, 300);
+        });
+    </script>
+</body></html>

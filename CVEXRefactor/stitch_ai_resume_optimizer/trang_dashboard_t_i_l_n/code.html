@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ResumeRefine | Optimize Your Career</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-low": "#f2f4f6",
+                    "on-primary": "#ffffff",
+                    "on-tertiary-container": "#3980f4",
+                    "error": "#ba1a1a",
+                    "outline-variant": "#c6c6cd",
+                    "on-background": "#191c1e",
+                    "surface-container": "#eceef0",
+                    "surface-tint": "#565e74",
+                    "surface-container-highest": "#e0e3e5",
+                    "surface": "#f7f9fb",
+                    "surface-container-lowest": "#ffffff",
+                    "outline": "#76777d",
+                    "on-primary-container": "#7c839b",
+                    "on-tertiary-fixed": "#001a42",
+                    "on-error": "#ffffff",
+                    "surface-dim": "#d8dadc",
+                    "secondary-container": "#6bff8f",
+                    "tertiary-fixed": "#d8e2ff",
+                    "on-secondary-fixed-variant": "#005321",
+                    "tertiary": "#000000",
+                    "on-surface-variant": "#45464d",
+                    "on-error-container": "#93000a",
+                    "on-secondary-container": "#007432",
+                    "surface-bright": "#f7f9fb",
+                    "background": "#f7f9fb",
+                    "primary-fixed-dim": "#bec6e0",
+                    "on-primary-fixed-variant": "#3f465c",
+                    "surface-variant": "#e0e3e5",
+                    "secondary": "#006e2f",
+                    "primary-fixed": "#dae2fd",
+                    "secondary-fixed-dim": "#4ae176",
+                    "inverse-primary": "#bec6e0",
+                    "on-tertiary-fixed-variant": "#004395",
+                    "tertiary-container": "#001a42",
+                    "inverse-on-surface": "#eff1f3",
+                    "surface-container-high": "#e6e8ea",
+                    "secondary-fixed": "#6bff8f",
+                    "on-secondary": "#ffffff",
+                    "primary-container": "#131b2e",
+                    "on-primary-fixed": "#131b2e",
+                    "on-surface": "#191c1e",
+                    "on-secondary-fixed": "#002109",
+                    "primary": "#000000",
+                    "error-container": "#ffdad6",
+                    "on-tertiary": "#ffffff",
+                    "inverse-surface": "#2d3133",
+                    "tertiary-fixed-dim": "#adc6ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "base": "8px",
+                    "section-gap": "80px",
+                    "gutter": "24px",
+                    "margin-desktop": "40px",
+                    "margin-mobile": "16px",
+                    "container-max": "1280px"
+            },
+            "fontFamily": {
+                    "headline-lg-mobile": ["Plus Jakarta Sans"],
+                    "label-md": ["Inter"],
+                    "headline-lg": ["Plus Jakarta Sans"],
+                    "body-lg": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-md": ["Plus Jakarta Sans"],
+                    "display-lg": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "headline-lg-mobile": ["24px", {"lineHeight": "1.3", "fontWeight": "700"}],
+                    "label-md": ["14px", {"lineHeight": "1.4", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                    "headline-lg": ["32px", {"lineHeight": "1.25", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "label-sm": ["12px", {"lineHeight": "1.4", "letterSpacing": "0.03em", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "1.4", "fontWeight": "600"}],
+                    "display-lg": ["48px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3 { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .glass-card { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(10px); }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #c6c6cd; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-background text-on-surface overflow-hidden h-screen flex">
+<!-- SideNavBar -->
+<aside class="hidden md:flex flex-col h-full w-64 bg-surface-container-low dark:bg-surface-dim border-r border-outline-variant dark:border-outline p-base z-50">
+<div class="flex items-center gap-3 px-3 py-6">
+<div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined">auto_fix_high</span>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md font-bold text-primary">ResumeRefine</h2>
+<p class="font-label-sm text-label-sm text-on-primary-container">AI Career Copilot</p>
+</div>
+</div>
+<nav class="mt-8 space-y-2 flex-grow">
+<a class="flex items-center gap-3 px-4 py-3 bg-tertiary-fixed text-on-tertiary-fixed font-bold rounded-lg active:translate-x-1 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-label-md text-label-md">Analyze</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-lg active:translate-x-1 duration-150 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span class="font-label-md text-label-md">History</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-lg active:translate-x-1 duration-150 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="auto_fix_high">auto_fix_high</span>
+<span class="font-label-md text-label-md">Optimizations</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-lg active:translate-x-1 duration-150 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="psychology">psychology</span>
+<span class="font-label-md text-label-md">Career Path</span>
+</a>
+</nav>
+<div class="p-4 mb-4 bg-primary-container rounded-2xl">
+<p class="font-label-sm text-label-sm text-on-primary-container mb-3">Reach 10x more interviews with AI.</p>
+<button class="w-full py-2 bg-on-tertiary-container text-white rounded-lg font-label-md text-label-md hover:opacity-90 transition-opacity">Upgrade to Pro</button>
+</div>
+<div class="border-t border-outline-variant pt-4 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="font-label-md text-label-md">Help</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="font-label-md text-label-md">Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<div class="flex-grow flex flex-col h-full relative overflow-hidden">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center px-margin-desktop h-20 w-full max-w-container-max mx-auto bg-surface dark:bg-background shadow-[0_20px_20px_-5px_rgba(15,23,42,0.08)] z-40">
+<div class="flex items-center gap-8">
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-on-primary-container">Analyze</h1>
+<nav class="hidden lg:flex items-center gap-6">
+<a class="text-on-tertiary-container font-bold border-b-2 border-on-tertiary-container pb-1 font-body-md text-body-md" href="#">Home</a>
+<a class="text-on-surface-variant dark:text-outline hover:text-primary transition-colors font-body-md text-body-md" href="#">History</a>
+<a class="text-on-surface-variant dark:text-outline hover:text-primary transition-colors font-body-md text-body-md" href="#">Profile</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 rounded-full hover:bg-surface-container-low transition-all active:scale-95 duration-200">
+<span class="material-symbols-outlined text-on-primary-container" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 rounded-full hover:bg-surface-container-low transition-all active:scale-95 duration-200">
+<span class="material-symbols-outlined text-on-primary-container" data-icon="settings">settings</span>
+</button>
+<div class="w-10 h-10 rounded-full bg-surface-container-highest overflow-hidden border-2 border-outline-variant">
+<img alt="User avatar" class="w-full h-full object-cover" data-alt="A professional corporate portrait of a young male professional smiling confidently, wearing a dark blazer over a crisp white shirt, set against a blurred, high-end office background. The lighting is soft and flattering, emphasizing a clean and modern professional aesthetic with a subtle, cool-toned color palette of blues and grays." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDPrxEQy7QuOBkQ_ssCbQ7tgVhKLyyEULM4JkNOTQnxVCWgVeVGjLc6E7boBe-6tJFhICg8v84VCLGg0IfMUaNgBghGzLISmAk_FMAdfRkgqoVxEvf0r5HS7-I7OJDK1vnjquRm1q7GuzNLV3EJy6D_zWn7Fy-jehsvEqcsw5fjdy-AUJcHxobhgCP6yoeiefUwcx18XI-m_FD2wMU3pUOrSupSFV4tDY-w-cscMZxs0_ojjKh06rsjeDD7EacmuRkulAC0W7SeT0c"/>
+</div>
+</div>
+</header>
+<!-- Canvas -->
+<main class="flex-grow overflow-y-auto custom-scrollbar p-margin-desktop bg-surface">
+<div class="max-w-container-max mx-auto space-y-gutter">
+<!-- Introduction Header -->
+<div class="mb-10">
+<h2 class="font-display-lg text-display-lg text-primary tracking-tight">Match your profile to your <span class="text-on-tertiary-container">dream role.</span></h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant mt-2 max-w-2xl">Upload your CV and the Job Description. Our AI will analyze the alignment, find keyword gaps, and score your readiness.</p>
+</div>
+<!-- Bento Grid for Input -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+<!-- Left: CV Upload -->
+<div class="flex flex-col h-full">
+<div class="mb-4 flex items-center justify-between">
+<span class="font-label-md text-label-md text-primary font-bold">1. YOUR RESUME / CV</span>
+<span class="text-xs text-on-surface-variant bg-surface-container-highest px-2 py-1 rounded">PDF, DOCX supported</span>
+</div>
+<div class="flex-grow flex flex-col items-center justify-center p-12 bg-white border-2 border-dashed border-outline-variant rounded-3xl hover:border-on-tertiary-container transition-all group relative cursor-pointer shadow-[0_20px_20px_-5px_rgba(15,23,42,0.08)]" id="drop-zone">
+<div class="w-20 h-20 bg-surface-container-low rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+<span class="material-symbols-outlined text-on-tertiary-container scale-150" data-icon="cloud_upload">cloud_upload</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-center text-primary mb-2">Drop your resume here</h3>
+<p class="font-body-md text-body-md text-on-surface-variant text-center mb-6">or click to browse your computer</p>
+<input class="absolute inset-0 opacity-0 cursor-pointer" id="cv-input" type="file"/>
+</div>
+</div>
+<!-- Right: JD Area -->
+<div class="flex flex-col h-full">
+<div class="mb-4 flex items-center justify-between">
+<span class="font-label-md text-label-md text-primary font-bold">2. JOB DESCRIPTION</span>
+<button class="text-on-tertiary-container text-xs hover:underline flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">link</span> Paste URL instead
+                            </button>
+</div>
+<div class="flex-grow flex flex-col bg-white rounded-3xl p-6 border border-slate-200 shadow-[0_20px_20px_-5px_rgba(15,23,42,0.08)]">
+<textarea class="flex-grow w-full border-none focus:ring-0 font-body-md text-body-md text-on-surface resize-none custom-scrollbar" placeholder="Paste the job requirements, responsibilities, and qualifications here..." spellcheck="false"></textarea>
+<div class="mt-4 pt-4 border-t border-outline-variant flex items-center justify-between">
+<span class="text-xs text-on-surface-variant">Recommended: 100+ words for better accuracy</span>
+<span class="text-xs text-on-surface-variant" id="char-count">0 chars</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Settings / Metrics Controls -->
+<div class="bg-white rounded-3xl p-8 border border-slate-200 shadow-[0_20px_20px_-5px_rgba(15,23,42,0.08)]">
+<div class="flex flex-col md:flex-row md:items-center justify-between mb-8">
+<div>
+<h3 class="font-headline-md text-headline-md text-primary">3. Analysis Parameters</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Adjust how the AI weighs different sections of your profile.</p>
+</div>
+<div class="mt-4 md:mt-0 flex gap-2">
+<span class="px-4 py-1 bg-surface-container-low text-on-surface-variant rounded-full text-xs font-bold border border-outline-variant">Preset: Standard</span>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-10">
+<!-- Keyword Match Slider -->
+<div class="space-y-4">
+<div class="flex justify-between items-center">
+<label class="font-label-md text-label-md text-primary font-bold">Keyword Match</label>
+<span class="text-xs font-bold text-on-tertiary-container" id="keyword-val">80%</span>
+</div>
+<input class="w-full h-2 bg-surface-container-highest rounded-lg appearance-none cursor-pointer accent-on-tertiary-container" max="100" min="0" oninput="document.getElementById('keyword-val').innerText = this.value + '%'" type="range" value="80"/>
+<p class="text-xs text-on-surface-variant">Prioritize technical terms and specific tools mentioned in the JD.</p>
+</div>
+<!-- Experience Depth Slider -->
+<div class="space-y-4">
+<div class="flex justify-between items-center">
+<label class="font-label-md text-label-md text-primary font-bold">Experience Depth</label>
+<span class="text-xs font-bold text-on-tertiary-container" id="exp-val">60%</span>
+</div>
+<input class="w-full h-2 bg-surface-container-highest rounded-lg appearance-none cursor-pointer accent-on-tertiary-container" max="100" min="0" oninput="document.getElementById('exp-val').innerText = this.value + '%'" type="range" value="60"/>
+<p class="text-xs text-on-surface-variant">Evaluate seniority alignment and length of tenure in relevant roles.</p>
+</div>
+<!-- Skills Breadth Slider -->
+<div class="space-y-4">
+<div class="flex justify-between items-center">
+<label class="font-label-md text-label-md text-primary font-bold">Soft Skills / Culture</label>
+<span class="text-xs font-bold text-on-tertiary-container" id="skill-val">40%</span>
+</div>
+<input class="w-full h-2 bg-surface-container-highest rounded-lg appearance-none cursor-pointer accent-on-tertiary-container" max="100" min="0" oninput="document.getElementById('skill-val').innerText = this.value + '%'" type="range" value="40"/>
+<p class="text-xs text-on-surface-variant">Extract behavioral traits and collaborative indicators from your text.</p>
+</div>
+</div>
+<div class="mt-10 flex flex-wrap gap-4">
+<label class="flex items-center gap-3 cursor-pointer group">
+<input checked="" class="w-5 h-5 rounded border-outline-variant text-on-tertiary-container focus:ring-on-tertiary-container" type="checkbox"/>
+<span class="font-label-md text-label-md text-on-surface-variant group-hover:text-primary transition-colors">Compare with industry benchmarks</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group">
+<input class="w-5 h-5 rounded border-outline-variant text-on-tertiary-container focus:ring-on-tertiary-container" type="checkbox"/>
+<span class="font-label-md text-label-md text-on-surface-variant group-hover:text-primary transition-colors">Check for ATS readability issues</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group">
+<input checked="" class="w-5 h-5 rounded border-outline-variant text-on-tertiary-container focus:ring-on-tertiary-container" type="checkbox"/>
+<span class="font-label-md text-label-md text-on-surface-variant group-hover:text-primary transition-colors">AI-Suggested action verbs</span>
+</label>
+</div>
+</div>
+<!-- Action Bar -->
+<div class="pb-16 flex flex-col items-center pt-8">
+<button class="px-12 py-5 bg-primary text-on-primary rounded-2xl font-bold font-headline-md text-headline-md flex items-center gap-4 hover:scale-105 active:scale-95 transition-all shadow-xl" id="analyze-btn">
+<span>Analyze &amp; Score</span>
+<span class="material-symbols-outlined">rocket_launch</span>
+</button>
+<p class="mt-4 text-sm text-on-surface-variant">Estimated processing time: 4-6 seconds</p>
+</div>
+</div>
+</main>
+</div>
+<!-- Mobile Navigation (Suppressed per task context, but included for complete responsive integrity if needed) -->
+<div class="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-outline-variant flex items-center justify-around px-4 z-50">
+<button class="flex flex-col items-center text-on-tertiary-container">
+<span class="material-symbols-outlined">analytics</span>
+<span class="text-[10px] font-bold">Analyze</span>
+</button>
+<button class="flex flex-col items-center text-on-surface-variant">
+<span class="material-symbols-outlined">history</span>
+<span class="text-[10px]">History</span>
+</button>
+<button class="flex flex-col items-center text-on-surface-variant">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px]">Profile</span>
+</button>
+</div>
+<script>
+        // Micro-interactions
+        const analyzeBtn = document.getElementById('analyze-btn');
+        analyzeBtn.addEventListener('click', () => {
+            const btnSpan = analyzeBtn.querySelector('span:first-child');
+            const iconSpan = analyzeBtn.querySelector('span:last-child');
+            
+            btnSpan.innerText = 'Calculating Score...';
+            iconSpan.classList.add('animate-bounce');
+            analyzeBtn.classList.replace('bg-primary', 'bg-on-tertiary-container');
+            
+            setTimeout(() => {
+                btnSpan.innerText = 'Analysis Complete';
+                iconSpan.innerText = 'check_circle';
+                iconSpan.classList.remove('animate-bounce');
+            }, 3000);
+        });
+
+        // Drop zone interaction
+        const dropZone = document.getElementById('drop-zone');
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.add('border-on-tertiary-container', 'bg-tertiary-fixed');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.remove('border-on-tertiary-container', 'bg-tertiary-fixed');
+            }, false);
+        });
+
+        const textarea = document.querySelector('textarea');
+        const charCount = document.getElementById('char-count');
+        textarea.addEventListener('input', () => {
+            charCount.innerText = `${textarea.value.length} chars`;
+        });
+    </script>
+</body></html>
