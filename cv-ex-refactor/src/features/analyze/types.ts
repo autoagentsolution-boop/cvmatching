@@ -114,22 +114,34 @@ export interface AnalysisResult {
 }
 
 /**
- * Six recruiter-grade weighting dimensions sent to the LLM (0-100 each).
+ * Nine recruiter-grade weighting dimensions sent to the LLM (0-100 each).
  * Must-have requirements are a separate gating filter — not a weight.
+ *
+ * Modeled after a recruiter rubric. Each dim is intentionally distinct:
+ * - coreSkill vs tool — competency vs concrete instrument
+ * - production vs domain — system reality vs industry knowledge
+ * - evidence vs impact — presence of proof vs magnitude of outcome
+ * - seniority vs scope — level vs the kind of work owned
  */
 export interface Weights {
-  /** Tool / framework / language alignment with JD requirements */
-  technical: number;
-  /** Depth in scaling, ops, industry context relevant to the role */
+  /** Core competencies the role demands (e.g. distributed-system design, data modeling) */
+  coreSkill: number;
+  /** Concrete tools, platforms, frameworks, systems (e.g. Spark, Airflow, K8s) */
+  tool: number;
+  /** Has owned the same kind of scope (single team vs cross-org, IC vs lead, greenfield vs maintenance) */
+  scope: number;
+  /** Real production environments — live systems, real users, business-critical */
   production: number;
-  /** Concrete metrics, outcomes, ownership — not buzzwords */
+  /** Industry / domain context relevant to the role (fintech, ad-tech, healthcare…) */
+  domain: number;
+  /** Concrete proof in CV: project, role, dates, ownership — not buzzwords */
   evidence: number;
-  /** Level, scope of responsibility, mentoring/influence span */
+  /** Level, years, ownership level, decision-making authority */
   seniority: number;
-  /** Stakeholder collaboration, business acumen, soft skills */
+  /** Magnitude of outcomes: metrics, percentage gains, scale, business impact */
+  impact: number;
+  /** Stakeholder collaboration, team & client communication, business acumen */
   communication: number;
-  /** Exact keyword matches that pass ATS / HR screening filters */
-  atsKeyword: number;
 }
 
 export interface AnalyzeRequestInputs {

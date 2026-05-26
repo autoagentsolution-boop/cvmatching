@@ -7,17 +7,17 @@ import { useAnalysis } from './analysis-store';
 import { MustHavesBlock } from './must-haves-block';
 import type { Language, RoleFamily, Strictness, Weights } from './types';
 
-type Preset = 'Standard' | 'Senior IC' | 'Manager' | 'Junior-friendly' | 'ATS-first';
+type Preset = 'Standard' | 'Senior IC' | 'Manager' | 'Junior-friendly' | 'Keyword-heavy';
 
 const PRESETS: Record<Preset, Weights> = {
-  Standard:          { technical: 50, production: 50, evidence: 50, seniority: 50, communication: 50, atsKeyword: 50 },
-  'Senior IC':       { technical: 70, production: 70, evidence: 80, seniority: 50, communication: 40, atsKeyword: 40 },
-  Manager:           { technical: 40, production: 60, evidence: 60, seniority: 80, communication: 80, atsKeyword: 30 },
-  'Junior-friendly': { technical: 50, production: 30, evidence: 40, seniority: 20, communication: 60, atsKeyword: 70 },
-  'ATS-first':       { technical: 80, production: 50, evidence: 50, seniority: 30, communication: 30, atsKeyword: 90 },
+  Standard:          { coreSkill: 50, tool: 50, scope: 50, production: 50, domain: 50, evidence: 50, seniority: 50, impact: 50, communication: 50 },
+  'Senior IC':       { coreSkill: 80, tool: 70, scope: 50, production: 80, domain: 50, evidence: 80, seniority: 50, impact: 80, communication: 40 },
+  Manager:           { coreSkill: 50, tool: 30, scope: 80, production: 60, domain: 60, evidence: 60, seniority: 80, impact: 70, communication: 80 },
+  'Junior-friendly': { coreSkill: 60, tool: 50, scope: 20, production: 30, domain: 30, evidence: 40, seniority: 20, impact: 30, communication: 60 },
+  'Keyword-heavy':   { coreSkill: 80, tool: 80, scope: 40, production: 50, domain: 40, evidence: 70, seniority: 30, impact: 50, communication: 30 },
 };
 
-const PRESET_ORDER: Preset[] = ['Standard', 'Senior IC', 'Manager', 'Junior-friendly', 'ATS-first'];
+const PRESET_ORDER: Preset[] = ['Standard', 'Senior IC', 'Manager', 'Junior-friendly', 'Keyword-heavy'];
 
 const roleFamilyOptions: SelectOption[] = [
   { value: 'auto', label: 'Auto-detect' },
@@ -50,34 +50,49 @@ interface SliderSpec {
 
 const SLIDERS: SliderSpec[] = [
   {
-    key: 'technical',
-    label: 'Technical Skills',
-    description: 'Tool, framework, and language alignment with the JD requirements.',
+    key: 'coreSkill',
+    label: 'Core Skill Match',
+    description: 'Core competencies the role demands (e.g. system design, data modeling).',
+  },
+  {
+    key: 'tool',
+    label: 'Tool / Platform',
+    description: 'Concrete tools, frameworks, and platforms named in the JD.',
+  },
+  {
+    key: 'scope',
+    label: 'Scope Match',
+    description: 'Has owned the same kind of scope — team size, IC vs lead, greenfield vs ops.',
   },
   {
     key: 'production',
     label: 'Production Experience',
-    description: 'Depth in scaling, ops, and industry context relevant to the role.',
+    description: 'Real live systems, real users, business-critical environments.',
+  },
+  {
+    key: 'domain',
+    label: 'Domain / Industry',
+    description: 'Relevant industry context — fintech, ad-tech, healthcare, etc.',
   },
   {
     key: 'evidence',
     label: 'Evidence Strength',
-    description: 'Concrete metrics, outcomes, and ownership — not buzzwords.',
+    description: 'Concrete projects, roles, dates, ownership — not just buzzwords.',
   },
   {
     key: 'seniority',
-    label: 'Seniority Fit',
-    description: 'Level, scope of responsibility, and mentoring or influence span.',
+    label: 'Seniority / Ownership',
+    description: 'Level, years, decision-making authority, ownership depth.',
+  },
+  {
+    key: 'impact',
+    label: 'Impact / Achievement',
+    description: 'Magnitude of outcomes — metrics, scale, business results.',
   },
   {
     key: 'communication',
     label: 'Communication Fit',
     description: 'Stakeholder collaboration, business acumen, and soft skills.',
-  },
-  {
-    key: 'atsKeyword',
-    label: 'ATS Coverage',
-    description: 'Exact keyword matches that pass ATS and HR screening filters.',
   },
 ];
 
