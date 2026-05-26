@@ -106,11 +106,26 @@ export function JdInputBlock() {
         />
       )}
 
+      <DropZone
+        title="Upload JD file"
+        subtitle="Parsed content appears in the box below — .txt, .docx, .pdf"
+        accept=".txt,.docx,.pdf"
+        maxSizeMb={4}
+        onFile={handleJdFile}
+      />
+
+      {parseError && (
+        <p className="text-label-sm text-error" role="alert">{parseError}</p>
+      )}
+      {parsedFileName && !parseError && (
+        <p className="text-label-sm text-on-surface-variant">Loaded: {parsedFileName}</p>
+      )}
+
       <Card padding="md" className="flex flex-col gap-4">
         <Textarea
           id="jd-text"
           aria-label="Job description"
-          placeholder="Paste the job requirements, responsibilities, and qualifications here…"
+          placeholder="Paste the job requirements, responsibilities, and qualifications here — or upload a file above…"
           rows={10}
           value={jdText}
           onChange={(e) => setField('jdText', e.target.value)}
@@ -124,21 +139,6 @@ export function JdInputBlock() {
           </span>
         </div>
       </Card>
-
-      <DropZone
-        title="Or upload JD file"
-        subtitle=".txt, .docx, .pdf"
-        accept=".txt,.docx,.pdf"
-        maxSizeMb={4}
-        onFile={handleJdFile}
-      />
-
-      {parseError && (
-        <p className="text-label-sm text-error" role="alert">{parseError}</p>
-      )}
-      {parsedFileName && !parseError && (
-        <p className="text-label-sm text-on-surface-variant">Loaded: {parsedFileName}</p>
-      )}
     </section>
   );
 }
