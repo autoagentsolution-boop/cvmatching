@@ -49,6 +49,57 @@ export async function callGenerateCv(payload: GenerateCvRequest): Promise<string
 }
 
 /**
+ * POST /api/extract-must-haves — returns hard-gate requirements parsed from JD.
+ * Returns 404 until Phase 06 ships; the call falls back to a deterministic
+ * heuristic so the UI stays usable during Phase 1 visual development.
+ */
+export async function callExtractMustHaves(jdText: string): Promise<string[]> {
+  try {
+    const res = await fetch('/api/extract-must-haves', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jdText }),
+    });
+    if (res.ok) {
+      const data = (await res.json()) as { mustHaves: string[] };
+      return data.mustHaves;
+    }
+    if (res.status !== 404) {
+      const msg = await parseErrorBody(res);
+      throw new Error(`Extract must-haves failed: ${msg}`);
+    }
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith('Extract must-haves failed')) {
+      throw err;
+    }
+  }
+  return heuristicMustHaves(jdText);
+}
+
+/**
+ * Phase 1 fallback — picks short lines that look like requirement bullets.
+ * Replaced by LLM extraction in Phase 06.
+ */
+function heuristicMustHaves(jdText: string): string[] {
+  const lines = jdText
+    .split(/\r?\n/)
+    .map((l) => l.trim().replace(/^[-•*·]\s*/, ''))
+    .filter((l) => l.length > 0 && l.length <= 140);
+  const requireRe = /(required|must have|must-have|minimum|at least|years|proficien|expert|fluent)/i;
+  const picked = lines.filter((l) => requireRe.test(l));
+  const seen = new Set<string>();
+  const dedup: string[] = [];
+  for (const item of picked.length > 0 ? picked : lines) {
+    const key = item.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    dedup.push(item);
+    if (dedup.length >= 6) break;
+  }
+  return dedup;
+}
+
+/**
  * POST /api/scrape — returns scraped JD text from a URL.
  * Returns 404 until Phase 05 ships.
  */

@@ -1,7 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
-import type { AnalysisResult, Language, RoleFamily, Strictness } from './types';
+import type { AnalysisResult, Language, RoleFamily, Strictness, Weights } from './types';
 
 interface AnalysisState {
   jdText: string;
@@ -11,7 +11,10 @@ interface AnalysisState {
   targetRole: RoleFamily;
   strictness: Strictness;
   language: Language;
-  weights: { keywordMatch: number; experienceDepth: number; softSkills: number };
+  weights: Weights;
+  mustHaves: string[];
+  isExtractingMustHaves: boolean;
+  mustHavesError: string | null;
   result: AnalysisResult | null;
   matchedCv: string | null;
   isAnalyzing: boolean;
@@ -32,7 +35,17 @@ const initial: Omit<AnalysisState, 'setField' | 'reset'> = {
   targetRole: 'auto',
   strictness: 'balanced',
   language: 'auto',
-  weights: { keywordMatch: 50, experienceDepth: 50, softSkills: 50 },
+  weights: {
+    technical: 50,
+    production: 50,
+    evidence: 50,
+    seniority: 50,
+    communication: 50,
+    atsKeyword: 50,
+  },
+  mustHaves: [],
+  isExtractingMustHaves: false,
+  mustHavesError: null,
   result: null,
   matchedCv: null,
   isAnalyzing: false,

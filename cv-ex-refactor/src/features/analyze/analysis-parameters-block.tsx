@@ -4,17 +4,20 @@ import { useState } from 'react';
 import { Card, Checkbox, FormField, Select, Slider } from '@/components/ui';
 import type { SelectOption } from '@/components/ui';
 import { useAnalysis } from './analysis-store';
-import type { Language, RoleFamily, Strictness } from './types';
+import { MustHavesBlock } from './must-haves-block';
+import type { Language, RoleFamily, Strictness, Weights } from './types';
 
-type Preset = 'Standard' | 'ATS-First' | 'Human-Centric';
+type Preset = 'Standard' | 'Senior IC' | 'Manager' | 'Junior-friendly' | 'ATS-first';
 
-const PRESETS: Record<Preset, { keywordMatch: number; experienceDepth: number; softSkills: number }> = {
-  Standard:        { keywordMatch: 50, experienceDepth: 50, softSkills: 50 },
-  'ATS-First':     { keywordMatch: 80, experienceDepth: 40, softSkills: 20 },
-  'Human-Centric': { keywordMatch: 30, experienceDepth: 60, softSkills: 70 },
+const PRESETS: Record<Preset, Weights> = {
+  Standard:          { technical: 50, production: 50, evidence: 50, seniority: 50, communication: 50, atsKeyword: 50 },
+  'Senior IC':       { technical: 70, production: 70, evidence: 80, seniority: 50, communication: 40, atsKeyword: 40 },
+  Manager:           { technical: 40, production: 60, evidence: 60, seniority: 80, communication: 80, atsKeyword: 30 },
+  'Junior-friendly': { technical: 50, production: 30, evidence: 40, seniority: 20, communication: 60, atsKeyword: 70 },
+  'ATS-first':       { technical: 80, production: 50, evidence: 50, seniority: 30, communication: 30, atsKeyword: 90 },
 };
 
-const PRESET_ORDER: Preset[] = ['Standard', 'ATS-First', 'Human-Centric'];
+const PRESET_ORDER: Preset[] = ['Standard', 'Senior IC', 'Manager', 'Junior-friendly', 'ATS-first'];
 
 const roleFamilyOptions: SelectOption[] = [
   { value: 'auto', label: 'Auto-detect' },
@@ -39,22 +42,56 @@ const languageOptions: SelectOption[] = [
   { value: 'vi', label: 'Vietnamese' },
 ];
 
+interface SliderSpec {
+  key: keyof Weights;
+  label: string;
+  description: string;
+}
+
+const SLIDERS: SliderSpec[] = [
+  {
+    key: 'technical',
+    label: 'Technical Skills',
+    description: 'Tool, framework, and language alignment with the JD requirements.',
+  },
+  {
+    key: 'production',
+    label: 'Production Experience',
+    description: 'Depth in scaling, ops, and industry context relevant to the role.',
+  },
+  {
+    key: 'evidence',
+    label: 'Evidence Strength',
+    description: 'Concrete metrics, outcomes, and ownership — not buzzwords.',
+  },
+  {
+    key: 'seniority',
+    label: 'Seniority Fit',
+    description: 'Level, scope of responsibility, and mentoring or influence span.',
+  },
+  {
+    key: 'communication',
+    label: 'Communication Fit',
+    description: 'Stakeholder collaboration, business acumen, and soft skills.',
+  },
+  {
+    key: 'atsKeyword',
+    label: 'ATS Coverage',
+    description: 'Exact keyword matches that pass ATS and HR screening filters.',
+  },
+];
+
 function nextPreset(current: Preset): Preset {
   const idx = PRESET_ORDER.indexOf(current);
   return PRESET_ORDER[(idx + 1) % PRESET_ORDER.length] ?? 'Standard';
 }
 
-function resolvePreset(
-  weights: { keywordMatch: number; experienceDepth: number; softSkills: number },
-): Preset | null {
-  for (const [name, vals] of Object.entries(PRESETS) as [Preset, (typeof PRESETS)[Preset]][]) {
-    if (
-      vals.keywordMatch === weights.keywordMatch &&
-      vals.experienceDepth === weights.experienceDepth &&
-      vals.softSkills === weights.softSkills
-    ) {
-      return name;
-    }
+function resolvePreset(weights: Weights): Preset | null {
+  for (const [name, vals] of Object.entries(PRESETS) as [Preset, Weights][]) {
+    const allMatch = (Object.keys(vals) as (keyof Weights)[]).every(
+      (k) => vals[k] === weights[k],
+    );
+    if (allMatch) return name;
   }
   return null;
 }
@@ -100,7 +137,7 @@ export function AnalysisParametersBlock() {
     setField('weights', PRESETS[next]);
   }
 
-  function setWeight(key: keyof typeof weights, val: number) {
+  function setWeight(key: keyof Weights, val: number) {
     setField('weights', { ...weights, [key]: val });
   }
 
@@ -150,25 +187,18 @@ export function AnalysisParametersBlock() {
         </FormField>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-        <SliderCell
-          label="Keyword Match"
-          value={weights.keywordMatch}
-          onValueChange={(v) => setWeight('keywordMatch', v)}
-          description="Prioritize technical terms and specific tools mentioned in the JD."
-        />
-        <SliderCell
-          label="Experience Depth"
-          value={weights.experienceDepth}
-          onValueChange={(v) => setWeight('experienceDepth', v)}
-          description="Evaluate seniority alignment and length of tenure in relevant roles."
-        />
-        <SliderCell
-          label="Soft Skills / Culture"
-          value={weights.softSkills}
-          onValueChange={(v) => setWeight('softSkills', v)}
-          description="Extract behavioral traits and collaborative indicators from your story."
-        />
+      <MustHavesBlock />
+
+      <div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
+        {SLIDERS.map((s) => (
+          <SliderCell
+            key={s.key}
+            label={s.label}
+            value={weights[s.key]}
+            onValueChange={(v) => setWeight(s.key, v)}
+            description={s.description}
+          />
+        ))}
       </div>
 
       <div className="flex flex-wrap gap-6 border-t border-outline-variant pt-6">

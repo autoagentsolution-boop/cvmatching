@@ -113,6 +113,25 @@ export interface AnalysisResult {
   targetRoleLabel?: string;
 }
 
+/**
+ * Six recruiter-grade weighting dimensions sent to the LLM (0-100 each).
+ * Must-have requirements are a separate gating filter — not a weight.
+ */
+export interface Weights {
+  /** Tool / framework / language alignment with JD requirements */
+  technical: number;
+  /** Depth in scaling, ops, industry context relevant to the role */
+  production: number;
+  /** Concrete metrics, outcomes, ownership — not buzzwords */
+  evidence: number;
+  /** Level, scope of responsibility, mentoring/influence span */
+  seniority: number;
+  /** Stakeholder collaboration, business acumen, soft skills */
+  communication: number;
+  /** Exact keyword matches that pass ATS / HR screening filters */
+  atsKeyword: number;
+}
+
 export interface AnalyzeRequestInputs {
   jdText: string;
   jdUrl?: string;
@@ -121,7 +140,9 @@ export interface AnalyzeRequestInputs {
   targetRole: RoleFamily;
   strictness: Strictness;
   language: Language;
-  weights: { keywordMatch: number; experienceDepth: number; softSkills: number };
+  weights: Weights;
+  /** Hard-gate requirements extracted from JD — miss any → decision capped at 'stretch' */
+  mustHaves: string[];
 }
 
 export interface AnalyzeRequestLLM {

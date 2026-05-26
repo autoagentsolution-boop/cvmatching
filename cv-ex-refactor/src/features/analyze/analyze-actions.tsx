@@ -16,6 +16,7 @@ export function AnalyzeActions() {
     strictness,
     language,
     weights,
+    mustHaves,
     isAnalyzing,
     error,
     setField,
@@ -51,6 +52,7 @@ export function AnalyzeActions() {
         strictness,
         language,
         weights,
+        mustHaves,
       },
     };
 
