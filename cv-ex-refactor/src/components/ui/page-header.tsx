@@ -2,7 +2,8 @@ import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 
 export interface PageHeaderProps {
-  title: string;
+  /** Accepts string or ReactNode — allows rich markup (e.g. highlighted spans) */
+  title: string | ReactNode;
   subtitle?: string;
   action?: ReactNode;
   breadcrumb?: ReactNode;
@@ -17,7 +18,7 @@ export function PageHeader({ title, subtitle, action, breadcrumb, className }: P
       )}
       <div className="flex items-end justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <h1 className="font-display text-display-lg text-primary tracking-tight truncate md:text-headline-lg">
+          <h1 className="font-display text-display-lg text-primary tracking-tight md:text-headline-lg">
             {title}
           </h1>
           {subtitle && (

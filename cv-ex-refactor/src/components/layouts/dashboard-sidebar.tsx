@@ -45,14 +45,41 @@ function NavLink({
   );
 }
 
+/** Pro CTA card — visual placeholder for Phase 2 upgrade flow. */
+function ProCtaCard() {
+  return (
+    <div className="mx-3 mb-4 rounded-2xl bg-primary-container p-4">
+      <p className="text-label-sm font-bold text-on-primary-container mb-1">
+        Reach 10x more interviews with AI.
+      </p>
+      <p className="text-label-sm text-on-primary-container/70 mb-3">
+        Unlock advanced scoring, unlimited analyses, and priority support.
+      </p>
+      <button
+        type="button"
+        disabled
+        title="Available in Phase 2"
+        className={cn(
+          'w-full rounded-lg py-2 text-label-md font-bold transition-opacity',
+          'bg-on-tertiary-container text-on-tertiary',
+          'disabled:cursor-not-allowed disabled:opacity-60',
+        )}
+      >
+        Upgrade to Pro
+      </button>
+    </div>
+  );
+}
+
 export interface DashboardSidebarProps {
   activeNav: ActiveNav;
+  /** @deprecated Pass nothing — Pro CTA is now always rendered inline. */
   proCtaSlot?: ReactNode;
   onNavClick?: (() => void) | undefined;
 }
 
 /** Private sidebar content — consumed by DashboardLayout (desktop) and its mobile Drawer. */
-export function DashboardSidebar({ activeNav, proCtaSlot, onNavClick }: DashboardSidebarProps) {
+export function DashboardSidebar({ activeNav, onNavClick }: DashboardSidebarProps) {
   return (
     <>
       <div className="flex items-center gap-3 px-3 py-6">
@@ -78,7 +105,8 @@ export function DashboardSidebar({ activeNav, proCtaSlot, onNavClick }: Dashboar
         ))}
       </nav>
 
-      {proCtaSlot && <div className="px-3 py-4">{proCtaSlot}</div>}
+      {/* Pro CTA — always visible, Phase 2 upgrade affordance */}
+      <ProCtaCard />
 
       <div className="border-t border-outline-variant px-3 py-4">
         <a

@@ -6,7 +6,7 @@ import { cn } from '@/lib/cn';
 
 export interface ButtonProps {
   variant?: 'primary' | 'secondary' | 'ghost' | 'destructive';
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   loading?: boolean;
   disabled?: boolean;
   leadingIcon?: ReactNode;
@@ -31,15 +31,17 @@ const variantClasses: Record<NonNullable<ButtonProps['variant']>, string> = {
 };
 
 const sizeClasses: Record<NonNullable<ButtonProps['size']>, string> = {
-  sm: 'h-9 px-4 text-label-md gap-1.5',
-  md: 'h-12 px-6 text-label-md gap-2',
-  lg: 'h-14 px-8 text-body-md gap-2',
+  sm: 'h-9 px-4 text-label-md gap-1.5 rounded-lg',
+  md: 'h-12 px-6 text-label-md gap-2 rounded-lg',
+  lg: 'h-14 px-8 text-body-md gap-2 rounded-lg',
+  xl: 'h-[72px] px-12 text-headline-md gap-3 rounded-2xl',
 };
 
 const spinnerSizeClasses: Record<NonNullable<ButtonProps['size']>, string> = {
   sm: 'h-3.5 w-3.5',
   md: 'h-4 w-4',
   lg: 'h-5 w-5',
+  xl: 'h-6 w-6',
 };
 
 function Spinner({ className }: { className?: string }) {
@@ -77,7 +79,7 @@ export function Button({
 }: ButtonProps) {
   const isDisabled = disabled || loading;
   const sharedClass = cn(
-    'inline-flex items-center justify-center rounded-lg font-medium transition-all duration-150 focus-visible:outline-none',
+    'inline-flex items-center justify-center font-medium transition-all duration-150 focus-visible:outline-none',
     variantClasses[variant],
     sizeClasses[size],
     fullWidth && 'w-full',

@@ -1,51 +1,39 @@
 import { FormPageLayout } from '@/components/layouts';
 import { PageHeader } from '@/components/ui';
-import { getSession } from '@/lib/get-session';
 import { ResultsSection } from '@/features/results/results-section';
 import { AnalyzeActions } from './analyze-actions';
 import { AnalysisParametersBlock } from './analysis-parameters-block';
 import { CvInputBlock } from './cv-input-block';
 import { JdInputBlock } from './jd-input-block';
-import { SettingsPanelBlock } from './settings-panel-block';
-
-interface AnalyzePageProps {
-  searchParams: { mode?: string };
-}
 
 /**
- * Server component — reads session + searchParams, passes isAuthed/defaultExpanded
- * as props to client sub-components. Never calls 'use client' hooks here.
+ * Server component — composes the full Analyze page per Stitch dashboard reference.
+ * Layout: header → 2-col bento (CV + JD) → section 3 full-width → CTA → ResultsSection.
+ * Section headers live inside each block to match Stitch's varying header treatment.
  */
-export async function AnalyzePage({ searchParams }: AnalyzePageProps) {
-  let isAuthed = false;
-  try {
-    const session = await getSession();
-    isAuthed = session !== null;
-  } catch {
-    // getSession may throw in dev without AUTH_SECRET — safe default to false
-  }
-
-  const defaultByok = searchParams.mode === 'byok';
-
+export function AnalyzePage() {
   return (
     <FormPageLayout
       header={
         <PageHeader
-          title="Match your profile to your dream role"
-          subtitle="Upload your CV and job description. Our AI will score your fit, surface keyword gaps, and rank your readiness."
+          title={
+            <>
+              Match your profile to your{' '}
+              <span className="text-on-tertiary-container">dream role.</span>
+            </>
+          }
+          subtitle="Upload your CV and the Job Description. Our AI will analyze the alignment, find keyword gaps, and score your readiness."
         />
       }
       actionsSlot={<AnalyzeActions />}
-      meta="Estimated processing time: 4–6 seconds"
     >
-      <SettingsPanelBlock isAuthed={isAuthed} defaultExpanded={defaultByok} />
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <JdInputBlock />
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         <CvInputBlock />
+        <JdInputBlock />
       </div>
 
       <AnalysisParametersBlock />
+
       <ResultsSection />
     </FormPageLayout>
   );

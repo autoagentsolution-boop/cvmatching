@@ -65,25 +65,35 @@ export function AnalyzeActions() {
   }
 
   return (
-    <div className="flex flex-col gap-4 w-full">
-      <Button
-        variant="primary"
-        size="lg"
-        fullWidth
-        loading={isAnalyzing}
-        disabled={!canAnalyze}
-        onClick={handleAnalyze}
-      >
-        {isAnalyzing ? 'Analyzing…' : 'Analyze & Score'}
-      </Button>
-
+    <div className="flex flex-col items-center gap-3 w-full">
       {error && (
         <ErrorState
           title="Analysis failed"
           description={error}
           {...(canAnalyze ? { retry: handleAnalyze } : {})}
-          className="py-6"
+          className="py-4 w-full"
         />
+      )}
+
+      <Button
+        variant="primary"
+        size="xl"
+        loading={isAnalyzing}
+        disabled={!canAnalyze}
+        onClick={handleAnalyze}
+        trailingIcon={
+          <span className="material-symbols-outlined" aria-hidden="true">
+            {isAnalyzing ? 'progress_activity' : 'rocket_launch'}
+          </span>
+        }
+      >
+        {isAnalyzing ? 'Calculating score…' : 'Analyze & Score'}
+      </Button>
+
+      {!isAnalyzing && (
+        <p className="text-label-sm text-on-surface-variant">
+          Estimated processing time: 4–6 seconds
+        </p>
       )}
     </div>
   );

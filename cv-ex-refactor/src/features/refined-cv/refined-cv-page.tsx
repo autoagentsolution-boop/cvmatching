@@ -5,11 +5,13 @@ import { KeyEnhancementsBlock } from './key-enhancements-block';
 import { RefineToolsBlock } from './refine-tools-block';
 import { RefinedCvView } from './refined-cv-view';
 import { MatchScoreBlockAside } from './match-score-block-aside';
+import { CoverLetterStub } from './cover-letter-stub';
 
 /**
  * RSC — composes DetailPanelLayout for the /refined-cv route.
  * Auth check omitted: BYOK guests must access their generated CV without auth.
- * Locked decisions #4 (no PDF), #5 (no cover letter), #9 (plain markdown).
+ * Locked decisions #4 (no PDF), #9 (plain markdown).
+ * Cover Letter: Phase 2 placeholder stub rendered in aside.
  */
 export function RefinedCvPage() {
   return (
@@ -26,6 +28,7 @@ export function RefinedCvPage() {
           <MatchScoreBlockAside />
           <KeyEnhancementsBlock />
           <RefineToolsBlock />
+          <CoverLetterStub />
         </div>
       }
       asideWidth="md"

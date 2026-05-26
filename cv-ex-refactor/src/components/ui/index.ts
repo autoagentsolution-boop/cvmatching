@@ -55,4 +55,7 @@ export type { MarkdownViewProps } from './markdown-view';
 export { Textarea } from './textarea';
 export type { TextareaProps } from './textarea';
 
+export { Checkbox } from './checkbox';
+export type { CheckboxProps } from './checkbox';
+
 // Phase 2+ reserved: Table, Pagination
