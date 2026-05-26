@@ -76,30 +76,38 @@ export function Button({
   className,
 }: ButtonProps) {
   const isDisabled = disabled || loading;
-  const Comp = asChild ? Slot : 'button';
+  const sharedClass = cn(
+    'inline-flex items-center justify-center rounded-lg font-medium transition-all duration-150 focus-visible:outline-none',
+    variantClasses[variant],
+    sizeClasses[size],
+    fullWidth && 'w-full',
+    isDisabled && 'cursor-not-allowed opacity-50',
+    className,
+  );
+
+  if (asChild) {
+    return (
+      <Slot
+        className={sharedClass}
+        onClick={isDisabled ? undefined : onClick}
+        aria-busy={loading}
+      >
+        {children}
+      </Slot>
+    );
+  }
 
   return (
-    <Comp
-      type={asChild ? undefined : type}
+    <button
+      type={type}
       onClick={isDisabled ? undefined : onClick}
-      disabled={asChild ? undefined : isDisabled}
+      disabled={isDisabled}
       aria-busy={loading}
-      className={cn(
-        'inline-flex items-center justify-center rounded-lg font-medium transition-all duration-150 focus-visible:outline-none',
-        variantClasses[variant],
-        sizeClasses[size],
-        fullWidth && 'w-full',
-        isDisabled && 'cursor-not-allowed opacity-50',
-        className,
-      )}
+      className={sharedClass}
     >
-      {loading ? (
-        <Spinner className={spinnerSizeClasses[size]} />
-      ) : (
-        leadingIcon
-      )}
+      {loading ? <Spinner className={spinnerSizeClasses[size]} /> : leadingIcon}
       {children}
       {!loading && trailingIcon}
-    </Comp>
+    </button>
   );
 }
