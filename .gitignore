@@ -33,10 +33,9 @@ Thumbs.db
 # Large binary artifacts (already extracted to CVEXRefactor/)
 stitch_ai_resume_optimizer.zip
 
-# Claude local settings (rules are tracked, local prefs are not)
-.claude/settings.local.json
-.claude/skills/
-.claude/agents/
+# Claude — track only rules/ (project-scoped guidance); everything else is local
+.claude/*
+!.claude/rules/
 
 # TypeScript build
 **/*.tsbuildinfo
