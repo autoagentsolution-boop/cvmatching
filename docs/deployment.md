@@ -4,113 +4,209 @@ Production deploy of ResumeRefine (the Next.js app under `cv-ex-refactor/`).
 
 ## Prerequisites
 
-- Vercel account + CLI installed (`pnpm dlx vercel --version`)
-- Google Cloud project with OAuth 2.0 Client ID (for sign-in)
+- Vercel account + CLI installed (`npm i -g vercel` or `pnpm dlx vercel --version`)
+- GitHub CLI optional (`winget install --id GitHub.cli -e`)
+- Google Cloud project with OAuth 2.0 Client ID (deferred for pilot — see §10)
 - Gemini and/or OpenAI API key (shared-key path)
-- Vercel KV (Upstash Redis) provisioned (for quota + rate limit)
+- Vercel KV (Upstash Redis) provisioned (quota + rate limit + BYOK vault + usage metering)
 
 ## 1. Link the repo to Vercel
 
-```bash
-cd cv-ex-refactor
-pnpm dlx vercel link
-# Select scope, link to existing project or create new
+```powershell
+# IMPORTANT: link from repo root, NOT from cv-ex-refactor/
+Set-Location C:\path\to\CVMatching
+vercel link
 ```
 
-Framework preset: **Next.js**. Root directory: `cv-ex-refactor` (if repo root contains other folders).
+In Vercel Dashboard → Project → **Settings → General**:
+- Framework Preset: **Next.js**
+- **Root Directory**: `cv-ex-refactor` ← required because app is in subfolder
+- Production Branch: `main`
+
+> Mismatched Root Directory + CLI cwd causes path doubling (e.g. `cv-ex-refactor/cv-ex-refactor`) and a build error. Either link from repo root with Root Directory = `cv-ex-refactor`, or link from `cv-ex-refactor/` with Root Directory empty. Don't mix.
 
 ## 2. Provision Vercel KV
 
-1. Vercel Dashboard → your project → **Storage** tab
-2. **Create** → **KV** → name it (e.g. `resume-refine-kv`) → **Create**
-3. **Connect** to project → all environments
+1. Vercel Dashboard → project → **Storage** tab
+2. **Create Database** → **Upstash Redis** (Marketplace) → Free tier → Connect to project
 
-This auto-injects `KV_REST_API_URL`, `KV_REST_API_TOKEN`, `KV_REST_API_READ_ONLY_TOKEN` into project env vars.
-
-Pull them locally:
-```bash
-pnpm dlx vercel env pull .env.local
+Auto-injects `KV_REST_API_URL` + `KV_REST_API_TOKEN` to all envs. Pull locally:
+```powershell
+vercel env pull .env.local
 ```
 
 ## 3. Configure environment variables
 
-Vercel Dashboard → **Settings** → **Environment Variables**. Add (scope **Production**):
+Vercel Dashboard → **Settings → Environment Variables**.
 
-| Variable | Required | Notes |
-|---|---|---|
-| `GEMINI_API_KEY` | If using Gemini shared key | Production scope only — keep out of Preview |
-| `OPENAI_API_KEY` | If using OpenAI shared key | Production scope only |
-| `AUTH_SECRET` | Yes | `openssl rand -base64 32` |
-| `GOOGLE_CLIENT_ID` | Yes | From Cloud Console |
-| `GOOGLE_CLIENT_SECRET` | Yes | From Cloud Console |
-| `KV_REST_API_URL` | Yes | Auto-injected by KV connect |
-| `KV_REST_API_TOKEN` | Yes | Auto-injected by KV connect |
-| `DISABLE_SHARED_KEY` | No | Emergency kill switch — set `1` to force BYOK only |
+### Required for Production
 
-**Shared keys MUST be Production scope only.** Preview deploys (PRs) should not have them — forces BYOK testing and prevents PR-preview key leaks.
+| Variable | Notes |
+|---|---|
+| `AUTH_SECRET` | `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`. Also derives the BYOK vault encryption key. |
+| `GEMINI_API_KEY` | Shared-key path. **Production scope only.** |
+| `OPENAI_API_KEY` | Optional; same rule. |
+| `KV_REST_API_URL` | Auto-injected. |
+| `KV_REST_API_TOKEN` | Auto-injected. |
 
-## 4. Configure Google OAuth callback
+### Optional / feature flags
+
+| Variable | Purpose |
+|---|---|
+| `DISABLE_SHARED_KEY=1` | Emergency kill switch — force BYOK only. |
+| `LOG_LLM_DEBUG=1` | Log raw LLM output fragments on parse failure. **Keep unset in prod** (privacy). |
+| `CSP_REPORT_ONLY=1` | Send CSP as `Report-Only` instead of enforcing. Use during staged rollout. |
+| `ADMIN_USER_IDS=email1,email2` | Comma-separated allowlist for `/admin/usage` dashboard. |
+| `ALERT_WEBHOOK_URL` | Slack/Discord/generic incoming-webhook URL. |
+| `ALERT_SHARED_DAILY_CALLS=200` | Fire alert when shared-key calls/day cross this. |
+| `ALERT_SHARED_DAILY_COST_USD=2.50` | Fire alert when shared-key $-spend/day crosses this. |
+
+### Pilot mode (current)
+
+- Sign-in UI hidden; shared-key path works for **anonymous** users with per-IP quota (3 analyses + 1 rewrite/day).
+- BYOK works via vault: user pastes key once → server encrypts AES-GCM → httpOnly cookie carries opaque UUID. Key never appears in request payload/header on subsequent calls.
+- Google OAuth (`GOOGLE_CLIENT_ID`/`SECRET`/`AUTH_URL`) **not required** for pilot. Re-enable when ready by un-hiding the sign-in entry in `user-menu.tsx`.
+
+## 4. Configure Google OAuth callback (deferred for pilot)
+
+When restoring sign-in:
 
 Cloud Console → **Credentials** → your OAuth 2.0 Client → **Authorized redirect URIs**:
-
 ```
 https://<your-vercel-domain>/api/auth/callback/google
 ```
 
-Common forms: `https://your-project.vercel.app/api/auth/callback/google`, plus any custom domain.
+Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `AUTH_URL` env vars + redeploy.
 
-## 5. First deploy
+## 5. Deploy
 
-```bash
-pnpm dlx vercel --prod
+```powershell
+# From repo root if Root Directory = cv-ex-refactor (recommended)
+Set-Location C:\path\to\CVMatching
+vercel --prod
 ```
 
-Or push to `main` if Git integration is set up.
+Or push to `main` if Git integration is **and** Git Author Trust is configured (see §11).
 
 ## 6. Smoke test (run after every deploy)
 
-1. **Homepage** — visit `/` → renders without errors
-2. **Sign in** — click sign in → Google consent → redirect to `/` authed
-3. **BYOK Gemini** — open Settings → tick BYOK → paste a real Gemini key → tick "Remember key" → Save
-4. **Parse** — upload a PDF CV → text appears in CV textarea
-5. **Scrape** — paste a public job URL → JD text fills in
-6. **Must-haves** — auto-extracts after JD ≥ 80 chars → 5-12 items
-7. **Analyze** — click "Analyze & Score" → result appears within ~10s → 9 sliders show LLM scores
-8. **Slider drag** — overall score + decision badge update without LLM call
-9. **Generate CV** — click "Generate refined CV" → markdown view opens
-10. **Quota badge** — visible in topnav with `0/5 analyses · 0/2 rewrites` (or higher after step 7-9). Only if signed in.
-11. **DevTools Network** — inspect `/api/analyze` response: `apiKey` MUST NOT appear anywhere in the response body or headers
-12. **Rate limit** — `for i in {1..40}; do curl -s -o /dev/null -w "%{http_code}\n" -X POST -F "wrong=1" https://<domain>/api/parse; done` → expect mix of 400 and 429 after request 30
+1. **Homepage** `/` → renders, "Match your profile to your dream role." visible
+2. **/privacy** → renders 8 user-facing sections (no jargon)
+3. **/help** → renders quick-start + FAQ
+4. **Shared-key anonymous flow**: paste JD + CV (no sign-in) → Analyze → result within ~10s → quota badge shows `1/3 analyses · 0/1 rewrites`
+5. **BYOK vault flow**:
+   - Settings drawer → "Thêm key" → paste a real Gemini key → Lưu
+   - **Check DevTools**: no `apiKey` in body/headers of subsequent `/api/analyze` calls — only `Cookie: byok-token=<uuid>` header set by browser
+   - Analyze again → succeeds without consuming quota (badge disappears)
+   - Settings → "Clear" → cookie removed, falls back to shared-key path
+6. **9 sliders show LLM scores** after Analyze. Drag any → Overall recomputes client-side (no LLM call).
+7. **Generate refined CV** → markdown view opens
+8. **Friendly errors**: enter a fake BYOK key → Analyze → error shows Vietnamese "API key Gemini không hợp lệ…" not raw stack
+9. **Rate limit**: spam `/api/parse` from same IP → 429 after N requests
+10. **Admin dashboard**: log in as a user in `ADMIN_USER_IDS` → visit `/admin/usage` → see per-user table + daily volume + CSV export link. Non-admin → 404.
+11. **CSP**: DevTools Console → no `Refused to execute…` violations. Network response headers include `Content-Security-Policy` (or `Content-Security-Policy-Report-Only` if `CSP_REPORT_ONLY=1`).
 
 ## 7. Operational concerns
 
 ### Monitoring
-- **Vercel logs**: dashboard → Deployments → latest → Logs. Filter `[quota]` `[ratelimit]` `parse_failed`.
-- **KV dashboard**: command count, hit rate. Free tier = 30K commands/day. ≈ 15K analyses/day headroom.
-- **OAuth**: Cloud Console → Credentials → usage chart.
+- **Vercel logs**: dashboard → Logs. Filter `event:"llm_call"`, `event:"csp_violation"`, `[quota]`, `[ratelimit]`, `[byok-vault]`, `[alert-webhook]`.
+- **Usage dashboard**: `/admin/usage` — per-user calls, tokens, USD cost; daily shared-key spend.
+- **KV dashboard** (Upstash console): command count, hit rate. Free tier ≈ 30K commands/day.
+- **Cost dashboards**: Google Cloud billing for Gemini, OpenAI usage page.
 
 ### Cost guardrails
-- Google Cloud billing alert on Gemini API usage
-- OpenAI usage limit in OpenAI dashboard
-- If shared-key abuse spikes (KV daily commands > 20K): set `DISABLE_SHARED_KEY=1`, redeploy. BYOK still works.
+- `ALERT_SHARED_DAILY_COST_USD` fires webhook when daily shared-key spend crosses threshold. Dedup once per UTC day per threshold.
+- Provider-side billing alerts (Google Cloud, OpenAI dashboard).
+- If shared-key abuse spikes: `DISABLE_SHARED_KEY=1` → redeploy → only BYOK users can analyze.
 
 ### Rollback
-- Vercel Dashboard → Deployments → previous prod deploy → **Promote to Production**
-- KV state survives rollback (decoupled from app version)
+- Vercel Dashboard → Deployments → previous good deploy → ⋯ → **Promote to Production**. ~10s DNS swap.
+- KV state survives rollback (decoupled from app version).
+- For env var rotation (AUTH_SECRET): redeploy invalidates active BYOK vault tokens — users re-enter keys.
 
-## 8. Known limits (Phase 1)
+## 8. Known limits
 
-- LinkedIn / Indeed direct scrape mostly fails (anti-bot) — paste JD instead
-- Scanned image PDFs return empty text (no OCR) — paste CV instead
-- Single-locale UI (English labels + Vietnamese errors). Full VN/EN toggle = Phase 1.1.
-- No analysis history persistence — refresh loses state.
+- LinkedIn / Indeed direct scrape mostly fails (anti-bot) — paste JD instead.
+- Scanned image PDFs return empty text (no OCR) — paste CV instead.
+- BYOK vault TTL: 4 hours. After expiry user re-enters the key.
+- Anonymous IP quota uses `x-forwarded-for` first IP; users behind same NAT share the quota.
 
-## 9. Phase 1 release checklist
+## 9. Release checklist
 
-- [ ] All env vars set (Production scope)
-- [ ] Google OAuth callback URL added
+- [ ] All required env vars set (Production scope)
 - [ ] Vercel KV provisioned + connected
-- [ ] `pnpm build` succeeds locally
-- [ ] Smoke test 12 scenarios above pass on prod URL
-- [ ] DevTools Network: no `apiKey` in any response payload
-- [ ] Git tag `v0.1.0` pushed
+- [ ] Root Directory = `cv-ex-refactor` in Vercel Settings
+- [ ] `next build` passes locally
+- [ ] Smoke tests §6 pass on prod URL
+- [ ] No `apiKey` in any response payload (DevTools verified)
+- [ ] CSP enforce mode after staged report-only soak
+- [ ] `ADMIN_USER_IDS` set so usage dashboard is reachable
+- [ ] `ALERT_WEBHOOK_URL` + thresholds configured
+
+## 10. Pilot vs Phase 2
+
+| Path | Pilot (now) | Phase 2 |
+|---|---|---|
+| Sign-in UI | Hidden — anonymous shared-key works | Restore Sign-in button in `user-menu.tsx` |
+| Shared-key quota | Per-IP, anonymous | Per-userId, signed-in |
+| Google OAuth | Not configured | Required envs set, callback URI added |
+
+## 11. Troubleshooting
+
+### Git auto-deploy blocked with "X does not have a Vercel account linked to their GitHub account"
+
+Vercel's **Git Author Trust** security feature blocks deploys triggered by commits whose author identity has no linked Vercel account. Common after first push from a new git user.
+
+**Diagnose:**
+```powershell
+git log -1 --format="%an <%ae>"
+vercel whoami
+```
+
+If the commit author's GitHub identity differs from the one your Vercel account is linked to → blocked.
+
+**Fix options (pick one):**
+
+1. **Link the offending GitHub account to Vercel** (cleanest if it's your account)
+   - Open https://vercel.com/login in an incognito window
+   - "Continue with GitHub" → sign in with the *offending* GitHub user (the name in the error)
+   - Vercel auto-creates the account binding
+   - Push triggers re-deploy automatically; or `vercel --prod` from CLI
+
+2. **Change git author to a Vercel-linked identity**
+   ```powershell
+   git config user.email "<vercel-linked-email>"
+   git config user.name "<vercel-linked-github-username>"
+   git commit --amend --reset-author --no-edit
+   git push --force-with-lease
+   ```
+
+3. **Deploy via CLI (bypass the Git webhook)** — works regardless of author trust
+   ```powershell
+   Set-Location C:\path\to\CVMatching   # repo root
+   vercel --prod
+   ```
+   Uses your local CLI auth identity. Recommended for pilot until option 1 or 2 is in place.
+
+4. **Disable Git Author Verification at the team level** (last resort)
+   - Vercel Dashboard → Team → Settings → Security
+   - Toggle off "Git Author Verification" (or similar). Removes the protection for everyone — only do this for solo pilots, never team production.
+
+### Build error: "The provided path 'X/cv-ex-refactor/cv-ex-refactor' does not exist"
+
+Root Directory in Vercel Settings + CLI cwd both point into `cv-ex-refactor/`. Two valid configs (pick one):
+
+- **A (recommended)**: Vercel Root Directory = `cv-ex-refactor`, run `vercel link` and `vercel --prod` from **repo root**.
+- **B**: Vercel Root Directory = empty/`./`, run `vercel link` and `vercel --prod` from **`cv-ex-refactor/`**. Note: Git auto-deploy then needs a `vercel.json` cd-fix or will break — A is safer.
+
+### CSP violation breaks page after deploy
+
+If something stops working post-CSP-enforce:
+1. Open DevTools Console → look for `Refused to ... CSP directive`.
+2. Note the blocked URL + directive name.
+3. Either whitelist in `src/proxy.ts` `buildCsp()`, or set `CSP_REPORT_ONLY=1` env to soften enforcement temporarily.
+4. Redeploy.
+
+### Quota / KV writes silently no-op
+
+Check `KV_REST_API_URL` + `KV_REST_API_TOKEN` are set on the deployed environment (not just Preview). The quota/usage/vault layers all fail-open when KV is missing — analytics + protection disappear silently.
