@@ -22,7 +22,9 @@ export const LlmConfig = z
     model: z.string().min(1).max(120),
     temperature: z.number().min(0).max(2).default(0.3),
     baseUrl: z.string().url().max(2048).optional(),
-    apiKey: z.string().min(1).max(512).optional(),
+    // BYOK key removed from body — clients pass it via the `x-llm-api-key`
+    // request header instead, so it does not appear in the DevTools Payload
+    // tab. Server reads the header in each route handler.
   })
   .refine(
     (v) => v.provider !== 'custom' || !!v.baseUrl,

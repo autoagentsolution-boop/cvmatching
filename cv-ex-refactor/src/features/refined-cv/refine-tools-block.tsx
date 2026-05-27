@@ -31,7 +31,7 @@ export function RefineToolsBlock() {
   const [localError, setLocalError] = useState<string | null>(null);
 
   const { result, jdText, cvText, language, isGeneratingCv, setField } = useAnalysis();
-  const { useSharedKey, provider, model, temperature, baseUrl, apiKey } = useSettings();
+  const { provider, model, temperature, baseUrl } = useSettings();
 
   const canRegenerate = result !== null && !isGeneratingCv;
 
@@ -40,9 +40,12 @@ export function RefineToolsBlock() {
     setLocalError(null);
     setField('isGeneratingCv', true);
 
-    const llm: GenerateCvRequest['llm'] = useSharedKey
-      ? { provider, model, temperature }
-      : { provider, model, temperature, ...(baseUrl ? { baseUrl } : {}), apiKey };
+    const llm: GenerateCvRequest['llm'] = {
+      provider,
+      model,
+      temperature,
+      ...(baseUrl ? { baseUrl } : {}),
+    };
 
     const payload: GenerateCvRequest = {
       llm,

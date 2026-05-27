@@ -30,6 +30,15 @@ const variantClasses: Record<NonNullable<ButtonProps['variant']>, string> = {
     'bg-error text-on-error hover:opacity-90 active:scale-[0.98] focus-visible:ring-4 focus-visible:ring-error/20',
 };
 
+// Distinct disabled treatment per variant — keeps text readable instead of
+// applying blanket opacity-50 which makes primary buttons unreadable.
+const disabledVariantClasses: Record<NonNullable<ButtonProps['variant']>, string> = {
+  primary: 'bg-surface-container-high text-on-surface-variant',
+  secondary: 'bg-surface-container-lowest text-on-surface-variant border border-outline-variant',
+  ghost: 'bg-transparent text-on-surface-variant',
+  destructive: 'bg-surface-container-high text-on-surface-variant',
+};
+
 const sizeClasses: Record<NonNullable<ButtonProps['size']>, string> = {
   sm: 'h-9 px-4 text-label-md gap-1.5 rounded-lg',
   md: 'h-12 px-6 text-label-md gap-2 rounded-lg',
@@ -78,12 +87,17 @@ export function Button({
   className,
 }: ButtonProps) {
   const isDisabled = disabled || loading;
+  // Loading keeps the enabled (primary-coloured) treatment so the spinner reads
+  // as "working", while pure disabled gets the muted treatment so it reads as
+  // "can't click yet".
+  const stateVariantClass =
+    disabled && !loading ? disabledVariantClasses[variant] : variantClasses[variant];
   const sharedClass = cn(
     'inline-flex items-center justify-center font-medium transition-all duration-150 focus-visible:outline-none',
-    variantClasses[variant],
+    stateVariantClass,
     sizeClasses[size],
     fullWidth && 'w-full',
-    isDisabled && 'cursor-not-allowed opacity-50',
+    isDisabled && 'cursor-not-allowed',
     className,
   );
 

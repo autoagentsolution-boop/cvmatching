@@ -19,7 +19,7 @@ export function MustHavesBlock() {
     mustHavesError,
     setField,
   } = useAnalysis();
-  const { useSharedKey, provider, model, temperature, baseUrl, apiKey } = useSettings();
+  const { provider, model, temperature, baseUrl } = useSettings();
 
   const lastExtractedRef = useRef<string>('');
 
@@ -27,15 +27,12 @@ export function MustHavesBlock() {
     if (jdText.trim().length < MIN_JD_LENGTH) return;
     setField('mustHavesError', null);
     setField('isExtractingMustHaves', true);
-    const llm: AnalyzeRequestLLM = useSharedKey
-      ? { provider, model, temperature }
-      : {
-          provider,
-          model,
-          temperature,
-          ...(baseUrl ? { baseUrl } : {}),
-          ...(apiKey?.trim() ? { apiKey: apiKey.trim() } : {}),
-        };
+    const llm: AnalyzeRequestLLM = {
+      provider,
+      model,
+      temperature,
+      ...(baseUrl ? { baseUrl } : {}),
+    };
     try {
       const result = await callExtractMustHaves(jdText, llm, language);
       setField('mustHaves', result);
@@ -48,7 +45,7 @@ export function MustHavesBlock() {
     } finally {
       setField('isExtractingMustHaves', false);
     }
-  }, [jdText, language, useSharedKey, provider, model, temperature, baseUrl, apiKey, setField]);
+  }, [jdText, language, provider, model, temperature, baseUrl, setField]);
 
   // Auto-fire once when JD becomes long enough and we have no extraction yet.
   useEffect(() => {

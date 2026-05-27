@@ -161,8 +161,8 @@ export interface AnalyzeRequestLLM {
   model: string;
   temperature: number;
   baseUrl?: string;
-  /** Present iff BYOK; server enforces shared-key path otherwise (field omitted) */
-  apiKey?: string;
+  // BYOK key is NOT in body — sent via `x-llm-api-key` request header so it
+  // does not appear in the DevTools Payload tab (anti-leak).
 }
 
 export interface AnalyzeRequest {

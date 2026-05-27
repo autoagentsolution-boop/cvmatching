@@ -12,6 +12,7 @@ interface KindStatus {
 
 interface QuotaPayload {
   ok: boolean;
+  scope?: 'user' | 'anon';
   enforced?: boolean;
   kinds?: {
     analyze: KindStatus;
@@ -19,15 +20,15 @@ interface QuotaPayload {
   };
 }
 
-export function QuotaBadge({ isAuthed }: { isAuthed: boolean }) {
-  const useSharedKey = useSettings((s) => s.useSharedKey);
+export function QuotaBadge({ isAuthed: _isAuthed }: { isAuthed: boolean }) {
+  const hasRegisteredKey = useSettings((s) => s.hasRegisteredKey);
   const result = useAnalysis((s) => s.result);
   const matchedCv = useAnalysis((s) => s.matchedCv);
 
   const [status, setStatus] = useState<QuotaPayload | null>(null);
 
   const refresh = useCallback(async () => {
-    if (!isAuthed || !useSharedKey) return;
+    if (hasRegisteredKey) return;
     try {
       const res = await fetch('/api/quota');
       if (!res.ok) return;
@@ -36,7 +37,7 @@ export function QuotaBadge({ isAuthed }: { isAuthed: boolean }) {
     } catch {
       // silent — quota badge is non-critical
     }
-  }, [isAuthed, useSharedKey]);
+  }, [hasRegisteredKey]);
 
   useEffect(() => {
     refresh();
@@ -46,7 +47,7 @@ export function QuotaBadge({ isAuthed }: { isAuthed: boolean }) {
     refresh();
   }, [result, matchedCv, refresh]);
 
-  if (!isAuthed || !useSharedKey) return null;
+  if (hasRegisteredKey) return null;
   if (!status?.ok || status.enforced === false || !status.kinds) return null;
 
   const a = status.kinds.analyze;

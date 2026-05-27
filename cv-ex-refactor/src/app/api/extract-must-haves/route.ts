@@ -25,7 +25,11 @@ export async function POST(req: NextRequest) {
   }
 
   const body = parsed.data;
-  const resolved = await resolveApiKey(body.llm, 'extract-must-haves');
+  const byokToken = req.cookies.get('byok-token')?.value;
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    ?? req.headers.get('x-real-ip')?.trim()
+    ?? 'unknown';
+  const resolved = await resolveApiKey(body.llm, 'extract-must-haves', { byokToken, ip });
   if (!resolved.ok) {
     return err(resolved.code, resolved.message, resolved.status);
   }

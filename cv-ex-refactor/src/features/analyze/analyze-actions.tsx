@@ -22,24 +22,33 @@ export function AnalyzeActions() {
     setField,
   } = useAnalysis();
 
-  const { useSharedKey, provider, model, temperature, baseUrl, apiKey } = useSettings();
+  const { provider, model, temperature, baseUrl } = useSettings();
 
-  const canAnalyze = jdText.trim().length > 0 && cvText.trim().length > 0 && !isAnalyzing;
+  const hasJd = jdText.trim().length > 0;
+  const hasCv = cvText.trim().length > 0;
+  const canAnalyze = hasJd && hasCv && !isAnalyzing;
+
+  const disabledHint = isAnalyzing
+    ? null
+    : !hasJd && !hasCv
+      ? 'Paste a JD and your CV to enable analysis.'
+      : !hasJd
+        ? 'Paste a Job Description to start.'
+        : !hasCv
+          ? 'Paste or upload your CV to start.'
+          : null;
 
   async function handleAnalyze() {
     setField('error', null);
     setField('isAnalyzing', true);
     setField('result', null);
 
-    const llm: AnalyzeRequest['llm'] = useSharedKey
-      ? { provider, model, temperature }
-      : {
-          provider,
-          model,
-          temperature,
-          ...(baseUrl ? { baseUrl } : {}),
-          ...(apiKey?.trim() ? { apiKey: apiKey.trim() } : {}),
-        };
+    const llm: AnalyzeRequest['llm'] = {
+      provider,
+      model,
+      temperature,
+      ...(baseUrl ? { baseUrl } : {}),
+    };
 
     const payload: AnalyzeRequest = {
       llm,
@@ -92,7 +101,9 @@ export function AnalyzeActions() {
         {isAnalyzing ? 'Calculating score…' : 'Analyze & Score'}
       </Button>
 
-      {!isAnalyzing && (
+      {isAnalyzing ? null : disabledHint ? (
+        <p className="text-label-sm text-on-surface-variant">{disabledHint}</p>
+      ) : (
         <p className="text-label-sm text-on-surface-variant">
           Estimated processing time: 4–6 seconds
         </p>

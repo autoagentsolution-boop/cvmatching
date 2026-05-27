@@ -1,18 +1,19 @@
-import { NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import { getQuotaStatus } from '@/lib/quota/get-quota-status';
+import { getAnonQuotaStatus, getQuotaStatus } from '@/lib/quota/get-quota-status';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json(
-      { ok: false, error: { code: 'unauthorized', message: 'Đăng nhập để xem quota.' } },
-      { status: 401 },
-    );
+export async function GET(req: NextRequest) {
+  const session = await auth().catch(() => null);
+  if (session?.user?.id) {
+    const status = await getQuotaStatus(session.user.id);
+    return NextResponse.json({ ok: true, scope: 'user', ...status });
   }
-
-  const status = await getQuotaStatus(session.user.id);
-  return NextResponse.json({ ok: true, ...status });
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    ?? req.headers.get('x-real-ip')?.trim()
+    ?? 'unknown';
+  const status = await getAnonQuotaStatus(ip);
+  return NextResponse.json({ ok: true, scope: 'anon', ...status });
 }

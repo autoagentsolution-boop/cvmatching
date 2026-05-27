@@ -2,7 +2,6 @@
 
 import type { Session } from 'next-auth';
 import Image from 'next/image';
-import Link from 'next/link';
 import { Button } from '@/components/ui';
 import { signOutUser } from '@/features/auth/sign-in-server-actions';
 
@@ -12,11 +11,9 @@ interface UserMenuProps {
 
 export function UserMenu({ user }: UserMenuProps) {
   if (!user) {
-    return (
-      <Button asChild variant="secondary" size="sm">
-        <Link href="/sign-in">Sign in</Link>
-      </Button>
-    );
+    // Login UI hidden during pilot — OAuth not yet configured.
+    // Restore when Google sign-in setup is complete.
+    return null;
   }
 
   return (

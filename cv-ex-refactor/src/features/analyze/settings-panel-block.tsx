@@ -1,15 +1,12 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { MdLock } from 'react-icons/md';
 import { Button, FormField, Input, Select, Slider } from '@/components/ui';
-import { Checkbox } from '@/components/ui/checkbox';
 import type { SelectOption } from '@/components/ui';
 import { useSettings, DEFAULT_MODELS } from './settings-store';
 import type { Provider } from './types';
-
-export interface SettingsPanelBlockProps {
-  isAuthed: boolean;
-}
+import { clearByokKey, fetchByokStatus, storeByokKey } from './api-client';
 
 const providerOptions: SelectOption[] = [
   { value: 'gemini', label: 'Google Gemini' },
@@ -17,113 +14,192 @@ const providerOptions: SelectOption[] = [
   { value: 'custom', label: 'Custom (OpenAI-compatible)' },
 ];
 
+export interface SettingsPanelBlockProps {
+  isAuthed: boolean;
+}
+
 /**
  * Drawer body content for LLM settings.
- * Rendered inside SettingsDrawerTrigger — not a standalone page block.
+ *
+ * Pilot mode:
+ *  - Default path: server-managed shared key (no input required).
+ *  - Optional BYOK: user pastes their own provider key → saved server-side in
+ *    an encrypted vault → an opaque httpOnly cookie token rides along on
+ *    subsequent requests. The plaintext key never touches localStorage or
+ *    later request payloads.
  */
-export function SettingsPanelBlock({ isAuthed }: SettingsPanelBlockProps) {
-  const { useSharedKey, provider, model, temperature, baseUrl, apiKey, setField, clear } =
-    useSettings();
+export function SettingsPanelBlock({ isAuthed: _isAuthed }: SettingsPanelBlockProps) {
+  const {
+    provider,
+    model,
+    temperature,
+    baseUrl,
+    apiKey,
+    hasRegisteredKey,
+    registeredKeyTail,
+    setField,
+  } = useSettings();
+
+  const [byokOpen, setByokOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const status = await fetchByokStatus();
+      if (cancelled) return;
+      setField('hasRegisteredKey', status.hasKey);
+      setField('registeredKeyTail', status.tail);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [setField]);
 
   function handleProviderChange(newProvider: Provider) {
     setField('provider', newProvider);
     setField('model', DEFAULT_MODELS[newProvider]);
   }
 
-  const showByok = !useSharedKey || !isAuthed;
+  async function handleSaveKey() {
+    if (!apiKey.trim()) return;
+    setError(null);
+    setBusy(true);
+    try {
+      const { tail } = await storeByokKey(apiKey.trim());
+      setField('hasRegisteredKey', true);
+      setField('registeredKeyTail', tail);
+      // Wipe local input immediately — server now holds the encrypted copy.
+      setField('apiKey', '');
+      setByokOpen(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Lưu key thất bại.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleClearKey() {
+    setBusy(true);
+    setError(null);
+    try {
+      await clearByokKey();
+      setField('hasRegisteredKey', false);
+      setField('registeredKeyTail', null);
+      setField('apiKey', '');
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-5">
       <div className="rounded-xl border border-outline-variant bg-surface-container-low p-3">
         <p className="text-label-md font-bold text-on-surface">
-          Current mode: {showByok ? 'BYOK (your API key)' : 'Shared key (server-managed)'}
+          {hasRegisteredKey ? 'Đang dùng key của bạn' : 'Đang dùng key chung'}
         </p>
         <p className="text-label-sm text-on-surface-variant">
-          {showByok
-            ? isAuthed
-              ? 'Using your own provider key. Toggle off "Use shared key" above to keep using BYOK.'
-              : 'Sign in to access the shared-key path (5 analyses + 2 rewrites/day per account).'
-            : 'Using the server-managed shared key — counts against your daily quota.'}
+          {hasRegisteredKey
+            ? `Key đuôi …${registeredKeyTail ?? '????'} — không giới hạn quota.`
+            : 'Giới hạn 3 phân tích và 1 viết lại CV mỗi ngày. Muốn nhiều hơn, nhập key riêng bên dưới.'}
         </p>
       </div>
 
-      {isAuthed && (
-        <Checkbox
-          label="Use shared key (your account quota)"
-          checked={useSharedKey}
-          onCheckedChange={(v) => setField('useSharedKey', v)}
-        />
-      )}
+      <div className="flex flex-col gap-4">
+        <FormField label="Provider" htmlFor="llm-provider">
+          <Select
+            id="llm-provider"
+            options={providerOptions}
+            value={provider}
+            onChange={(e) => handleProviderChange(e.target.value as Provider)}
+          />
+        </FormField>
 
-      {showByok && (
-        <div className="flex flex-col gap-4">
-          <FormField label="Provider" htmlFor="llm-provider">
-            <Select
-              id="llm-provider"
-              options={providerOptions}
-              value={provider}
-              onChange={(e) => handleProviderChange(e.target.value as Provider)}
-            />
-          </FormField>
+        <FormField label="Model" htmlFor="llm-model">
+          <Input
+            id="llm-model"
+            placeholder={DEFAULT_MODELS[provider]}
+            value={model}
+            onChange={(e) => setField('model', e.target.value)}
+          />
+        </FormField>
 
-          <FormField label="Model" htmlFor="llm-model">
+        {provider === 'custom' && (
+          <FormField label="Base URL" htmlFor="llm-base-url">
             <Input
-              id="llm-model"
-              placeholder={DEFAULT_MODELS[provider]}
-              value={model}
-              onChange={(e) => setField('model', e.target.value)}
+              id="llm-base-url"
+              type="url"
+              placeholder="https://your-endpoint.com/v1"
+              value={baseUrl}
+              onChange={(e) => setField('baseUrl', e.target.value)}
             />
           </FormField>
+        )}
 
-          {provider === 'custom' && (
-            <FormField label="Base URL" htmlFor="llm-base-url">
-              <Input
-                id="llm-base-url"
-                type="url"
-                placeholder="https://your-endpoint.com/v1"
-                value={baseUrl}
-                onChange={(e) => setField('baseUrl', e.target.value)}
-              />
-            </FormField>
-          )}
+        <FormField label="Temperature" htmlFor="llm-temperature">
+          <Slider
+            value={[Math.round(temperature * 100)]}
+            onValueChange={([v]) => v !== undefined && setField('temperature', v / 100)}
+            min={0}
+            max={100}
+            aria-label="LLM temperature"
+          />
+          <p className="mt-1 text-label-sm text-on-surface-variant">{temperature.toFixed(2)}</p>
+        </FormField>
+      </div>
 
-          <FormField label="Temperature" htmlFor="llm-temperature">
-            <Slider
-              value={[Math.round(temperature * 100)]}
-              onValueChange={([v]) => v !== undefined && setField('temperature', v / 100)}
-              min={0}
-              max={100}
-              aria-label="LLM temperature"
-            />
-            <p className="mt-1 text-label-sm text-on-surface-variant">
-              {temperature.toFixed(2)}
+      <div className="rounded-xl border border-outline-variant bg-surface-container-low p-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-label-md font-bold text-on-surface">Key riêng của bạn</p>
+            <p className="text-label-sm text-on-surface-variant">
+              {hasRegisteredKey
+                ? `Key đang hoạt động — tự xóa sau 4 giờ.`
+                : 'Tự xóa sau 4 giờ hoặc khi bạn bấm Clear.'}
             </p>
-          </FormField>
-
-          <FormField label="API key" htmlFor="llm-api-key">
-            <Input
-              id="llm-api-key"
-              type="password"
-              autoComplete="off"
-              placeholder="sk-…"
-              leadingIcon={<MdLock size={16} aria-hidden="true" />}
-              value={apiKey}
-              onChange={(e) => setField('apiKey', e.target.value)}
-            />
-            <p className="mt-1 text-label-sm text-on-surface-variant">
-              Held in memory for this session only — never stored on disk or in localStorage.
-            </p>
-          </FormField>
-
-          {apiKey && (
-            <div className="flex items-center justify-end">
-              <Button variant="ghost" size="sm" onClick={clear}>
-                Clear key
-              </Button>
-            </div>
+          </div>
+          {hasRegisteredKey ? (
+            <Button variant="ghost" size="sm" disabled={busy} onClick={handleClearKey}>
+              Clear
+            </Button>
+          ) : (
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={busy}
+              onClick={() => setByokOpen((v) => !v)}
+            >
+              {byokOpen ? 'Hủy' : 'Thêm key'}
+            </Button>
           )}
         </div>
-      )}
+
+        {byokOpen && !hasRegisteredKey && (
+          <div className="mt-3 flex flex-col gap-2">
+            <FormField label="API key" htmlFor="llm-api-key">
+              <Input
+                id="llm-api-key"
+                type="password"
+                autoComplete="off"
+                placeholder="sk-…"
+                leadingIcon={<MdLock size={16} aria-hidden="true" />}
+                value={apiKey}
+                onChange={(e) => setField('apiKey', e.target.value)}
+              />
+            </FormField>
+            {error && <p className="text-label-sm text-error">{error}</p>}
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={busy || !apiKey.trim()}
+              onClick={handleSaveKey}
+            >
+              {busy ? 'Đang lưu…' : 'Lưu'}
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

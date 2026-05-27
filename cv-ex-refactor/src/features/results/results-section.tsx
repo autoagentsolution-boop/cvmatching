@@ -24,7 +24,7 @@ const TABS = [
 
 export function ResultsSection() {
   const { result, weights, matchedCv, isAnalyzing, isGeneratingCv, error, setField } = useAnalysis();
-  const { useSharedKey, provider, model, temperature, baseUrl, apiKey } = useSettings();
+  const { provider, model, temperature, baseUrl } = useSettings();
   const [activeTab, setActiveTab] = useState('optimization');
   const [genError, setGenError] = useState<string | null>(null);
 
@@ -45,15 +45,12 @@ export function ResultsSection() {
     setGenError(null);
     setField('isGeneratingCv', true);
 
-    const llm: GenerateCvRequest['llm'] = useSharedKey
-      ? { provider, model, temperature }
-      : {
-          provider,
-          model,
-          temperature,
-          ...(baseUrl ? { baseUrl } : {}),
-          ...(apiKey?.trim() ? { apiKey: apiKey.trim() } : {}),
-        };
+    const llm: GenerateCvRequest['llm'] = {
+      provider,
+      model,
+      temperature,
+      ...(baseUrl ? { baseUrl } : {}),
+    };
 
     const payload: GenerateCvRequest = {
       llm,

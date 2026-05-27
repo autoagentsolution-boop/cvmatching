@@ -1,4 +1,4 @@
-# ResumeRefine — AI Career Copilot
+# ResumeRefine
 
 LLM-powered CV ↔ JD matching, scoring, and refinement. Vietnamese-first; English on toggle.
 
@@ -25,6 +25,8 @@ curl http://localhost:3000/api/health
 | **Shared key** | Server has `GEMINI_API_KEY` or `OPENAI_API_KEY` + user signs in with Google | Quota-controlled team/free-tier offering |
 
 Both paths work side-by-side. Shared-key is rate-limited (5 analyses + 2 rewrites/day per user). BYOK is unrate-limited (user's own provider account).
+
+> **Cost note:** Gemini and OpenAI APIs are **paid services** (token-based billing). On the shared-key path the **operator pays**; quota + alert webhook protect the operator budget — see `ALERT_SHARED_DAILY_*` env vars in `.env.example` and admin dashboard `/admin/usage`. On BYOK the **user pays** through their own provider account.
 
 ## Environment variables
 
