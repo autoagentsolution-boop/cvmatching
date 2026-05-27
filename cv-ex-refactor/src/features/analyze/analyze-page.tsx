@@ -14,6 +14,7 @@ import { JdInputBlock } from './jd-input-block';
 export function AnalyzePage() {
   return (
     <FormPageLayout
+      className="max-w-[1180px]"
       header={
         <PageHeader
           title={
@@ -27,7 +28,7 @@ export function AnalyzePage() {
       }
       actionsSlot={<AnalyzeActions />}
     >
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <CvInputBlock />
         <JdInputBlock />
       </div>

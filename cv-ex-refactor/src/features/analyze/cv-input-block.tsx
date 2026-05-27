@@ -39,7 +39,7 @@ export function CvInputBlock() {
         accept=".txt,.docx,.pdf"
         maxSizeMb={4}
         onFile={handleCvFile}
-        className="min-h-[200px]"
+        className="min-h-[160px]"
       />
 
       {parseError && (

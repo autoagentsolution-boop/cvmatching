@@ -99,7 +99,7 @@ export function DropZone({
         onDragLeave={onDragLeave}
         onDrop={onDrop}
         className={cn(
-          'flex flex-col items-center justify-center gap-3 rounded-3xl border-2 border-dashed p-12',
+          'flex flex-col items-center justify-center gap-3 rounded-3xl border-2 border-dashed p-8',
           'cursor-pointer transition-colors duration-150',
           'focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-on-tertiary-container/20',
           isDragOver
