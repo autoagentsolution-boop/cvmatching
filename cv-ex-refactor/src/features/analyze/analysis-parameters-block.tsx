@@ -5,19 +5,8 @@ import { Card, Checkbox, FormField, Select, Slider } from '@/components/ui';
 import type { SelectOption } from '@/components/ui';
 import { useAnalysis } from './analysis-store';
 import { MustHavesBlock } from './must-haves-block';
+import { hydrateWeightsFromResult } from '@/lib/scoring/recompute-overall';
 import type { Language, RoleFamily, Strictness, Weights } from './types';
-
-type Preset = 'Standard' | 'Senior IC' | 'Manager' | 'Junior-friendly' | 'Keyword-heavy';
-
-const PRESETS: Record<Preset, Weights> = {
-  Standard:          { coreSkill: 50, tool: 50, scope: 50, production: 50, domain: 50, evidence: 50, seniority: 50, impact: 50, communication: 50 },
-  'Senior IC':       { coreSkill: 80, tool: 70, scope: 50, production: 80, domain: 50, evidence: 80, seniority: 50, impact: 80, communication: 40 },
-  Manager:           { coreSkill: 50, tool: 30, scope: 80, production: 60, domain: 60, evidence: 60, seniority: 80, impact: 70, communication: 80 },
-  'Junior-friendly': { coreSkill: 60, tool: 50, scope: 20, production: 30, domain: 30, evidence: 40, seniority: 20, impact: 30, communication: 60 },
-  'Keyword-heavy':   { coreSkill: 80, tool: 80, scope: 40, production: 50, domain: 40, evidence: 70, seniority: 30, impact: 50, communication: 30 },
-};
-
-const PRESET_ORDER: Preset[] = ['Standard', 'Senior IC', 'Manager', 'Junior-friendly', 'Keyword-heavy'];
 
 const roleFamilyOptions: SelectOption[] = [
   { value: 'auto', label: 'Auto-detect' },
@@ -96,34 +85,22 @@ const SLIDERS: SliderSpec[] = [
   },
 ];
 
-function nextPreset(current: Preset): Preset {
-  const idx = PRESET_ORDER.indexOf(current);
-  return PRESET_ORDER[(idx + 1) % PRESET_ORDER.length] ?? 'Standard';
-}
-
-function resolvePreset(weights: Weights): Preset | null {
-  for (const [name, vals] of Object.entries(PRESETS) as [Preset, Weights][]) {
-    const allMatch = (Object.keys(vals) as (keyof Weights)[]).every(
-      (k) => vals[k] === weights[k],
-    );
-    if (allMatch) return name;
-  }
-  return null;
-}
-
 interface SliderCellProps {
   label: string;
   value: number;
   onValueChange: (v: number) => void;
   description: string;
+  disabled?: boolean;
 }
 
-function SliderCell({ label, value, onValueChange, description }: SliderCellProps) {
+function SliderCell({ label, value, onValueChange, description, disabled = false }: SliderCellProps) {
   return (
-    <div className="space-y-3">
+    <div className={`space-y-3 ${disabled ? 'opacity-60' : ''}`}>
       <div className="flex items-center justify-between">
         <span className="text-label-md font-bold text-primary">{label}</span>
-        <span className="text-label-sm font-bold text-on-tertiary-container">{value}%</span>
+        <span className="text-label-sm font-bold text-on-tertiary-container">
+          {disabled ? '—' : `${value}%`}
+        </span>
       </div>
       <Slider
         value={[value]}
@@ -131,6 +108,7 @@ function SliderCell({ label, value, onValueChange, description }: SliderCellProp
         min={0}
         max={100}
         aria-label={label}
+        disabled={disabled}
       />
       <p className="text-label-sm text-on-surface-variant">{description}</p>
     </div>
@@ -138,22 +116,21 @@ function SliderCell({ label, value, onValueChange, description }: SliderCellProp
 }
 
 export function AnalysisParametersBlock() {
-  const { weights, targetRole, strictness, language, setField } = useAnalysis();
+  const { weights, targetRole, strictness, language, result, setField } = useAnalysis();
 
   const [benchmarks, setBenchmarks] = useState(true);
   const [atsCheck, setAtsCheck] = useState(false);
   const [actionVerbs, setActionVerbs] = useState(true);
 
-  const activePreset = resolvePreset(weights);
-
-  function applyPreset() {
-    const current: Preset = activePreset ?? 'Standard';
-    const next = nextPreset(current);
-    setField('weights', PRESETS[next]);
-  }
+  const hasAnalyzed = result !== null;
 
   function setWeight(key: keyof Weights, val: number) {
     setField('weights', { ...weights, [key]: val });
+  }
+
+  function resetToAiScores() {
+    if (!result) return;
+    setField('weights', hydrateWeightsFromResult(result));
   }
 
   return (
@@ -162,17 +139,21 @@ export function AnalysisParametersBlock() {
         <div>
           <h3 className="text-headline-md font-bold text-primary">3. Analysis Parameters</h3>
           <p className="text-body-md text-on-surface-variant">
-            Adjust how the AI weighs different sections of your profile.
+            {hasAnalyzed
+              ? 'AI scored your CV on 9 dimensions. Adjust if you disagree — the overall score will recompute.'
+              : 'AI will score your CV on 9 dimensions after you click Analyze.'}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={applyPreset}
-          aria-label="Cycle scoring preset"
-          className="self-start rounded-full border border-outline-variant bg-surface-container-low px-4 py-1 text-label-sm font-bold text-on-surface-variant transition-colors hover:bg-surface-container focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-tertiary-container/40 md:self-auto"
-        >
-          Preset: {activePreset ?? 'Custom'}
-        </button>
+        {hasAnalyzed && (
+          <button
+            type="button"
+            onClick={resetToAiScores}
+            aria-label="Reset slider values to AI-suggested scores"
+            className="self-start rounded-full border border-outline-variant bg-surface-container-low px-4 py-1 text-label-sm font-bold text-on-surface-variant transition-colors hover:bg-surface-container focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-tertiary-container/40 md:self-auto"
+          >
+            Reset to AI scores
+          </button>
+        )}
       </header>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -204,6 +185,23 @@ export function AnalysisParametersBlock() {
 
       <MustHavesBlock />
 
+      {!hasAnalyzed && (
+        <div className="flex items-start gap-3 rounded-xl border border-outline-variant bg-surface-container-low p-4">
+          <span className="material-symbols-outlined text-on-tertiary-container" aria-hidden="true">
+            info
+          </span>
+          <div>
+            <p className="text-label-md font-bold text-on-surface">
+              Sliders activate after analysis
+            </p>
+            <p className="text-label-sm text-on-surface-variant">
+              The AI will score your CV against the JD on 9 dimensions. After analysis, drag any
+              slider to override the AI&apos;s score — overall match recomputes instantly.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-x-8 gap-y-8 md:grid-cols-3">
         {SLIDERS.map((s) => (
           <SliderCell
@@ -212,6 +210,7 @@ export function AnalysisParametersBlock() {
             value={weights[s.key]}
             onValueChange={(v) => setWeight(s.key, v)}
             description={s.description}
+            disabled={!hasAnalyzed}
           />
         ))}
       </div>

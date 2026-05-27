@@ -1,0 +1,114 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { AnalyzeBody } from '@/lib/schemas/llm-request';
+import { resolveApiKey } from '@/lib/llm/resolve-api-key';
+import { buildAnalyzePrompts } from '@/lib/llm/prompt-analyze';
+import { callLLM } from '@/lib/llm/providers';
+import { safeParseJson } from '@/lib/llm/safe-parse-json';
+import { normalizeAnalysis } from '@/lib/llm/normalize-analysis';
+import { logLlmCall } from '@/lib/llm/safe-logger';
+import { env } from '@/lib/env';
+
+export const runtime = 'nodejs';
+export const maxDuration = 60;
+
+function err(code: string, message: string, status: number) {
+  return NextResponse.json({ ok: false, error: { code, message } }, { status });
+}
+
+export async function POST(req: NextRequest) {
+  const json = await req.json().catch(() => null);
+  const parsed = AnalyzeBody.safeParse(json);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    const path = issue?.path?.join('.') ?? '';
+    const msg = issue?.message ?? 'Body không hợp lệ.';
+    return err('invalid_input', path ? `${path}: ${msg}` : msg, 400);
+  }
+
+  const body = parsed.data;
+  const resolved = await resolveApiKey(body.llm, 'analyze');
+  if (!resolved.ok) {
+    return err(resolved.code, resolved.message, resolved.status);
+  }
+
+  const { system, user } = buildAnalyzePrompts(body);
+  const inputChars = system.length + user.length;
+  const start = Date.now();
+
+  try {
+    const { text: raw, promptTokens, completionTokens } = await callLLM({
+      config: { ...body.llm, apiKey: resolved.apiKey },
+      system,
+      user,
+      expectJson: true,
+    });
+
+    const parsedRaw = safeParseJson(raw);
+    if (!parsedRaw) {
+      console.warn('[api/analyze] json_parse_failed', {
+        provider: body.llm.provider,
+        model: body.llm.model,
+        outputChars: raw.length,
+        ...(env.LOG_LLM_DEBUG === '1'
+          ? { rawHead: raw.slice(0, 400), rawTail: raw.slice(-200) }
+          : {}),
+      });
+      await logLlmCall({
+        endpoint: 'analyze',
+        provider: body.llm.provider,
+        model: body.llm.model,
+        byok: resolved.byok,
+        userId: resolved.userId,
+        status: 'error',
+        latencyMs: Date.now() - start,
+        inputChars,
+        outputChars: raw.length,
+        promptTokens,
+        completionTokens,
+        error: 'json_parse_failed',
+      });
+      return err(
+        'llm_provider_error',
+        raw.length < 2000
+          ? 'LLM trả về JSON bị cắt (output quá ngắn). Vui lòng thử lại — Gemini đôi khi truncate khi đang quá tải.'
+          : 'LLM trả về JSON không hợp lệ. Thử lại hoặc đổi model.',
+        502,
+      );
+    }
+
+    const result = normalizeAnalysis(parsedRaw);
+
+    await logLlmCall({
+      endpoint: 'analyze',
+      provider: body.llm.provider,
+      model: body.llm.model,
+      byok: resolved.byok,
+      userId: resolved.userId,
+      status: 'ok',
+      latencyMs: Date.now() - start,
+      inputChars,
+      outputChars: raw.length,
+      promptTokens,
+      completionTokens,
+    });
+
+    return NextResponse.json({
+      ...result,
+      quotaRemaining: resolved.quotaRemaining,
+    });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    await logLlmCall({
+      endpoint: 'analyze',
+      provider: body.llm.provider,
+      model: body.llm.model,
+      byok: resolved.byok,
+      userId: resolved.userId,
+      status: 'error',
+      latencyMs: Date.now() - start,
+      inputChars,
+      error: message.slice(0, 200),
+    });
+    return err('llm_provider_error', `LLM lỗi: ${message.slice(0, 200)}`, 502);
+  }
+}

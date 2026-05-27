@@ -7,6 +7,7 @@ import { DetailPanelLayout as Layout } from '@/components/layouts';
 import { useAnalysis } from '@/features/analyze/analysis-store';
 import { useSettings } from '@/features/analyze/settings-store';
 import { callGenerateCv } from '@/features/analyze/api-client';
+import { recomputeOverall } from '@/lib/scoring/recompute-overall';
 import type { GenerateCvRequest } from '@/features/analyze/types';
 import { KeywordCoverageBlock } from './keyword-coverage-block';
 import { MatchScoreBlock } from './match-score-block';
@@ -22,7 +23,7 @@ const TABS = [
 ];
 
 export function ResultsSection() {
-  const { result, matchedCv, isAnalyzing, isGeneratingCv, error, setField } = useAnalysis();
+  const { result, weights, matchedCv, isAnalyzing, isGeneratingCv, error, setField } = useAnalysis();
   const { useSharedKey, provider, model, temperature, baseUrl, apiKey } = useSettings();
   const [activeTab, setActiveTab] = useState('optimization');
   const [genError, setGenError] = useState<string | null>(null);
@@ -37,6 +38,8 @@ export function ResultsSection() {
 
   if (!result) return null;
 
+  const displayed = recomputeOverall(weights);
+
   async function handleGenerateCv() {
     if (!result) return;
     setGenError(null);
@@ -44,7 +47,13 @@ export function ResultsSection() {
 
     const llm: GenerateCvRequest['llm'] = useSharedKey
       ? { provider, model, temperature }
-      : { provider, model, temperature, ...(baseUrl ? { baseUrl } : {}), apiKey };
+      : {
+          provider,
+          model,
+          temperature,
+          ...(baseUrl ? { baseUrl } : {}),
+          ...(apiKey?.trim() ? { apiKey: apiKey.trim() } : {}),
+        };
 
     const payload: GenerateCvRequest = {
       llm,
@@ -92,9 +101,9 @@ export function ResultsSection() {
         }
         asideSlot={
           <MatchScoreBlock
-            score={result.overallScore}
-            decision={result.decision}
-            decisionLabel={result.decisionLabel}
+            score={displayed.overallScore}
+            decision={displayed.decision}
+            decisionLabel={displayed.decisionLabel}
             summary={result.summary}
           />
         }

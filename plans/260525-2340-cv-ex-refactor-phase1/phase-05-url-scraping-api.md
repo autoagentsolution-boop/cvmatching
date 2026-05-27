@@ -4,7 +4,7 @@
 
 - **Brainstorm:** [../reports/brainstorm-260525-2340-cv-ex-refactor-phase1.md](../reports/brainstorm-260525-2340-cv-ex-refactor-phase1.md)
 - **Priority:** P0 (parallel-able)
-- **Status:** pending
+- **Status:** completed (2026-05-27)
 - **Depends on:** Phase 01
 - **Estimated effort:** 3-4 hours
 
@@ -249,14 +249,14 @@ POST /api/scrape { url }
 
 ## Todo List
 
-- [ ] Tạo `validate-url.ts` với SSRF guard (private IP block)
-- [ ] Tạo `fetch-html.ts` với timeout + size cap
-- [ ] Tạo `detect-antibot.ts` signature list
-- [ ] Tạo `extract-readability.ts` JSDOM + Readability
-- [ ] Tạo `/api/scrape/route.ts`
-- [ ] Test 5 URL cases (job board OK, LinkedIn fail, SSRF block, private IP block, malformed)
-- [ ] Verify Vercel Node runtime hoạt động với jsdom (bundle size check)
-- [ ] `pnpm tsc --noEmit` clean
+- [x] Tạo `validate-url.ts` với SSRF guard (private IP block)
+- [x] Tạo `fetch-html.ts` với timeout + size cap
+- [x] Tạo `detect-antibot.ts` signature list (tightened: title-anchored + strong body markers; "please enable javascript" alone too broad — Wikipedia false-positive)
+- [x] Tạo `extract-readability.ts` JSDOM + Readability
+- [x] Tạo `/api/scrape/route.ts`
+- [x] Test 6 URL cases (malformed, localhost, private IP, link-local, no field, Wikipedia 200)
+- [ ] Verify Vercel Node runtime với jsdom bundle size (defer → Phase 08 deploy)
+- [x] `pnpm tsc --noEmit` clean
 
 ## Success Criteria
 

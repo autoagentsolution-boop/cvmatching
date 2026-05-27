@@ -1,11 +1,12 @@
 'use client';
 
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import type { Session } from 'next-auth';
 import { DashboardLayout } from '@/components/layouts';
 import type { ActiveNav } from '@/components/layouts/dashboard-sidebar';
 import { UserMenu } from './user-menu';
+import { QuotaBadge } from './quota-badge';
 import { SettingsDrawerTrigger } from '@/features/analyze/settings-drawer-trigger';
 
 interface AppShellProps {
@@ -22,17 +23,16 @@ function deriveActiveNav(pathname: string): ActiveNav {
 
 export function AppShell({ session, children }: AppShellProps) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const activeNav = deriveActiveNav(pathname);
   const isAuthed = session !== null;
-  const defaultByok = searchParams.get('mode') === 'byok';
 
   return (
     <DashboardLayout
       activeNav={activeNav}
       topnavActions={
         <>
-          <SettingsDrawerTrigger isAuthed={isAuthed} defaultOpen={defaultByok} />
+          <QuotaBadge isAuthed={isAuthed} />
+          <SettingsDrawerTrigger isAuthed={isAuthed} />
           <UserMenu user={session?.user ?? null} />
         </>
       }

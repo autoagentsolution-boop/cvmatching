@@ -6,16 +6,16 @@ import { Button, Drawer } from '@/components/ui';
 import { SettingsPanelBlock } from './settings-panel-block';
 
 export interface SettingsDrawerTriggerProps {
-  /** When true the drawer mounts already open (e.g. ?mode=byok) */
-  defaultOpen?: boolean;
   isAuthed?: boolean;
 }
 
-export function SettingsDrawerTrigger({
-  defaultOpen = false,
-  isAuthed = false,
-}: SettingsDrawerTriggerProps) {
-  const [open, setOpen] = useState(defaultOpen);
+export function SettingsDrawerTrigger({ isAuthed = false }: SettingsDrawerTriggerProps) {
+  // Lazy initializer — runs once on client mount. Avoids useSearchParams which would
+  // force a Suspense boundary in every (app) route and break static generation.
+  const [open, setOpen] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).get('mode') === 'byok';
+  });
 
   return (
     <>

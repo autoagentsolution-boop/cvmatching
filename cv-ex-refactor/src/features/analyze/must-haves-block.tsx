@@ -4,18 +4,22 @@ import { useCallback, useEffect, useRef } from 'react';
 import { MdClose, MdRefresh } from 'react-icons/md';
 import { Badge, Button, ErrorState, LoadingState } from '@/components/ui';
 import { useAnalysis } from './analysis-store';
+import { useSettings } from './settings-store';
 import { callExtractMustHaves } from './api-client';
+import type { AnalyzeRequestLLM } from './types';
 
 const MIN_JD_LENGTH = 80;
 
 export function MustHavesBlock() {
   const {
     jdText,
+    language,
     mustHaves,
     isExtractingMustHaves,
     mustHavesError,
     setField,
   } = useAnalysis();
+  const { useSharedKey, provider, model, temperature, baseUrl, apiKey } = useSettings();
 
   const lastExtractedRef = useRef<string>('');
 
@@ -23,8 +27,17 @@ export function MustHavesBlock() {
     if (jdText.trim().length < MIN_JD_LENGTH) return;
     setField('mustHavesError', null);
     setField('isExtractingMustHaves', true);
+    const llm: AnalyzeRequestLLM = useSharedKey
+      ? { provider, model, temperature }
+      : {
+          provider,
+          model,
+          temperature,
+          ...(baseUrl ? { baseUrl } : {}),
+          ...(apiKey?.trim() ? { apiKey: apiKey.trim() } : {}),
+        };
     try {
-      const result = await callExtractMustHaves(jdText);
+      const result = await callExtractMustHaves(jdText, llm, language);
       setField('mustHaves', result);
       lastExtractedRef.current = jdText;
     } catch (err) {
@@ -35,7 +48,7 @@ export function MustHavesBlock() {
     } finally {
       setField('isExtractingMustHaves', false);
     }
-  }, [jdText, setField]);
+  }, [jdText, language, useSharedKey, provider, model, temperature, baseUrl, apiKey, setField]);
 
   // Auto-fire once when JD becomes long enough and we have no extraction yet.
   useEffect(() => {

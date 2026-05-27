@@ -11,7 +11,6 @@ interface SettingsState {
   temperature: number;
   baseUrl: string;
   apiKey: string;
-  rememberKey: boolean;
   setField: <K extends keyof Omit<SettingsState, 'setField' | 'clear'>>(
     k: K,
     v: SettingsState[K],
@@ -34,21 +33,27 @@ export const useSettings = create<SettingsState>()(
       temperature: 0.3,
       baseUrl: '',
       apiKey: '',
-      rememberKey: false,
       setField: (k, v) => set({ [k]: v } as Partial<SettingsState>),
-      clear: () => set({ apiKey: '', rememberKey: false }),
+      clear: () => set({ apiKey: '' }),
     }),
     {
       name: 'cv-ex-settings-v1',
+      version: 2,
+      // v1 → v2: strip apiKey and rememberKey from any existing persisted blob.
+      // apiKey is intentionally never persisted — held in memory for the
+      // session only. Avoids at-rest exposure in localStorage (XSS surface).
+      migrate: (persisted) => {
+        if (!persisted || typeof persisted !== 'object') return persisted;
+        const { apiKey: _apiKey, rememberKey: _rememberKey, ...rest } =
+          persisted as Record<string, unknown>;
+        return rest;
+      },
       partialize: (s) => ({
         useSharedKey: s.useSharedKey,
         provider: s.provider,
         model: s.model,
         temperature: s.temperature,
         baseUrl: s.baseUrl,
-        rememberKey: s.rememberKey,
-        // Only persist apiKey when user explicitly opts in
-        apiKey: s.rememberKey ? s.apiKey : '',
       }),
     },
   ),

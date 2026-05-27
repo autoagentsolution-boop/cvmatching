@@ -22,7 +22,7 @@ const providerOptions: SelectOption[] = [
  * Rendered inside SettingsDrawerTrigger — not a standalone page block.
  */
 export function SettingsPanelBlock({ isAuthed }: SettingsPanelBlockProps) {
-  const { useSharedKey, provider, model, temperature, baseUrl, apiKey, rememberKey, setField, clear } =
+  const { useSharedKey, provider, model, temperature, baseUrl, apiKey, setField, clear } =
     useSettings();
 
   function handleProviderChange(newProvider: Provider) {
@@ -34,6 +34,19 @@ export function SettingsPanelBlock({ isAuthed }: SettingsPanelBlockProps) {
 
   return (
     <div className="flex flex-col gap-5">
+      <div className="rounded-xl border border-outline-variant bg-surface-container-low p-3">
+        <p className="text-label-md font-bold text-on-surface">
+          Current mode: {showByok ? 'BYOK (your API key)' : 'Shared key (server-managed)'}
+        </p>
+        <p className="text-label-sm text-on-surface-variant">
+          {showByok
+            ? isAuthed
+              ? 'Using your own provider key. Toggle off "Use shared key" above to keep using BYOK.'
+              : 'Sign in to access the shared-key path (5 analyses + 2 rewrites/day per account).'
+            : 'Using the server-managed shared key — counts against your daily quota.'}
+        </p>
+      </div>
+
       {isAuthed && (
         <Checkbox
           label="Use shared key (your account quota)"
@@ -98,22 +111,17 @@ export function SettingsPanelBlock({ isAuthed }: SettingsPanelBlockProps) {
               onChange={(e) => setField('apiKey', e.target.value)}
             />
             <p className="mt-1 text-label-sm text-on-surface-variant">
-              Used only for this session unless you check Remember.
+              Held in memory for this session only — never stored on disk or in localStorage.
             </p>
           </FormField>
 
-          <div className="flex items-center justify-between gap-4">
-            <Checkbox
-              label="Remember key"
-              checked={rememberKey}
-              onCheckedChange={(v) => setField('rememberKey', v)}
-            />
-            {apiKey && (
+          {apiKey && (
+            <div className="flex items-center justify-end">
               <Button variant="ghost" size="sm" onClick={clear}>
-                Clear stored key
+                Clear key
               </Button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -1,4 +1,10 @@
-import type { AnalyzeRequest, AnalysisResult, GenerateCvRequest } from './types';
+import type {
+  AnalyzeRequest,
+  AnalyzeRequestLLM,
+  AnalysisResult,
+  GenerateCvRequest,
+  Language,
+} from './types';
 
 async function parseErrorBody(res: Response): Promise<string> {
   try {
@@ -50,30 +56,29 @@ export async function callGenerateCv(payload: GenerateCvRequest): Promise<string
 
 /**
  * POST /api/extract-must-haves — returns hard-gate requirements parsed from JD.
- * Returns 404 until Phase 06 ships; the call falls back to a deterministic
- * heuristic so the UI stays usable during Phase 1 visual development.
+ * Only the 404 path falls back to a deterministic heuristic (endpoint not deployed yet).
+ * All other failures including 401 surface to the caller so the user sees real errors,
+ * not silently-degraded heuristic output.
  */
-export async function callExtractMustHaves(jdText: string): Promise<string[]> {
-  try {
-    const res = await fetch('/api/extract-must-haves', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jdText }),
-    });
-    if (res.ok) {
-      const data = (await res.json()) as { mustHaves: string[] };
-      return data.mustHaves;
-    }
-    if (res.status !== 404) {
-      const msg = await parseErrorBody(res);
-      throw new Error(`Extract must-haves failed: ${msg}`);
-    }
-  } catch (err) {
-    if (err instanceof Error && err.message.startsWith('Extract must-haves failed')) {
-      throw err;
-    }
+export async function callExtractMustHaves(
+  jdText: string,
+  llm: AnalyzeRequestLLM,
+  language: Language,
+): Promise<string[]> {
+  const res = await fetch('/api/extract-must-haves', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ jdText, llm, language }),
+  });
+  if (res.ok) {
+    const data = (await res.json()) as { mustHaves: string[] };
+    return data.mustHaves;
   }
-  return heuristicMustHaves(jdText);
+  if (res.status === 404) {
+    return heuristicMustHaves(jdText);
+  }
+  const msg = await parseErrorBody(res);
+  throw new Error(`Extract must-haves failed: ${msg}`);
 }
 
 /**

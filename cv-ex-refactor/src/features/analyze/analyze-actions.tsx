@@ -4,6 +4,7 @@ import { Button, ErrorState } from '@/components/ui';
 import { useAnalysis } from './analysis-store';
 import { useSettings } from './settings-store';
 import { callAnalyze } from './api-client';
+import { hydrateWeightsFromResult } from '@/lib/scoring/recompute-overall';
 import type { AnalyzeRequest } from './types';
 
 export function AnalyzeActions() {
@@ -15,7 +16,6 @@ export function AnalyzeActions() {
     targetRole,
     strictness,
     language,
-    weights,
     mustHaves,
     isAnalyzing,
     error,
@@ -38,7 +38,7 @@ export function AnalyzeActions() {
           model,
           temperature,
           ...(baseUrl ? { baseUrl } : {}),
-          apiKey,
+          ...(apiKey?.trim() ? { apiKey: apiKey.trim() } : {}),
         };
 
     const payload: AnalyzeRequest = {
@@ -51,7 +51,6 @@ export function AnalyzeActions() {
         targetRole,
         strictness,
         language,
-        weights,
         mustHaves,
       },
     };
@@ -59,6 +58,7 @@ export function AnalyzeActions() {
     try {
       const result = await callAnalyze(payload);
       setField('result', result);
+      setField('weights', hydrateWeightsFromResult(result));
     } catch (err) {
       setField('error', err instanceof Error ? err.message : 'Analysis failed.');
     } finally {

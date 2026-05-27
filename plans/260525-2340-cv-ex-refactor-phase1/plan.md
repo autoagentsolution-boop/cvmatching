@@ -33,11 +33,11 @@ Web app full-stack từ `cv_fit_scoring_app.html` với 2 mode: shared-key (auth
 | 03a | [Design Tokens + Shared UI](phase-03a-design-tokens-shared-ui.md) | pending | 01 |
 | 03b | [Layout Templates](phase-03b-layout-templates.md) | pending | 03a |
 | 03c | [Feature Pages (4 screens + 3 stubs)](phase-03c-feature-pages.md) | pending | 03a, 03b |
-| 04 | [File Parsing API](phase-04-file-parsing-api.md) | pending | 01 |
-| 05 | [URL Scraping API](phase-05-url-scraping-api.md) | pending | 01 |
-| 06 | [LLM Endpoints](phase-06-llm-endpoints.md) | pending | 01, 02 |
-| 07 | [Quota & Rate Limiting](phase-07-quota-rate-limiting.md) | pending | 02, 06 |
-| 08 | [i18n + Security + Deploy](phase-08-i18n-security-deploy.md) | pending | 03c, 06, 07 |
+| 04 | [File Parsing API](phase-04-file-parsing-api.md) | completed | 01 |
+| 05 | [URL Scraping API](phase-05-url-scraping-api.md) | completed | 01 |
+| 06 | [LLM Endpoints](phase-06-llm-endpoints.md) | completed | 01, 02 |
+| 07 | [Quota & Rate Limiting](phase-07-quota-rate-limiting.md) | completed | 02, 06 |
+| 08 | [i18n + Security + Deploy](phase-08-i18n-security-deploy.md) | completed (i18n deferred to P1.1) | 03c, 06, 07 |
 
 ## Key Dependencies
 

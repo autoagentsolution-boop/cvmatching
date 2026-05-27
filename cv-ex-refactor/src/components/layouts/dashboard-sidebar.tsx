@@ -117,6 +117,15 @@ export function DashboardSidebar({ activeNav, onNavClick }: DashboardSidebarProp
           Help
         </a>
         <a
+          href="/privacy"
+          className="flex items-center gap-3 rounded-lg px-4 py-3 text-label-md text-on-surface-variant transition-colors hover:bg-surface-container-high"
+        >
+          <span className="material-symbols-outlined text-[20px]" aria-hidden="true">
+            privacy_tip
+          </span>
+          Privacy
+        </a>
+        <a
           href="/api/auth/signout"
           className="flex items-center gap-3 rounded-lg px-4 py-3 text-label-md text-on-surface-variant transition-colors hover:bg-surface-container-high"
         >

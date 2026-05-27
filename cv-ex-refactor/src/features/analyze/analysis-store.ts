@@ -27,6 +27,18 @@ interface AnalysisState {
   reset: () => void;
 }
 
+const ZERO_WEIGHTS = {
+  coreSkill: 0,
+  tool: 0,
+  scope: 0,
+  production: 0,
+  domain: 0,
+  evidence: 0,
+  seniority: 0,
+  impact: 0,
+  communication: 0,
+} as const;
+
 const initial: Omit<AnalysisState, 'setField' | 'reset'> = {
   jdText: '',
   jdUrl: '',
@@ -35,17 +47,10 @@ const initial: Omit<AnalysisState, 'setField' | 'reset'> = {
   targetRole: 'auto',
   strictness: 'balanced',
   language: 'auto',
-  weights: {
-    coreSkill: 50,
-    tool: 50,
-    scope: 50,
-    production: 50,
-    domain: 50,
-    evidence: 50,
-    seniority: 50,
-    impact: 50,
-    communication: 50,
-  },
+  // Weights are per-dim CV-vs-JD scores produced by the LLM, hydrated after analyze
+  // via hydrateWeightsFromResult(). Zero on init means "not analyzed yet" — UI uses
+  // result presence (not weights values) to gate the sliders.
+  weights: { ...ZERO_WEIGHTS },
   mustHaves: [],
   isExtractingMustHaves: false,
   mustHavesError: null,

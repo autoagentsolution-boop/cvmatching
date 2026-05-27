@@ -4,9 +4,16 @@
 
 - **Brainstorm:** [../reports/brainstorm-260525-2340-cv-ex-refactor-phase1.md](../reports/brainstorm-260525-2340-cv-ex-refactor-phase1.md)
 - **Priority:** P0
-- **Status:** pending
+- **Status:** completed (2026-05-27)
 - **Depends on:** Phase 02 (auth), Phase 06 (LLM endpoint hooks)
 - **Estimated effort:** 3-4 hours
+
+## Deviation from original plan (2026-05-27)
+
+- **Quota limits unchanged** (5 analyses, 2 generate-cv/day) but `extract-must-haves` deliberately NOT counted — it's a sub-call before analyze; coupling it to quota would let one analyze flow burn 2 calls. Aligns with what user actually expects.
+- **`getQuotaStatus`** returns `{ enforced: boolean, resetInSec, kinds: {...} }` — `enforced=false` when KV env missing so the UI badge auto-hides in dev without KV.
+- **Fail-open is universal**: KV unavailable OR KV op throws → allow request. Logged via `console.warn` for ops to monitor.
+- **UI badge** added to topnav (`features/nav/quota-badge.tsx`) instead of the plan's suggestion of header — fits existing AppShell layout better. Auto-hides when not enforced or in BYOK mode.
 
 ## Overview
 
@@ -241,19 +248,20 @@ const IP_RATE = {
 
 ## Todo List
 
-- [ ] Provision Vercel KV, pull env vars
-- [ ] Tạo `kv-client.ts`
-- [ ] Tạo `vn-date.ts` với UTC+7 helpers
-- [ ] Tạo `consume-quota.ts`
-- [ ] Tạo `get-quota-status.ts`
-- [ ] Tạo `enforce-ip-rate-limit.ts`
-- [ ] Tạo `/api/quota/route.ts`
-- [ ] Replace stub trong `/api/analyze` và `/api/generate-cv`
-- [ ] Wrap `/api/scrape` và `/api/parse` với rate limit
-- [ ] Update UI: header hiển thị quota counter
-- [ ] Test 5 scenarios trong "Test scenarios" section
-- [ ] Verify TTL set đúng (KV dashboard inspect)
-- [ ] `pnpm tsc --noEmit` clean
+- [ ] Provision Vercel KV, pull env vars *(deferred → user-side ops step, defer to Phase 08 deploy)*
+- [x] Tạo `kv-client.ts` với `kvAvailable` env-presence flag
+- [x] Tạo `vn-date.ts` với UTC+7 helpers
+- [x] Tạo `consume-quota.ts` (replaces Phase 06 stub) — atomic INCR+EXPIRE, fail-open
+- [x] Tạo `get-quota-status.ts` — returns `enforced` flag
+- [x] Tạo `enforce-ip-rate-limit.ts` + `rateLimitedResponse` helper
+- [x] Tạo `/api/quota/route.ts` Node runtime
+- [x] `resolveApiKey` already wired to `consumeQuotaForUser` from Phase 06 — now uses real impl
+- [x] Wrap `/api/scrape` và `/api/parse` với rate limit (30 req/min/IP)
+- [x] `extract-must-haves` không count quota (sub-call before analyze)
+- [x] UI: QuotaBadge component in topnav, auto-hide when not enforced or BYOK
+- [ ] Test 429 + reset boundary với real KV *(blocked on provisioning → Phase 08)*
+- [x] Smoke: 401 unauth, fail-open without KV env confirmed (32 parse reqs all reach handler)
+- [x] `pnpm tsc --noEmit` clean
 
 ## Success Criteria
 

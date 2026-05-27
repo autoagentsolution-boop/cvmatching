@@ -152,7 +152,6 @@ export interface AnalyzeRequestInputs {
   targetRole: RoleFamily;
   strictness: Strictness;
   language: Language;
-  weights: Weights;
   /** Hard-gate requirements extracted from JD — miss any → decision capped at 'stretch' */
   mustHaves: string[];
 }

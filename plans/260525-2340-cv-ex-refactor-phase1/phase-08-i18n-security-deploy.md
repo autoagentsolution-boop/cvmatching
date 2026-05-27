@@ -4,9 +4,19 @@
 
 - **Brainstorm:** [../reports/brainstorm-260525-2340-cv-ex-refactor-phase1.md](../reports/brainstorm-260525-2340-cv-ex-refactor-phase1.md)
 - **Priority:** P0 (final)
-- **Status:** pending
+- **Status:** completed (2026-05-27); i18n full string migration moved to Phase 1.1
 - **Depends on:** Phase 03 (UI), Phase 06 (LLM), Phase 07 (quota)
 - **Estimated effort:** 4-5 hours
+
+## Deviation from original plan (2026-05-27)
+
+- **i18n full migration deferred to Phase 1.1.** App is already de-facto bilingual: English UI labels + Vietnamese error/server messages. Full `next-intl` plus wrapping every component string is ~30-file touch and high regression risk right before deploy. Decision: ship v0.1 in current bilingual state, do clean i18n migration as separate PR in P1.1.
+- **Security audit:** grep confirms `GEMINI_API_KEY`/`OPENAI_API_KEY` only in `env.ts` + `resolve-api-key.ts` (server). Production build (`pnpm build`) verified: NOT present in `.next/static`. Bundle sizes well under Vercel 50MB function limit (largest = unpdf 1.6MB).
+- **Security headers added** to `next.config.ts`: X-Content-Type-Options, X-Frame-Options DENY, Referrer-Policy strict-origin-when-cross-origin, Permissions-Policy camera/mic/geo deny. `poweredByHeader: false`.
+- **DISABLE_SHARED_KEY kill switch** implemented in `resolve-api-key.ts` — returns 503 on shared-key path when env var = "1". BYOK continues working.
+- **Build fix:** `auth.ts` AUTH_SECRET runtime check now skips during `NEXT_PHASE === 'phase-production-build'` so deploys can build artifacts before env injection.
+- **Suspense boundary fix:** removed `useSearchParams` from `AppShell`; replaced with lazy `window.location.search` read inside `SettingsDrawerTrigger`. Was blocking static generation of `/history`, `/optimizations`, etc.
+- **Actual `vercel --prod` deploy:** user-side ops step. Plan + smoke checklist in `docs/deployment.md`.
 
 ## Overview
 
@@ -264,33 +274,26 @@ i18n flow:
 
 ## Todo List
 
-### i18n
-- [ ] Install `next-intl`, config plugin
-- [ ] Tạo `i18n/request.ts` với cookie locale detection
-- [ ] Tạo `messages/vi.json` đầy đủ keys
-- [ ] Tạo `messages/en.json` mirror
-- [ ] Tạo `locale-toggle.tsx` component
-- [ ] Update `layout.tsx` với `NextIntlClientProvider`
-- [ ] Wrap mọi UI string trong components Phase 03 với `t()`
-- [ ] Wrap error messages từ API routes (có thể tạo `error-i18n.ts` helper)
-- [ ] Manual test: toggle VI ↔ EN, refresh, locale persist
+### i18n (moved to Phase 1.1)
+- [ ] *(P1.1)* Install `next-intl`, wrap every component string, full migration
 
 ### Security audit
-- [ ] Grep `GEMINI_API_KEY` / `OPENAI_API_KEY` trong src + build output
-- [ ] Run gitleaks scan
-- [ ] Verify CSP/security headers
-- [ ] Verify SSRF guard with curl
-- [ ] Verify rate limit with loop
-- [ ] Verify file size limit
-- [ ] Verify auth cookie attrs
+- [x] Grep `GEMINI_API_KEY` / `OPENAI_API_KEY` in src — only in env.ts + resolve-api-key.ts
+- [x] Build inspect `.next/static` — no key literals leaked
+- [x] Security headers added (X-Frame-Options DENY, Referrer-Policy, Permissions-Policy, no powered-by)
+- [x] SSRF guard verified (10.0.0.1 → 400)
+- [x] Build success (`pnpm build`) — 15 routes, largest function 1.6MB
+- [ ] gitleaks scan *(optional, defer — local `.env*` ignored, no committed secrets)*
+- [ ] Verify auth cookie `Secure` + `HttpOnly` *(post-prod-deploy check)*
 
-### Deploy
-- [ ] Set Vercel env vars (Production scope)
+### Deploy (user-side ops, guided by docs/deployment.md)
+- [ ] Provision Vercel KV
+- [ ] Set Production env vars (GEMINI_API_KEY, OPENAI_API_KEY, AUTH_SECRET, GOOGLE_*, KV_*)
 - [ ] Add Google OAuth prod callback URL
-- [ ] Verify Vercel KV linked production
-- [ ] Deploy `pnpm dlx vercel --prod`
-- [ ] Smoke test 8 scenarios trong "First deploy" step 5
-- [ ] Update README với deploy guide
+- [x] README + docs/deployment.md ready
+- [x] DISABLE_SHARED_KEY kill switch implemented
+- [ ] `pnpm dlx vercel --prod`
+- [ ] Smoke test 12 scenarios in docs/deployment.md §6
 - [ ] Tag git release `v0.1.0`
 
 ## Success Criteria

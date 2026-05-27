@@ -3,8 +3,11 @@ import Google from 'next-auth/providers/google';
 import { env } from '@/lib/env';
 
 const isProduction = process.env.NODE_ENV === 'production';
+const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
 
-if (isProduction && !env.AUTH_SECRET) {
+if (isProduction && !isBuildPhase && !env.AUTH_SECRET) {
+  // Loud failure at runtime startup; build phase skips so deploy artifacts can
+  // be produced before runtime env vars are injected by the platform.
   throw new Error('AUTH_SECRET is required in production. Generate via `openssl rand -base64 32`.');
 }
 

@@ -5,9 +5,17 @@
 - **Brainstorm:** [../reports/brainstorm-260525-2340-cv-ex-refactor-phase1.md](../reports/brainstorm-260525-2340-cv-ex-refactor-phase1.md)
 - **Source logic:** `cv_fit_scoring_app.html` lines 451-700 (callLLM, callGemini, callOpenAICompatible, analyze, generateMatchedCV)
 - **Priority:** P0 (critical path)
-- **Status:** pending
+- **Status:** completed (2026-05-27)
 - **Depends on:** Phase 01, 02
 - **Estimated effort:** 5-6 hours
+
+## Deviation from original plan (2026-05-27)
+
+- **Runtime:** Node.js (60s max) instead of Edge (25s). Reason: `auth()` + jsonb shared key resolution is simpler on Node; cold-start cost acceptable for Phase 1; can migrate to Edge in Phase 08 if latency demands it.
+- **Streaming:** Non-streaming JSON return instead of SSE. Reason: existing client (`api-client.ts`) already expects JSON `{ AnalysisResult }` shape; SSE would require client refactor + a new consumer + buffering. Defer SSE to Phase 08 if Vercel function timeout becomes an issue at deploy.
+- **Schema:** Body shape is nested `{ llm, inputs }` matching the actual `AnalyzeRequest` type (Pass D), not the flat schema originally sketched. 9-dim weights + `mustHaves[]` are first-class inputs to the prompt.
+- **Added endpoint:** `/api/extract-must-haves` is implemented under Phase 06 (was implicit before).
+- **Normalizer:** `normalize-analysis.ts` accepts both snake_case (legacy HTML schema) and camelCase (new) LLM output, then projects to typed `AnalysisResult`. Robust to LLM drift.
 
 ## Overview
 
@@ -370,24 +378,28 @@ Client → POST /api/analyze (SSE)
 
 ## Todo List
 
-- [ ] Tạo Zod schemas trong `llm-request.ts`
-- [ ] Tạo `sse-stream.ts` helper
-- [ ] Tạo `safe-logger.ts` redact-aware
-- [ ] Tạo `call-gemini.ts` streaming
-- [ ] Tạo `call-openai.ts` streaming
-- [ ] Tạo `providers.ts` dispatcher
-- [ ] Port system prompt từ HTML → `prompt-analyze.ts`
-- [ ] Port matched CV prompt → `prompt-matched-cv.ts`
-- [ ] Tạo `/api/analyze/route.ts` Edge runtime
-- [ ] Tạo `/api/generate-cv/route.ts` Edge runtime
-- [ ] Stub `consume-quota.ts` (Phase 07 sẽ implement full)
-- [ ] Sửa client `api-client.ts` → SSE consumer
-- [ ] Test BYOK với Gemini key thật → result JSON
-- [ ] Test BYOK với OpenAI key thật
-- [ ] Test shared path (mock session) → quota stub trả ok
-- [ ] Test shared không login → 401 SSE error
-- [ ] Verify Edge runtime build OK (`pnpm build` thấy edge marker)
-- [ ] Verify response không bao giờ chứa `apiKey`
+- [x] Tạo Zod schemas trong `llm-request.ts` (nested {llm,inputs} + 9-dim Weights)
+- [ ] ~~Tạo `sse-stream.ts` helper~~ — dropped, non-streaming JSON path
+- [x] Tạo `safe-logger.ts` (metadata-only, no apiKey/jdText/cvText)
+- [x] Tạo `call-gemini.ts` (non-streaming `generateContent`)
+- [x] Tạo `call-openai.ts` (non-streaming `chat/completions`, custom baseUrl OK)
+- [x] Tạo `providers.ts` dispatcher
+- [x] Tạo `prompt-analyze.ts` (9-dim weights + must-have hard gate, JSON schema)
+- [x] Tạo `prompt-generate-cv.ts`
+- [x] Tạo `prompt-must-haves.ts`
+- [x] Tạo `/api/analyze/route.ts` Node runtime (60s)
+- [x] Tạo `/api/generate-cv/route.ts` Node runtime
+- [x] Tạo `/api/extract-must-haves/route.ts` Node runtime
+- [x] `resolve-api-key.ts` — BYOK vs shared+session
+- [x] `consume-quota.ts` stub (Phase 07 will fill)
+- [x] `safe-parse-json.ts` (tolerates code fences + bracket scan)
+- [x] `normalize-analysis.ts` (snake_case OR camelCase → typed AnalysisResult)
+- [x] Update `api-client.ts` callExtractMustHaves signature + must-haves block to pass llm config
+- [x] Smoke: invalid body 400, no-auth-no-BYOK 401, BYOK with fake key → 502 with upstream error surfaced
+- [ ] Test BYOK với Gemini key thật → result JSON  *(user-side smoke; needs real key)*
+- [ ] Test BYOK với OpenAI key thật  *(user-side smoke; needs real key)*
+- [ ] Verify Vercel bundle build OK (`pnpm build` + cold-start cost on Node) — defer → Phase 08
+- [x] `apiKey` never in response payload (verified: not in any NextResponse.json call site)
 
 ## Success Criteria
 

@@ -2,21 +2,21 @@
 
 import { useAnalysis } from '@/features/analyze/analysis-store';
 import { MatchScoreBlock } from '@/features/results/match-score-block';
+import { recomputeOverall } from '@/lib/scoring/recompute-overall';
 
-/**
- * Thin client wrapper that reads analysis result from the store
- * and renders MatchScoreBlock in compact mode for the Refined CV aside rail.
- */
 export function MatchScoreBlockAside() {
   const result = useAnalysis((s) => s.result);
+  const weights = useAnalysis((s) => s.weights);
 
   if (!result) return null;
 
+  const displayed = recomputeOverall(weights);
+
   return (
     <MatchScoreBlock
-      score={result.overallScore}
-      decision={result.decision}
-      decisionLabel={result.decisionLabel}
+      score={displayed.overallScore}
+      decision={displayed.decision}
+      decisionLabel={displayed.decisionLabel}
       summary={result.summary}
       compact
     />
