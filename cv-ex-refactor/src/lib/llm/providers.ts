@@ -9,11 +9,19 @@ export interface CallLlmOpts {
   system: string;
   user: string;
   expectJson: boolean;
+  /** Override per-call output cap. Defaults to provider built-in. */
+  maxOutputTokens?: number;
 }
 
 export type { LlmCallResult };
 
-export async function callLLM({ config, system, user, expectJson }: CallLlmOpts): Promise<LlmCallResult> {
+export async function callLLM({
+  config,
+  system,
+  user,
+  expectJson,
+  maxOutputTokens,
+}: CallLlmOpts): Promise<LlmCallResult> {
   if (config.provider === 'gemini') {
     return callGemini({
       apiKey: config.apiKey,
@@ -22,6 +30,7 @@ export async function callLLM({ config, system, user, expectJson }: CallLlmOpts)
       system,
       user,
       expectJson,
+      ...(maxOutputTokens ? { maxOutputTokens } : {}),
     });
   }
 
@@ -37,5 +46,6 @@ export async function callLLM({ config, system, user, expectJson }: CallLlmOpts)
     system,
     user,
     expectJson,
+    ...(maxOutputTokens ? { maxOutputTokens } : {}),
   });
 }

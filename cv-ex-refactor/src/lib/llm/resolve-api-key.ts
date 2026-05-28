@@ -72,9 +72,9 @@ export async function resolveApiKey(
   if (!shared) {
     return {
       ok: false,
-      status: 500,
-      code: 'llm_provider_error',
-      message: 'Server chưa cấu hình shared key cho provider này. Vui lòng dùng API key riêng (BYOK).',
+      status: 503,
+      code: 'shared_key_disabled',
+      message: 'Server chưa cấu hình shared key cho provider này. Vui lòng mở Settings (góc phải trên) và dán API key của bạn vào ô BYOK.',
     };
   }
 

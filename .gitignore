@@ -40,3 +40,6 @@ stitch_ai_resume_optimizer.zip
 # TypeScript build
 **/*.tsbuildinfo
 **/next-env.d.ts
+
+.vercel
+.env*

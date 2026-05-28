@@ -8,6 +8,8 @@ export interface OpenAICallOpts {
   system: string;
   user: string;
   expectJson: boolean;
+  /** Per-call cap on completion tokens. Omit to use provider default. */
+  maxOutputTokens?: number;
 }
 
 export async function callOpenAI(opts: OpenAICallOpts): Promise<LlmCallResult> {
@@ -26,6 +28,7 @@ export async function callOpenAI(opts: OpenAICallOpts): Promise<LlmCallResult> {
         { role: 'system', content: opts.system },
         { role: 'user', content: opts.user },
       ],
+      ...(opts.maxOutputTokens ? { max_tokens: opts.maxOutputTokens } : {}),
       ...(opts.expectJson ? { response_format: { type: 'json_object' } } : {}),
     }),
   });

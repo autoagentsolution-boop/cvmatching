@@ -2,7 +2,7 @@ import { kv, kvAvailable } from '@/lib/quota/kv-client';
 import { microUsdCost } from '@/lib/llm/model-prices';
 import { maybeFireAlerts } from './alert-webhook';
 
-export type UsageAction = 'analyze' | 'generate-cv' | 'extract-must-haves';
+export type UsageAction = 'analyze' | 'generate-cv' | 'extract-must-haves' | 'career-path';
 export type UsageStatus = 'ok' | 'error';
 
 export interface TrackUsageInput {

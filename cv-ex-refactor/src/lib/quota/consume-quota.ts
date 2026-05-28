@@ -4,6 +4,7 @@ import { vnDateString, secondsUntilVnMidnight } from './vn-date';
 export const QUOTA_LIMITS = {
   analyze: 5,
   'generate-cv': 2,
+  'career-path': 3,
 } as const;
 
 // Anonymous (no login) pilot users share a stricter daily limit per IP, so a
@@ -11,6 +12,7 @@ export const QUOTA_LIMITS = {
 export const ANON_QUOTA_LIMITS = {
   analyze: 3,
   'generate-cv': 1,
+  'career-path': 2,
 } as const;
 
 export type QuotaKind = keyof typeof QUOTA_LIMITS;
@@ -31,7 +33,7 @@ export interface QuotaResult {
 }
 
 function isQuotaKind(action: QuotaAction): action is QuotaKind {
-  return action === 'analyze' || action === 'generate-cv';
+  return action === 'analyze' || action === 'generate-cv' || action === 'career-path';
 }
 
 function userQuotaKey(userId: string, kind: QuotaKind, day: string): string {

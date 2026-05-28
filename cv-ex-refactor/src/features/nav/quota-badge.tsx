@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAnalysis } from '@/features/analyze/analysis-store';
 import { useSettings } from '@/features/analyze/settings-store';
+import { useCareerPath } from '@/features/career-path/career-path-store';
 
 interface KindStatus {
   used: number;
@@ -17,6 +18,7 @@ interface QuotaPayload {
   kinds?: {
     analyze: KindStatus;
     'generate-cv': KindStatus;
+    'career-path': KindStatus;
   };
 }
 
@@ -24,6 +26,7 @@ export function QuotaBadge({ isAuthed: _isAuthed }: { isAuthed: boolean }) {
   const hasRegisteredKey = useSettings((s) => s.hasRegisteredKey);
   const result = useAnalysis((s) => s.result);
   const matchedCv = useAnalysis((s) => s.matchedCv);
+  const careerResult = useCareerPath((s) => s.result);
 
   const [status, setStatus] = useState<QuotaPayload | null>(null);
 
@@ -45,13 +48,14 @@ export function QuotaBadge({ isAuthed: _isAuthed }: { isAuthed: boolean }) {
 
   useEffect(() => {
     refresh();
-  }, [result, matchedCv, refresh]);
+  }, [result, matchedCv, careerResult, refresh]);
 
   if (hasRegisteredKey) return null;
   if (!status?.ok || status.enforced === false || !status.kinds) return null;
 
   const a = status.kinds.analyze;
   const g = status.kinds['generate-cv'];
+  const c = status.kinds['career-path'];
 
   return (
     <div
@@ -69,6 +73,16 @@ export function QuotaBadge({ isAuthed: _isAuthed }: { isAuthed: boolean }) {
         <span className="opacity-60">/{g.limit}</span>{' '}
         <span className="opacity-60">rewrites</span>
       </span>
+      {c && (
+        <>
+          <span className="text-outline">·</span>
+          <span title="Career roadmaps today">
+            <span className="font-bold text-on-surface">{c.used}</span>
+            <span className="opacity-60">/{c.limit}</span>{' '}
+            <span className="opacity-60">paths</span>
+          </span>
+        </>
+      )}
     </div>
   );
 }

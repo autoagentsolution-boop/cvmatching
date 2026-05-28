@@ -83,7 +83,45 @@ export const ExtractMustHavesBody = z.object({
   language: LanguageEnum.default('auto'),
 });
 
+export const HorizonYearsEnum = z.union([z.literal(1), z.literal(3), z.literal(5)]);
+
+export const FocusAreaEnum = z.enum([
+  'leadership',
+  'depth',
+  'breadth',
+  'switch_industry',
+  'switch_function',
+  'remote',
+  'startup',
+  'big_tech',
+  'entrepreneurship',
+  'consulting',
+]);
+
+export const CareerAspiration = z.object({
+  targetRole: z.string().min(1).max(160),
+  horizonYears: HorizonYearsEnum,
+  focusAreas: z.array(FocusAreaEnum).max(6),
+  industryShift: z.string().max(280).optional(),
+  constraints: z.string().max(500).optional(),
+  notes: z.string().max(1_000).optional(),
+});
+
+export const CareerPathBody = z.object({
+  llm: LlmConfig,
+  inputs: z.object({
+    cvText: z.string().min(50).max(MAX_TEXT),
+    analysisSummary: z.string().max(4_000).optional(),
+    currentRole: z.string().max(160).optional(),
+    aspiration: CareerAspiration,
+    language: LanguageEnum.default('auto'),
+  }),
+});
+
 export type AnalyzeBodyT = z.infer<typeof AnalyzeBody>;
 export type GenerateCvBodyT = z.infer<typeof GenerateCvBody>;
 export type ExtractMustHavesBodyT = z.infer<typeof ExtractMustHavesBody>;
+export type CareerPathBodyT = z.infer<typeof CareerPathBody>;
 export type LlmConfigT = z.infer<typeof LlmConfig>;
+export type FocusAreaT = z.infer<typeof FocusAreaEnum>;
+export type HorizonYearsT = z.infer<typeof HorizonYearsEnum>;

@@ -5,6 +5,8 @@ export interface GeminiCallOpts {
   system: string;
   user: string;
   expectJson: boolean;
+  /** Per-call cap; falls back to 16384 (covers analyze JSON ~8-15K chars). */
+  maxOutputTokens?: number;
 }
 
 export interface LlmCallResult {
@@ -26,9 +28,10 @@ export async function callGemini(opts: GeminiCallOpts): Promise<LlmCallResult> {
       contents: [{ role: 'user', parts: [{ text: opts.user }] }],
       generationConfig: {
         temperature: opts.temperature,
-        // 16K tokens supports ~50K output chars — analyze JSON typically 8-15K chars
-        // and was hitting silent truncation at 8192 with newer prompts.
-        maxOutputTokens: 16384,
+        // Default 16K covers analyze (~8-15K chars). Callers with bigger
+        // schemas (e.g. career-path roadmap) override via maxOutputTokens
+        // to avoid silent truncation.
+        maxOutputTokens: opts.maxOutputTokens ?? 16384,
         ...(opts.expectJson ? { responseMimeType: 'application/json' } : {}),
       },
     }),
