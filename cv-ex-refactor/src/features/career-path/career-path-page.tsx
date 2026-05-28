@@ -1,27 +1,78 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MdRoute } from 'react-icons/md';
 import { Button, EmptyState, ErrorState, LoadingState, PageHeader, Card } from '@/components/ui';
 import { FormPageLayout } from '@/components/layouts';
 import { useAnalysis } from '@/features/analyze/analysis-store';
-import { useCareerPath } from './career-path-store';
+import { useSettings } from '@/features/analyze/settings-store';
+import { useCareerPath, cvCacheKey } from './career-path-store';
+import { callSuggestPaths } from './api-client';
+import type { SuggestPathsRequest } from './types';
 import { AspirationInputBlock } from './aspiration-input-block';
 import { CareerPathActions } from './career-path-actions';
 import { CurrentSnapshotBlock } from './current-snapshot-block';
 import { FeasibilityBanner } from './feasibility-banner';
+import { PathSuggestionsBlock } from './path-suggestions-block';
 import { RoadmapTimelineBlock } from './roadmap-timeline-block';
 import { SkillGapsBlock } from './skill-gaps-block';
 import { AlternativePathsBlock } from './alternative-paths-block';
 import { QuickWinsBlock } from './quick-wins-block';
 
 export function CareerPathPage() {
-  const { cvText, result: analysisResult } = useAnalysis();
-  const { result, isGenerating, error } = useCareerPath();
+  const { cvText, result: analysisResult, language } = useAnalysis();
+  const { provider, model, temperature, baseUrl } = useSettings();
+  const {
+    suggestions,
+    selectedSuggestion,
+    suggestionsCacheKey,
+    isSuggesting,
+    suggestError,
+    result,
+    isGenerating,
+    error,
+    setField,
+    selectSuggestion,
+  } = useCareerPath();
   const [showAspiration, setShowAspiration] = useState(false);
 
   const hasCv = cvText.trim().length >= 50;
+  const currentCacheKey = hasCv ? cvCacheKey(cvText) : null;
+  const cacheValid =
+    suggestions.length > 0 && suggestionsCacheKey === currentCacheKey;
+
+  async function fetchSuggestions() {
+    if (!hasCv) return;
+    setField('suggestError', null);
+    setField('isSuggesting', true);
+    const payload: SuggestPathsRequest = {
+      llm: { provider, model, temperature, ...(baseUrl ? { baseUrl } : {}) },
+      inputs: {
+        cvText,
+        ...(analysisResult?.summary ? { analysisSummary: analysisResult.summary } : {}),
+        ...(analysisResult?.detectedRole ? { currentRole: analysisResult.detectedRole } : {}),
+        language,
+      },
+    };
+    try {
+      const list = await callSuggestPaths(payload);
+      setField('suggestions', list);
+      setField('suggestionsCacheKey', currentCacheKey);
+    } catch (e) {
+      setField('suggestError', e instanceof Error ? e.message : 'Đề xuất thất bại.');
+    } finally {
+      setField('isSuggesting', false);
+    }
+  }
+
+  // Auto-fetch suggestions once when CV is present and cache miss.
+  useEffect(() => {
+    if (hasCv && !cacheValid && !isSuggesting && !suggestError) {
+      void fetchSuggestions();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasCv, cacheValid]);
 
   return (
     <FormPageLayout
@@ -34,7 +85,7 @@ export function CareerPathPage() {
               <span className="text-on-tertiary-container">career path.</span>
             </>
           }
-          subtitle="Dựa trên CV hiện tại, AI sẽ dựng lộ trình phát triển sự nghiệp tự nhiên — bạn có thể tinh chỉnh nếu muốn rẽ hướng khác."
+          subtitle="AI phân tích CV và đề xuất các hướng phát triển — chọn một hướng để dựng roadmap chi tiết, hoặc tuỳ chỉnh aspiration nếu muốn rẽ hướng khác."
         />
       }
     >
@@ -42,7 +93,7 @@ export function CareerPathPage() {
         <EmptyState
           icon={<MdRoute className="text-4xl" aria-hidden="true" />}
           title="Cần CV để bắt đầu"
-          description="Hãy phân tích CV ở trang Analyze trước — chúng tôi sẽ dùng kết quả đó để dựng lộ trình tự nhiên cho bạn."
+          description="Hãy phân tích CV ở trang Analyze trước — chúng tôi sẽ dùng kết quả đó để đề xuất các hướng phát triển phù hợp."
           action={
             <Button asChild variant="primary">
               <Link href="/">Go to Analyze</Link>
@@ -51,29 +102,38 @@ export function CareerPathPage() {
         />
       ) : (
         <>
+          <PathSuggestionsBlock
+            suggestions={suggestions}
+            selected={selectedSuggestion}
+            isLoading={isSuggesting}
+            error={suggestError}
+            onSelect={selectSuggestion}
+            onRetry={fetchSuggestions}
+          />
+
           <Card padding="lg" className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
               <span className="text-label-md font-bold uppercase tracking-wide text-primary">
                 {result ? 'Lộ trình hiện tại' : 'Sẵn sàng dựng lộ trình'}
               </span>
               <p className="text-body-md text-on-surface-variant">
-                {result
-                  ? 'Bạn có thể tinh chỉnh aspiration bên dưới và Regenerate để có lộ trình theo hướng mong muốn.'
-                  : analysisResult
-                    ? `AI sẽ tham chiếu CV của bạn (${analysisResult.detectedRole ?? 'role đã phát hiện'}) và đề xuất lộ trình tự nhiên — không cần điền gì thêm.`
-                    : 'Click Generate để AI phân tích CV và đề xuất lộ trình sự nghiệp tự nhiên.'}
+                {selectedSuggestion
+                  ? `Sẽ dựng roadmap cho hướng "${selectedSuggestion}". Click Generate.`
+                  : result
+                    ? 'Bạn có thể chọn hướng khác ở trên hoặc tinh chỉnh aspiration và Regenerate.'
+                    : 'Chọn một hướng phía trên, hoặc click Generate để AI tự đề xuất lộ trình tự nhiên từ CV.'}
               </p>
             </div>
 
             <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
               <CareerPathActions />
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="md"
                 onClick={() => setShowAspiration((v) => !v)}
-                className="text-label-md font-medium text-on-tertiary-container hover:underline focus:outline-none focus-visible:ring-4 focus-visible:ring-on-tertiary-container/10 rounded"
               >
-                {showAspiration ? '− Ẩn tuỳ chỉnh aspiration' : '+ Tuỳ chỉnh aspiration (nếu muốn rẽ hướng khác)'}
-              </button>
+                {showAspiration ? 'Ẩn tuỳ chỉnh' : 'Tuỳ chỉnh aspiration'}
+              </Button>
             </div>
           </Card>
 

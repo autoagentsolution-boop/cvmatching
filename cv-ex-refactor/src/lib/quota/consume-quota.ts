@@ -19,9 +19,10 @@ export type QuotaKind = keyof typeof QUOTA_LIMITS;
 
 /**
  * Action type accepted by the resolver layer. Only QuotaKind actions are
- * counted; helpers like `extract-must-haves` pass through with no debit.
+ * counted; helpers like `extract-must-haves` and `career-path-suggest`
+ * pass through with no debit (rate-limited at the IP level instead).
  */
-export type QuotaAction = QuotaKind | 'extract-must-haves';
+export type QuotaAction = QuotaKind | 'extract-must-haves' | 'career-path-suggest';
 
 export interface QuotaResult {
   ok: boolean;

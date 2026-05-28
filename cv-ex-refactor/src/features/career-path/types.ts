@@ -100,6 +100,33 @@ export interface AspirationInputs {
   notes?: string;
 }
 
+export type PathTrajectory = 'specialist' | 'leadership' | 'pivot' | 'breadth';
+
+export const TRAJECTORY_LABELS: Record<PathTrajectory, string> = {
+  specialist: 'Deepen specialty',
+  leadership: 'Leadership track',
+  pivot: 'Adjacent pivot',
+  breadth: 'Broaden scope',
+};
+
+export interface PathSuggestion {
+  title: string;
+  rationale: string;
+  growthAreas: string[];
+  fitScore: number;
+  trajectory: PathTrajectory;
+}
+
+export interface SuggestPathsRequest {
+  llm: AnalyzeRequestLLM;
+  inputs: {
+    cvText: string;
+    analysisSummary?: string;
+    currentRole?: string;
+    language: Language;
+  };
+}
+
 export interface CareerPathRequest {
   llm: AnalyzeRequestLLM;
   inputs: {

@@ -118,10 +118,21 @@ export const CareerPathBody = z.object({
   }),
 });
 
+export const SuggestPathsBody = z.object({
+  llm: LlmConfig,
+  inputs: z.object({
+    cvText: z.string().min(50).max(MAX_TEXT),
+    analysisSummary: z.string().max(4_000).optional(),
+    currentRole: z.string().max(160).optional(),
+    language: LanguageEnum.default('auto'),
+  }),
+});
+
 export type AnalyzeBodyT = z.infer<typeof AnalyzeBody>;
 export type GenerateCvBodyT = z.infer<typeof GenerateCvBody>;
 export type ExtractMustHavesBodyT = z.infer<typeof ExtractMustHavesBody>;
 export type CareerPathBodyT = z.infer<typeof CareerPathBody>;
+export type SuggestPathsBodyT = z.infer<typeof SuggestPathsBody>;
 export type LlmConfigT = z.infer<typeof LlmConfig>;
 export type FocusAreaT = z.infer<typeof FocusAreaEnum>;
 export type HorizonYearsT = z.infer<typeof HorizonYearsEnum>;

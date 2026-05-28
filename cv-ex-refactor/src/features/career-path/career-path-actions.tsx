@@ -13,6 +13,7 @@ export function CareerPathActions() {
   const {
     isGenerating,
     result,
+    selectedSuggestion,
     getAspiration,
     setField,
   } = useCareerPath();
@@ -25,7 +26,6 @@ export function CareerPathActions() {
     setField('isGenerating', true);
 
     const aspiration = getAspiration();
-
     const llm: CareerPathRequest['llm'] = {
       provider,
       model,
@@ -56,22 +56,22 @@ export function CareerPathActions() {
     }
   }
 
+  // Label changes based on context: picking a suggestion vs. natural auto
+  const buttonLabel = result
+    ? 'Regenerate roadmap'
+    : selectedSuggestion
+      ? `Build roadmap → ${selectedSuggestion}`
+      : 'Generate roadmap from my CV';
+
   return (
-    <div className="flex flex-col items-end gap-2">
-      <Button
-        variant="primary"
-        size="lg"
-        onClick={handleGenerate}
-        disabled={!canGenerate}
-        loading={isGenerating}
-      >
-        {result ? 'Regenerate roadmap' : 'Generate roadmap'}
-      </Button>
-      {!hasCv && (
-        <span className="text-label-sm text-on-surface-variant">
-          Cần CV (≥ 50 ký tự) — hãy Analyze CV trước hoặc paste CV ở trang Analyze.
-        </span>
-      )}
-    </div>
+    <Button
+      variant="primary"
+      size="lg"
+      onClick={handleGenerate}
+      disabled={!canGenerate}
+      loading={isGenerating}
+    >
+      {buttonLabel}
+    </Button>
   );
 }
