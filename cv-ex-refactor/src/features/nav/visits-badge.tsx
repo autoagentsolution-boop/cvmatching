@@ -39,20 +39,27 @@ export function VisitsBadge() {
     };
   }, []);
 
-  if (!stats || stats.totalUnique === 0) return null;
+  if (!stats || stats.total === 0) return null;
+
+  // Prefer unique count when we have it; fall back to total page views.
+  // Some early visits (before the SADD-based dedup landed) are missing
+  // from the unique counter, so a 0 unique with non-zero total is
+  // genuine missing data, not "no users".
+  const primary = stats.totalUnique > 0 ? stats.totalUnique : stats.total;
+  const label = stats.totalUnique > 0 ? 'người dùng' : 'lượt xem';
 
   return (
     <div
       className="hidden items-center gap-2 rounded-full border border-outline-variant bg-surface-container-low px-3 py-1 text-label-sm text-on-surface-variant md:flex"
-      title={`Hôm nay: ${formatCount(stats.todayUnique)} unique / ${formatCount(stats.today)} lượt xem`}
+      title={`Hôm nay: ${formatCount(stats.todayUnique)} unique / ${formatCount(stats.today)} lượt xem · Tổng: ${formatCount(stats.totalUnique)} unique / ${formatCount(stats.total)} lượt xem`}
       aria-label="Visit stats"
     >
       <span className="material-symbols-outlined text-[16px] leading-none" aria-hidden="true">
         visibility
       </span>
       <span>
-        <span className="font-bold text-on-surface">{formatCount(stats.totalUnique)}</span>
-        <span className="opacity-60"> người dùng</span>
+        <span className="font-bold text-on-surface">{formatCount(primary)}</span>
+        <span className="opacity-60"> {label}</span>
       </span>
     </div>
   );

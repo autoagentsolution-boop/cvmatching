@@ -20,8 +20,9 @@ function dailyKey(day: string): string {
 function dailyUniqueKey(day: string): string {
   return `visits:d:${day}:unique`;
 }
-function ipSeenKey(ip: string, day: string): string {
-  return `visits:seen:${day}:${ip}`;
+/** Redis SET storing IPs seen today — SADD tells us if it's new. */
+function dailyIpSetKey(day: string): string {
+  return `visits:ipset:${day}`;
 }
 
 export async function recordVisit(ip: string): Promise<void> {
@@ -33,13 +34,18 @@ export async function recordVisit(ip: string): Promise<void> {
       kv.incr(dailyKey(day)).then((n) => (n === 1 ? kv.expire(dailyKey(day), secondsUntilVnMidnight() + 60) : null)),
     ]);
 
-    // Unique-visitor dedup — SETNX style; only count once per IP per day.
-    const seenKey = ipSeenKey(ip, day);
-    const wasNew = await kv.set(seenKey, '1', { ex: 86_400, nx: true });
-    if (wasNew) {
+    // Unique dedup via Redis SET. SADD returns the count of NEW members —
+    // 1 if this IP wasn't already in today's set, 0 if it was. Reliable
+    // across @vercel/kv (previous SETNX approach returned values we
+    // couldn't trust for the conditional).
+    const ipSetKey = dailyIpSetKey(day);
+    const added = await kv.sadd(ipSetKey, ip);
+    if (added && added > 0) {
       await Promise.all([
         kv.incr(TOTAL_UNIQUE_KEY),
         kv.incr(dailyUniqueKey(day)).then((n) => (n === 1 ? kv.expire(dailyUniqueKey(day), secondsUntilVnMidnight() + 60) : null)),
+        // Re-arm the IP set's TTL on first add of the day.
+        added === 1 ? kv.expire(ipSetKey, secondsUntilVnMidnight() + 60) : null,
       ]);
     }
   } catch {
