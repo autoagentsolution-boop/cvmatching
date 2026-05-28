@@ -26,11 +26,11 @@ export const tokens = {
     outlineVariant: '#c6c6cd',
     surfaceTint: '#565e74',
 
-    // Primary
-    primary: '#000000',
+    // Primary (softened from pure black to tertiary blue — keep in sync with globals.css)
+    primary: '#3980f4',
     onPrimary: '#ffffff',
-    primaryContainer: '#131b2e',
-    onPrimaryContainer: '#7c839b',
+    primaryContainer: '#dae2fd',
+    onPrimaryContainer: '#001a42',
     primaryFixed: '#dae2fd',
     primaryFixedDim: '#bec6e0',
     onPrimaryFixed: '#131b2e',

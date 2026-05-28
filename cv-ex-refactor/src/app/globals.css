@@ -36,10 +36,13 @@
   --color-outline: #76777d;
   --color-outline-variant: #c6c6cd;
   --color-surface-tint: #565e74;
-  --color-primary: #000000;
+  /* Brand primary — was pure black, softened to tertiary blue so the CTA
+     reads as an action color (not a heavy black box). All primary buttons,
+     section labels (text-primary), and accent borders update together. */
+  --color-primary: #3980f4;
   --color-on-primary: #ffffff;
-  --color-primary-container: #131b2e;
-  --color-on-primary-container: #7c839b;
+  --color-primary-container: #dae2fd;
+  --color-on-primary-container: #001a42;
   --color-primary-fixed: #dae2fd;
   --color-primary-fixed-dim: #bec6e0;
   --color-on-primary-fixed: #131b2e;

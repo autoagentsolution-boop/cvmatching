@@ -30,12 +30,11 @@ const variantClasses: Record<NonNullable<ButtonProps['variant']>, string> = {
     'bg-error text-on-error hover:opacity-90 active:scale-[0.98] focus-visible:ring-4 focus-visible:ring-error/20',
 };
 
-// Disabled keeps the primary identity via a light tinted background + dark
-// readable text. Uses *-fixed tokens (light bg, dark on-text) rather than
-// *-container (which in this theme inverts to dark navy + medium gray —
-// caused the button to render as a black box with invisible text).
+// Disabled: muted surface with primary-tinted text + border so the button
+// still reads as "primary action waiting to enable" without being mistaken
+// for the enabled state. Stronger contrast than gray-on-gray.
 const disabledVariantClasses: Record<NonNullable<ButtonProps['variant']>, string> = {
-  primary: 'bg-primary-fixed text-on-primary-fixed-variant border border-outline-variant',
+  primary: 'bg-surface-container-high text-primary/60 border border-primary/25',
   secondary: 'bg-surface-container-lowest text-on-surface-variant border border-outline-variant',
   ghost: 'bg-transparent text-on-surface-variant',
   destructive: 'bg-error-container text-on-error-container border border-error/20',
