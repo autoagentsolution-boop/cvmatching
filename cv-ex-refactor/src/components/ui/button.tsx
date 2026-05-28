@@ -30,15 +30,15 @@ const variantClasses: Record<NonNullable<ButtonProps['variant']>, string> = {
     'bg-error text-on-error hover:opacity-90 active:scale-[0.98] focus-visible:ring-4 focus-visible:ring-error/20',
 };
 
-// Disabled state keeps a clear visual tint per variant so the affordance
-// remains obvious — primary stays recognisably "the primary action, just
-// not clickable yet" via a softer container hue (Material 3 pattern),
-// instead of gray-on-gray which buries the CTA entirely.
+// Disabled keeps the primary identity via a light tinted background + dark
+// readable text. Uses *-fixed tokens (light bg, dark on-text) rather than
+// *-container (which in this theme inverts to dark navy + medium gray —
+// caused the button to render as a black box with invisible text).
 const disabledVariantClasses: Record<NonNullable<ButtonProps['variant']>, string> = {
-  primary: 'bg-primary-container text-on-primary-container/70 border border-primary/15',
+  primary: 'bg-primary-fixed text-on-primary-fixed-variant border border-outline-variant',
   secondary: 'bg-surface-container-lowest text-on-surface-variant border border-outline-variant',
   ghost: 'bg-transparent text-on-surface-variant',
-  destructive: 'bg-error-container text-on-error-container/70 border border-error/15',
+  destructive: 'bg-error-container text-on-error-container border border-error/20',
 };
 
 const sizeClasses: Record<NonNullable<ButtonProps['size']>, string> = {
