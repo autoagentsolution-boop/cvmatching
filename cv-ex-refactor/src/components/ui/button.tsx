@@ -30,13 +30,15 @@ const variantClasses: Record<NonNullable<ButtonProps['variant']>, string> = {
     'bg-error text-on-error hover:opacity-90 active:scale-[0.98] focus-visible:ring-4 focus-visible:ring-error/20',
 };
 
-// Distinct disabled treatment per variant — keeps text readable instead of
-// applying blanket opacity-50 which makes primary buttons unreadable.
+// Disabled state keeps a clear visual tint per variant so the affordance
+// remains obvious — primary stays recognisably "the primary action, just
+// not clickable yet" via a softer container hue (Material 3 pattern),
+// instead of gray-on-gray which buries the CTA entirely.
 const disabledVariantClasses: Record<NonNullable<ButtonProps['variant']>, string> = {
-  primary: 'bg-surface-container-high text-on-surface-variant',
+  primary: 'bg-primary-container text-on-primary-container/70 border border-primary/15',
   secondary: 'bg-surface-container-lowest text-on-surface-variant border border-outline-variant',
   ghost: 'bg-transparent text-on-surface-variant',
-  destructive: 'bg-surface-container-high text-on-surface-variant',
+  destructive: 'bg-error-container text-on-error-container/70 border border-error/15',
 };
 
 const sizeClasses: Record<NonNullable<ButtonProps['size']>, string> = {
