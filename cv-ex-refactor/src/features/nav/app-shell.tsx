@@ -6,6 +6,7 @@ import type { Session } from 'next-auth';
 import { DashboardLayout } from '@/components/layouts';
 import type { ActiveNav } from '@/components/layouts/dashboard-sidebar';
 import { UserMenu } from './user-menu';
+import { VisitsBadge } from './visits-badge';
 import { SettingsDrawerTrigger } from '@/features/analyze/settings-drawer-trigger';
 
 interface AppShellProps {
@@ -30,6 +31,7 @@ export function AppShell({ session, children }: AppShellProps) {
       activeNav={activeNav}
       topnavActions={
         <>
+          <VisitsBadge />
           <SettingsDrawerTrigger isAuthed={isAuthed} />
           <UserMenu user={session?.user ?? null} />
         </>

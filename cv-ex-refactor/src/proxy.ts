@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { recordVisit } from '@/lib/analytics/visit-counter';
 
 /**
  * CSP with per-request nonce + strict-dynamic. Defense-in-depth against XSS,
@@ -51,6 +52,15 @@ export function proxy(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-nonce', nonce);
   requestHeaders.set(headerName, csp);
+
+  // Fire-and-forget visit counter — matcher below already excludes /api,
+  // /_next, favicon and prefetch requests, so this only fires for real
+  // page navigations. Failures are swallowed inside recordVisit.
+  const ip =
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+    request.headers.get('x-real-ip')?.trim() ??
+    'unknown';
+  void recordVisit(ip);
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set(headerName, csp);
