@@ -1,6 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import type { AnalysisResult, Language, RoleFamily, Strictness, Weights } from './types';
 
 interface AnalysisState {
@@ -61,8 +62,35 @@ const initial: Omit<AnalysisState, 'setField' | 'reset'> = {
   error: null,
 };
 
-export const useAnalysis = create<AnalysisState>((set) => ({
-  ...initial,
-  setField: (k, v) => set({ [k]: v } as Partial<AnalysisState>),
-  reset: () => set(initial),
-}));
+// Persisted to sessionStorage (not localStorage) on purpose:
+// - Survives F5 + cross-tab nav within same tab
+// - Clears when the tab closes → CV text does not linger for the next user on
+//   a shared device. Matches the project's privacy-first stance.
+// Transient flags (isAnalyzing, isGeneratingCv, errors) are excluded — they
+// should never be restored across reloads.
+export const useAnalysis = create<AnalysisState>()(
+  persist(
+    (set) => ({
+      ...initial,
+      setField: (k, v) => set({ [k]: v } as Partial<AnalysisState>),
+      reset: () => set(initial),
+    }),
+    {
+      name: 'cv-ex-analysis-v1',
+      storage: createJSONStorage(() => sessionStorage),
+      partialize: (s) => ({
+        jdText: s.jdText,
+        jdUrl: s.jdUrl,
+        cvText: s.cvText,
+        profileText: s.profileText,
+        targetRole: s.targetRole,
+        strictness: s.strictness,
+        language: s.language,
+        weights: s.weights,
+        mustHaves: s.mustHaves,
+        result: s.result,
+        matchedCv: s.matchedCv,
+      }),
+    },
+  ),
+);

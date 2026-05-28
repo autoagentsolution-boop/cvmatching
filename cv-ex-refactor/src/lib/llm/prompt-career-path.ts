@@ -72,10 +72,21 @@ export function buildCareerPathPrompts(body: CareerPathBodyT): BuiltCareerPrompt
 
   const focusLabels = aspiration.focusAreas.length
     ? aspiration.focusAreas.map((k) => `- ${FOCUS_AREA_LABELS[k]}`).join('\n')
-    : '- (no focus areas selected — infer from notes / target role)';
+    : '- (none provided — infer the most natural focus from CV trajectory)';
 
   const milestoneCount =
     aspiration.horizonYears === 1 ? '3-4' : aspiration.horizonYears === 3 ? '4-5' : '5-6';
+
+  const isNaturalMode =
+    (!aspiration.targetRole || aspiration.targetRole === 'auto') &&
+    aspiration.focusAreas.length === 0 &&
+    !aspiration.industryShift &&
+    !aspiration.constraints &&
+    !aspiration.notes;
+
+  const modeInstr = isNaturalMode
+    ? 'NATURAL PROGRESSION MODE: The user has NOT specified a target — they want the most natural next-step roadmap based on their CV trajectory. Read the CV carefully, infer the strongest direction (continued specialization vs. leadership vs. adjacent pivot) given seniority + signature work, and build the roadmap toward that direction. Set feasibility.realistic=true (this is the realistic path by definition).'
+    : 'TARGETED MODE: The user has stated an aspiration. Build the roadmap toward THAT goal. Judge feasibility honestly.';
 
   const system =
     'You are a senior career coach and former technical hiring manager. ' +
@@ -99,6 +110,8 @@ ${aspiration.constraints ? `Constraints: ${aspiration.constraints}` : ''}
 ${aspiration.notes ? `Notes: ${aspiration.notes}` : ''}
 
 === INSTRUCTIONS ===
+${modeInstr}
+
 1. Read the CV carefully and extract real strengths + signature projects for currentSnapshot.
 2. Judge feasibility FIRST. If the aspiration is achievable within the horizon given CV evidence, set feasibility.realistic=true with empty reasons + empty gentleAdvice. If the aspiration would need an unreasonable leap (e.g. junior → CTO of FAANG in 1 year, switching to a regulated field without any prerequisite, target requiring skills the candidate cannot plausibly build in time), set feasibility.realistic=false and:
    - reasons: 1-3 short, specific gaps (cite CV evidence, no jargon)
