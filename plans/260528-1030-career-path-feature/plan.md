@@ -90,10 +90,18 @@ Errors: same code taxonomy as /api/analyze (invalid_input, quota_exceeded, llm_p
 - [x] API route + quota wiring
 - [x] Client store + api-client
 - [x] Page + blocks
-- [x] Compile + smoke test (tsc clean, `next build` green, route registered)
-- [ ] Update memory snapshot + commit (pending user approval)
+- [x] Compile + smoke test
+- [x] Ship to production (auto-deploy via git push working)
+- [x] Feasibility check + gentle unrealistic UX (commit 80be8bd)
+- [x] Path suggestions (3-5 cards) before roadmap (commit d3059d9)
+- [x] Token budget buff (per-call maxOutputTokens)
+- [x] Update changelog (`docs/project-changelog.md`)
 
-## Doc debt (deferred, non-blocking)
+## Status: DONE — shipped 2026-05-28
 
-- `src/lib/usage/read-usage.ts` admin aggregation does not yet include `career-path` keys → admin dashboard underreports career-path KV counters. Adding fields would change `UserUsageRow`/`DailyGlobalRow` shape and the admin table; ship separately.
-- `docs/deployment.md` does not list the new quota bucket — update before next deploy doc revision.
+Final deploy: commit `396c37a` on main. Pilot URL `resume-refactor.vercel.app/career-path`.
+
+## Doc debt (deferred to next iteration)
+
+- `src/lib/usage/read-usage.ts` admin aggregation missing `career-path` + `career-path-suggest` keys → admin dashboard underreports. Counters write OK.
+- `docs/deployment.md` needs entries for new quota buckets (`career-path`) + visit-counter KV keys.
