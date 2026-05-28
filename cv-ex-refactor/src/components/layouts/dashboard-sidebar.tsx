@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 
@@ -27,9 +28,9 @@ function NavLink({
   onClick?: (() => void) | undefined;
 }) {
   return (
-    <a
+    <Link
       href={item.href}
-      onClick={onClick}
+      {...(onClick ? { onClick } : {})}
       className={cn(
         'flex items-center gap-3 rounded-lg px-4 py-3 text-label-md font-medium transition-colors duration-150 active:translate-x-0.5',
         active
@@ -41,7 +42,7 @@ function NavLink({
         {item.icon}
       </span>
       {item.label}
-    </a>
+    </Link>
   );
 }
 
@@ -106,14 +107,14 @@ export function DashboardSidebar({ activeNav, onNavClick }: DashboardSidebarProp
       <ProCtaCard />
 
       <div className="border-t border-outline-variant px-3 py-4">
-        <a
+        <Link
           href="/help"
           className="flex items-center gap-3 rounded-lg px-4 py-3 text-label-md text-on-surface-variant transition-colors hover:bg-surface-container-high"
         >
           <span className="material-symbols-outlined text-[20px]" aria-hidden="true">help</span>
           Help
-        </a>
-        <a
+        </Link>
+        <Link
           href="/privacy"
           className="flex items-center gap-3 rounded-lg px-4 py-3 text-label-md text-on-surface-variant transition-colors hover:bg-surface-container-high"
         >
@@ -121,7 +122,8 @@ export function DashboardSidebar({ activeNav, onNavClick }: DashboardSidebarProp
             privacy_tip
           </span>
           Privacy
-        </a>
+        </Link>
+        {/* Logout posts to NextAuth signout endpoint — keep as <a> so it's a real navigation/POST, not client-side route */}
         <a
           href="/api/auth/signout"
           className="flex items-center gap-3 rounded-lg px-4 py-3 text-label-md text-on-surface-variant transition-colors hover:bg-surface-container-high"
