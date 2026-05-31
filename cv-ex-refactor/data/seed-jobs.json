@@ -1,0 +1,102 @@
+[
+  {
+    "_stub": "STUB - replace with real posting before deploy",
+    "title": "Senior Backend Engineer (Go)",
+    "company": "VNG Corporation",
+    "description": "Join the infrastructure team powering ZaloPay and Zalo platform at VNG. You will design and maintain high-throughput payment and messaging services written in Go, operating at millions of transactions per day. Responsibilities include building gRPC microservices, optimizing PostgreSQL and Redis data layers, contributing to internal service-mesh tooling, and participating in on-call rotations. The team follows an SRE discipline with error budgets and blameless post-mortems. Strong knowledge of distributed systems, concurrency patterns, and observability tooling (Prometheus, Jaeger) is required. Experience with Kafka event streaming is a strong plus.",
+    "sourceUrl": "https://itviec.com/it-jobs/senior-backend-engineer-go-vng-corporation-319847",
+    "source": "itviec",
+    "location": "Hồ Chí Minh",
+    "postedAt": "2026-05-15"
+  },
+  {
+    "_stub": "STUB - replace with real posting before deploy",
+    "title": "Senior Frontend Engineer (React)",
+    "company": "FPT Software",
+    "description": "FPT Software is looking for a Senior Frontend Engineer to lead UI development on a large-scale enterprise SaaS platform delivered to Japanese clients. You will architect component libraries using React 18 and TypeScript, define coding standards, mentor junior engineers, and collaborate closely with UX designers and backend teams across Vietnam and Japan. Key expectations include mastery of state management (Zustand or Redux Toolkit), accessibility compliance (WCAG 2.1), performance profiling, and CI/CD integration with GitHub Actions. Experience with micro-frontend architecture or Module Federation is advantageous.",
+    "sourceUrl": "https://itviec.com/it-jobs/senior-frontend-engineer-react-fpt-software-402715",
+    "source": "itviec",
+    "location": "Hà Nội",
+    "postedAt": "2026-05-18"
+  },
+  {
+    "_stub": "STUB - replace with real posting before deploy",
+    "title": "Mid-level QA Engineer (Automation)",
+    "company": "KMS Technology",
+    "description": "KMS Technology is hiring a Mid-level QA Automation Engineer to strengthen the quality pipeline for a US-based healthcare software product. You will write and maintain end-to-end test suites using Playwright and Java-based Selenium, integrate tests into Jenkins CI, and drive shift-left quality practices with the product team. Daily responsibilities include test planning, defect triage, API testing with Postman and RestAssured, and weekly status reporting to offshore clients. Familiarity with HIPAA-compliant software environments and agile ceremonies is expected. ISTQB Foundation certification is a plus.",
+    "sourceUrl": "https://www.topcv.vn/viec-lam/mid-level-qa-engineer-automation-kms-technology",
+    "source": "topcv",
+    "location": "Hồ Chí Minh",
+    "postedAt": "2026-05-20"
+  },
+  {
+    "_stub": "STUB - replace with real posting before deploy",
+    "title": "Senior Digital Marketing Manager",
+    "company": "Shopee Vietnam",
+    "description": "Shopee Vietnam seeks a Senior Digital Marketing Manager to own performance marketing across Search, Display, and Social channels for the Vietnamese market. You will manage seven-figure monthly ad budgets on Google Ads and Meta, build attribution models, run A/B tests on landing pages, and work with the data team to deliver weekly ROAS dashboards to leadership. Cross-functional collaboration with Product, Creative, and Seller Growth teams is central to the role. Candidates must have at least five years of e-commerce performance marketing experience and demonstrated skill with GA4, Looker Studio, and SQL for self-serve analytics.",
+    "sourceUrl": "https://itviec.com/it-jobs/senior-digital-marketing-manager-shopee-vietnam-389201",
+    "source": "itviec",
+    "location": "Hồ Chí Minh",
+    "postedAt": "2026-05-14"
+  },
+  {
+    "_stub": "STUB - replace with real posting before deploy",
+    "title": "Brand Marketing Executive",
+    "company": "Lazada Vietnam",
+    "description": "Lazada Vietnam is looking for a Brand Marketing Executive to support integrated campaign planning and execution for key brand partners. Responsibilities include briefing creative agencies, coordinating livestream events on LazLive, tracking campaign KPIs (reach, engagement, GMV uplift), and compiling post-campaign reports. You will liaise with brand managers, in-house designers, and the regional marketing team in Singapore. The ideal candidate has two to three years of brand or agency experience, strong project management skills, and proficiency with social media analytics tools. Fluency in Vietnamese and working-level English is required.",
+    "sourceUrl": "https://www.topcv.vn/viec-lam/brand-marketing-executive-lazada-vietnam",
+    "source": "topcv",
+    "location": "Hồ Chí Minh",
+    "postedAt": "2026-05-17"
+  },
+  {
+    "_stub": "STUB - replace with real posting before deploy",
+    "title": "Content Marketing Specialist (Nutrition)",
+    "company": "Vinamilk",
+    "description": "Vinamilk is seeking a Content Marketing Specialist to develop and manage multi-channel content strategies for the dairy and nutrition product lines. You will produce editorial calendars, write long-form articles optimized for SEO, script short-form videos for TikTok and YouTube, and coordinate with external KOLs. Performance targets include organic traffic growth, engagement rate benchmarks, and share-of-voice metrics reported monthly. The role requires knowledge of the Vietnamese FMCG landscape, strong copywriting skills in Vietnamese, basic graphic editing ability (Canva or Photoshop), and familiarity with HubSpot or similar CMS platforms.",
+    "sourceUrl": "https://vietnamworks.com/content-marketing-specialist-nutrition-vinamilk-1958473-jv",
+    "source": "vnw",
+    "location": "Hồ Chí Minh",
+    "postedAt": "2026-05-16"
+  },
+  {
+    "_stub": "STUB - replace with real posting before deploy",
+    "title": "Senior Relationship Manager – Corporate Banking",
+    "company": "Techcombank",
+    "description": "Techcombank Corporate Banking division is recruiting a Senior Relationship Manager to manage and grow a portfolio of mid-market and large-cap corporate clients in the manufacturing and real-estate sectors. Core duties include structuring credit facilities, cross-selling treasury and cash-management products, conducting financial statement analysis, and coordinating with credit risk and legal teams for deal execution. You will be expected to achieve quarterly NIM and fee-income targets. Requirements: minimum six years of corporate banking or credit experience, CFA or ACCA qualification preferred, strong negotiation skills, and proficiency in financial modelling.",
+    "sourceUrl": "https://itviec.com/it-jobs/senior-relationship-manager-corporate-banking-techcombank-477023",
+    "source": "itviec",
+    "location": "Hà Nội",
+    "postedAt": "2026-05-12"
+  },
+  {
+    "_stub": "STUB - replace with real posting before deploy",
+    "title": "Credit Risk Analyst",
+    "company": "VPBank",
+    "description": "VPBank Risk Management is hiring a Credit Risk Analyst to support the retail and SME lending portfolios. You will build and validate scorecard models using logistic regression and gradient boosting, monitor portfolio quality indicators (NPL, DPD buckets), prepare monthly risk reports for the Credit Committee, and assist with IFRS 9 ECL calculations. Experience with Python or R for data wrangling and statistical modelling is essential. Knowledge of the State Bank of Vietnam regulatory framework (Circular 11, 39) is a significant advantage. Candidates with two to four years of banking risk or analytics experience are encouraged to apply.",
+    "sourceUrl": "https://vietnamworks.com/credit-risk-analyst-vpbank-2041887-jv",
+    "source": "vnw",
+    "location": "Hà Nội",
+    "postedAt": "2026-05-19"
+  },
+  {
+    "_stub": "STUB - replace with real posting before deploy",
+    "title": "Territory Sales Manager",
+    "company": "Grab Vietnam",
+    "description": "Grab Vietnam is looking for a Territory Sales Manager to drive merchant acquisition and retention for GrabFood and GrabMart across assigned districts in Ho Chi Minh City. You will lead a team of three to five field sales executives, set weekly activity targets, coach on consultative selling techniques, and report pipeline progress in Salesforce. The role involves direct negotiation with restaurant owners and supermarket chains, coordinating promotional campaigns with the marketing team, and resolving merchant escalations. Candidates should have at least three years of field sales management experience in F&B, FMCG, or tech platform verticals.",
+    "sourceUrl": "https://itviec.com/it-jobs/territory-sales-manager-grab-vietnam-501234",
+    "source": "itviec",
+    "location": "Hồ Chí Minh",
+    "postedAt": "2026-05-21"
+  },
+  {
+    "_stub": "STUB - replace with real posting before deploy",
+    "title": "Operations Coordinator – Ride-Hailing",
+    "company": "Be Vietnam",
+    "description": "Be Vietnam is hiring an Operations Coordinator to support daily service operations for the beBike and beCar ride-hailing verticals. Responsibilities include monitoring real-time supply-demand dashboards, coordinating driver incentive campaigns with the growth team, handling escalated customer and driver complaints, and preparing weekly operational KPI summaries for the Head of Operations. You will also contribute to SOP documentation and pilot new city-level initiatives. The ideal candidate is detail-oriented, comfortable with data tools (Excel, SQL basics), and can work rotating weekend shifts. One to two years of operations or logistics coordination experience is preferred.",
+    "sourceUrl": "https://www.topcv.vn/viec-lam/operations-coordinator-ride-hailing-be-vietnam",
+    "source": "topcv",
+    "location": "Hồ Chí Minh",
+    "postedAt": "2026-05-13"
+  }
+]

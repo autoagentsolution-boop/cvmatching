@@ -43,3 +43,6 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# ingest CLI runtime artifact — not committed
+data/ingest-progress.json
