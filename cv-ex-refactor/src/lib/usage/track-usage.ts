@@ -7,7 +7,8 @@ export type UsageAction =
   | 'generate-cv'
   | 'extract-must-haves'
   | 'career-path'
-  | 'career-path-suggest';
+  | 'career-path-suggest'
+  | 'job-recommend';
 export type UsageStatus = 'ok' | 'error';
 
 export interface TrackUsageInput {

@@ -58,6 +58,26 @@ export async function isActiveJob(id: string): Promise<boolean> {
   return result === 1;
 }
 
+/**
+ * Batch-fetch jobs by id. Returns only jobs that exist in KV (missing ids are silently skipped).
+ * Uses sequential hgetall calls — Upstash REST does not support pipelining HGETALL.
+ */
+export async function getJobBatch(ids: string[]): Promise<Job[]> {
+  assertKv();
+  if (ids.length === 0) return [];
+
+  const results = await Promise.all(
+    ids.map((id) =>
+      kv
+        .hgetall<Record<string, string>>(`job:${id}`)
+        .then((raw) => (raw ? (raw as unknown as Job) : null))
+        .catch(() => null),
+    ),
+  );
+
+  return results.filter((j): j is Job => j !== null);
+}
+
 // ── Embedding blob version management ──────────────────────────────────────
 
 export async function getActiveBlobVersion(): Promise<string | null> {
