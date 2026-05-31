@@ -210,3 +210,46 @@ If something stops working post-CSP-enforce:
 ### Quota / KV writes silently no-op
 
 Check `KV_REST_API_URL` + `KV_REST_API_TOKEN` are set on the deployed environment (not just Preview). The quota/usage/vault layers all fail-open when KV is missing — analytics + protection disappear silently.
+
+---
+
+## 12. Refresh cron rate-limit rules (v0.3 Job Fit)
+
+The seed-job refresh cron (`/api/cron/refresh-jobs`) fetches live job listings from external sources. These rules prevent bot-detection blocks and stay within Vercel Pro's 300s function timeout.
+
+### Outbound request constraints
+
+| Rule | Value | Rationale |
+|---|---|---|
+| User-Agent header | `ResumeRefineRefreshBot/1.0` | Required on every outbound HEAD/GET; identifies the crawler to source sites |
+| Minimum delay between requests | ≥ 2000 ms | Avoid rate-limit triggering on source sites |
+| Jitter per delay | ± 500 ms random | Prevents burst pattern detection |
+| Hard deadline break | 270 s elapsed | Leaves 30 s buffer before Vercel Pro's 300 s function timeout |
+| Cursor resume | Store last-processed index in KV (`cron:cursor:<source>`) | Allows next run to continue from where timeout cut off |
+
+### Implementation notes (Phase 4)
+
+```ts
+// Pseudocode — actual implementation lands in Phase 4 src/lib/jobs/refresh-runner.ts
+const UA = 'ResumeRefineRefreshBot/1.0';
+const MIN_DELAY_MS = 2000;
+const JITTER_MS = 500;
+const DEADLINE_SEC = 270;
+
+for (const job of pendingJobs) {
+  if (elapsedSec() >= DEADLINE_SEC) { await saveCursor(job.id); break; }
+  await fetch(job.url, { headers: { 'User-Agent': UA } });
+  await sleep(MIN_DELAY_MS + Math.random() * JITTER_MS * 2 - JITTER_MS);
+}
+```
+
+### Kill-switch override runbook
+
+If the cost guard (`lib/cost/guard.ts`) sets `kill-switch:<bucket>` and blocks the cron or endpoint, a human operator must manually clear it:
+
+```bash
+# Using Vercel KV CLI (or Upstash console → CLI tab)
+kv.del('kill-switch:job-recommend')
+```
+
+After clearing, the next request proceeds normally. The flag auto-expires in 24h if not manually cleared — but cost will re-trigger it if spend remains above $3/day. Fix the root cause (bad model call loop, abuse) before clearing.

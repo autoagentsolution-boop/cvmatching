@@ -14,7 +14,7 @@ export interface QuotaStatus {
   kinds: Record<QuotaKind, KindStatus>;
 }
 
-const KIND_LIST: QuotaKind[] = ['analyze', 'generate-cv', 'career-path'];
+const KIND_LIST: QuotaKind[] = ['analyze', 'generate-cv', 'career-path', 'job-recommend'];
 
 function defaultKindStatus(limit: number): KindStatus {
   return { used: 0, limit, remaining: limit };
@@ -52,6 +52,7 @@ function emptyStatus(limits: Record<QuotaKind, number>): QuotaStatus {
       analyze: defaultKindStatus(limits.analyze),
       'generate-cv': defaultKindStatus(limits['generate-cv']),
       'career-path': defaultKindStatus(limits['career-path']),
+      'job-recommend': defaultKindStatus(limits['job-recommend']),
     },
   };
 }

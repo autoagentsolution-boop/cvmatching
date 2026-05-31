@@ -22,6 +22,9 @@ const serverSchema = z.object({
   ALERT_WEBHOOK_URL: z.string().url().optional(),
   ALERT_SHARED_DAILY_CALLS: z.string().optional(),
   ALERT_SHARED_DAILY_COST_USD: z.string().optional(),
+  // v0.3 Phase 2: HMAC key for KV embed cache keys. Required in prod; optional in dev.
+  // Runtime call sites in Phase 2+ will fail closed (503) if absent.
+  EMBED_CACHE_SECRET: z.string().min(32).optional(),
 });
 
 export const env = serverSchema.parse(process.env);

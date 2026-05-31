@@ -5,6 +5,7 @@ export const QUOTA_LIMITS = {
   analyze: 5,
   'generate-cv': 2,
   'career-path': 3,
+  'job-recommend': 12,
 } as const;
 
 // Anonymous (no login) pilot users share a stricter daily limit per IP, so a
@@ -13,6 +14,7 @@ export const ANON_QUOTA_LIMITS = {
   analyze: 3,
   'generate-cv': 1,
   'career-path': 2,
+  'job-recommend': 5,
 } as const;
 
 export type QuotaKind = keyof typeof QUOTA_LIMITS;
@@ -34,7 +36,12 @@ export interface QuotaResult {
 }
 
 function isQuotaKind(action: QuotaAction): action is QuotaKind {
-  return action === 'analyze' || action === 'generate-cv' || action === 'career-path';
+  return (
+    action === 'analyze' ||
+    action === 'generate-cv' ||
+    action === 'career-path' ||
+    action === 'job-recommend'
+  );
 }
 
 function userQuotaKey(userId: string, kind: QuotaKind, day: string): string {

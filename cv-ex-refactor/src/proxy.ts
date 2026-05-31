@@ -68,6 +68,8 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
+  // v0.3: /api/jobs, /api/topics, /api/r are already excluded by the /api
+  // wildcard in the regex below — visit counter does not fire on job-fit traffic.
   matcher: [
     {
       source: '/((?!api|_next/static|_next/image|favicon.ico).*)',
