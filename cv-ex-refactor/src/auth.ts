@@ -16,6 +16,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Google({
       clientId: env.GOOGLE_CLIENT_ID ?? '',
       clientSecret: env.GOOGLE_CLIENT_SECRET ?? '',
+      // Always show Google account picker — prevents silent re-use of the
+      // browser's active Google session when user wants to switch accounts.
+      authorization: { params: { prompt: 'select_account' } },
     }),
   ],
   session: { strategy: 'jwt' },
