@@ -32,7 +32,7 @@ function readCvText(): string | null {
  * burned shared-key budget.
  */
 export function JobFitListPage() {
-  const { jobs, status, error, generate, quotaRemaining } = useJobFit();
+  const { jobs, status, generate, quotaRemaining } = useJobFit();
   const cacheValid = isCacheValid(useJobFit.getState());
 
   const cvText = readCvText();
@@ -100,7 +100,7 @@ export function JobFitListPage() {
       {status === 'error' && !cacheValid && (
         <ErrorState
           title="Đề xuất job thất bại"
-          description={error ?? 'Đã xảy ra lỗi. Vui lòng thử lại.'}
+          description="Hệ thống đang gặp sự cố. Vui lòng thử lại sau."
           {...(hasCv ? { retry: handleFetch } : {})}
         />
       )}
