@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
   const resolved = await resolveApiKey(llmConfig, 'job-recommend', { byokToken, ip });
   if (!resolved.ok) return err(resolved.code, resolved.message, resolved.status);
 
-  if (!resolved.byok) {
+  if (!resolved.byok && !resolved.isAdmin) {
     const killCheck = await checkKillSwitch('job-recommend');
     if (!killCheck.ok) {
       return err(
@@ -176,7 +176,7 @@ export async function POST(req: NextRequest) {
     let candidates: Array<{ id: string; score: number }>;
     const topkStart = Date.now();
     try {
-      candidates = await topKCandidates(cvEmbedding, 20);
+      candidates = await topKCandidates(cvEmbedding, 10);
     } catch (e) {
       if (e instanceof JobIndexNotReadyError) {
         return err('service_unavailable', 'Job index chưa sẵn sàng. Pool jobs trống — admin cần ingest trước.', 503);

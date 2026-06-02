@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     return err(resolved.code, resolved.message, resolved.status);
   }
 
-  if (!resolved.byok) {
+  if (!resolved.byok && !resolved.isAdmin) {
     const killCheck = await checkKillSwitch('generate-cv');
     if (!killCheck.ok) {
       return err(

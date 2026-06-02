@@ -36,9 +36,10 @@ export async function POST(req: NextRequest) {
     return err(resolved.code, resolved.message, resolved.status);
   }
 
-  // Cost kill-switch only applies to shared-key callers. BYOK users bring their own
-  // billing and are not subject to the platform-wide kill-switch.
-  if (!resolved.byok) {
+  // Cost kill-switch only applies to non-admin shared-key callers. BYOK users
+  // bring their own billing, and admins need an always-on path to test the
+  // platform regardless of the kill-switch state during pilot.
+  if (!resolved.byok && !resolved.isAdmin) {
     const killCheck = await checkKillSwitch('analyze');
     if (!killCheck.ok) {
       return err(

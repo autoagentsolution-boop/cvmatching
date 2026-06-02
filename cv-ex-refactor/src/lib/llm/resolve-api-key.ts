@@ -10,7 +10,14 @@ import { getKey as getVaultKey } from '@/lib/byok-vault/store';
 import { isAdminUser } from '@/lib/usage/admin-auth';
 
 export type KeyResolution =
-  | { ok: true; apiKey: string; byok: boolean; quotaRemaining: number | null; userId?: string }
+  | {
+      ok: true;
+      apiKey: string;
+      byok: boolean;
+      isAdmin: boolean;
+      quotaRemaining: number | null;
+      userId?: string;
+    }
   | { ok: false; status: number; code: string; message: string };
 
 export interface ResolveContext {
@@ -23,11 +30,17 @@ export async function resolveApiKey(
   action: QuotaAction,
   ctx: ResolveContext = {},
 ): Promise<KeyResolution> {
+  // Resolve session up front so the admin bypass works regardless of which
+  // path (BYOK or shared) the caller takes.
+  const session = await auth().catch(() => null);
+  const userId = session?.user?.id;
+  const isAdmin = isAdminUser(session?.user);
+
   // 1) BYOK via vault cookie — opaque token → KV → decrypt
   if (ctx.byokToken) {
     const byokKey = await getVaultKey(ctx.byokToken);
     if (byokKey) {
-      return { ok: true, apiKey: byokKey, byok: true, quotaRemaining: null };
+      return { ok: true, apiKey: byokKey, byok: true, isAdmin, quotaRemaining: null };
     }
     // Token present but invalid/expired — fall through to shared path so the
     // user still works during pilot rather than getting a hard error.
@@ -36,9 +49,6 @@ export async function resolveApiKey(
   // 2) Shared key — only available to signed-in users. Guests must use BYOK.
   // Policy decision 2026-06-02: anonymous shared-key access removed to prevent
   // free-tier budget drain by visitors; guests are directed to login or BYOK.
-  const session = await auth().catch(() => null);
-  const userId = session?.user?.id;
-  const isAdmin = isAdminUser(session?.user);
 
   if (env.DISABLE_SHARED_KEY === '1' && !isAdmin) {
     return {
@@ -90,6 +100,7 @@ export async function resolveApiKey(
     ok: true,
     apiKey: shared,
     byok: false,
+    isAdmin,
     quotaRemaining: quotaResult.remaining,
   };
   if (userId) result.userId = userId;
