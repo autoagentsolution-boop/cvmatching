@@ -46,3 +46,6 @@ next-env.d.ts
 
 # ingest CLI runtime artifact — not committed
 data/ingest-progress.json
+
+# scraped job snapshots — large, regenerable; KV is the source of truth
+data/scraped-*.json
