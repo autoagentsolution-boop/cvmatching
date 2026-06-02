@@ -123,14 +123,21 @@ export async function loadBlobChunks(
 ): Promise<{ ids: string[]; chunks: Buffer[] }> {
   assertKv();
 
-  const countRaw = await kv.get<string>(`embeddings:active:${version}:chunks`);
-  if (!countRaw) throw new Error(`No blob found for version ${version}`);
+  // Upstash REST auto-parses JSON-stringified values on get(), so values written via
+  // `String(n)` / `JSON.stringify(arr)` come back as number/array — not the typed string.
+  const countRaw = await kv.get<unknown>(`embeddings:active:${version}:chunks`);
+  if (countRaw === null || countRaw === undefined) {
+    throw new Error(`No blob found for version ${version}`);
+  }
+  const count = typeof countRaw === 'number' ? countRaw : parseInt(String(countRaw), 10);
 
-  const count = parseInt(countRaw, 10);
-  const idsRaw = await kv.get<string>(`embeddings:active:${version}:ids`);
-  if (!idsRaw) throw new Error(`Missing ids key for version ${version}`);
-
-  const ids: string[] = JSON.parse(idsRaw) as string[];
+  const idsRaw = await kv.get<unknown>(`embeddings:active:${version}:ids`);
+  if (idsRaw === null || idsRaw === undefined) {
+    throw new Error(`Missing ids key for version ${version}`);
+  }
+  const ids: string[] = Array.isArray(idsRaw)
+    ? (idsRaw as string[])
+    : (JSON.parse(String(idsRaw)) as string[]);
 
   const chunks: Buffer[] = [];
   for (let i = 0; i < count; i++) {
