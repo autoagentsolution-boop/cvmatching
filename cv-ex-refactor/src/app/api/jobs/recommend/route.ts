@@ -210,9 +210,11 @@ export async function POST(req: NextRequest) {
     let parsedRaw: unknown;
     let promptTokens: number | undefined;
     let completionTokens: number | undefined;
+    let finishReason: string | undefined;
+    let llmAttempts = 0;
 
     try {
-      ({ raw, parsedRaw, promptTokens, completionTokens } = await callRecommendLlm(
+      ({ raw, parsedRaw, promptTokens, completionTokens, finishReason, attempts: llmAttempts } = await callRecommendLlm(
         llmConfig, resolved.apiKey, system, user, deadlineController.signal,
       ));
     } catch (e) {
@@ -245,17 +247,31 @@ export async function POST(req: NextRequest) {
     stageTimings.llm = Date.now() - start;
 
     if (!parsedRaw) {
+      const truncated = finishReason === 'MAX_TOKENS';
+      const safetyBlocked = finishReason === 'SAFETY';
       await logLlmCall({
         endpoint: 'job-recommend', provider: llmConfig.provider, model: llmConfig.model,
         byok: resolved.byok, userId: resolved.userId, status: 'error',
         latencyMs: Date.now() - start, inputChars, outputChars: raw.length,
-        promptTokens, completionTokens, error: 'json_parse_failed',
+        promptTokens, completionTokens,
+        error: `json_parse_failed${finishReason ? `:${finishReason}` : ''}`,
       });
+      const userMsg = truncated
+        ? `Gemini bị cắt output do vượt token cap (finishReason=MAX_TOKENS) sau ${llmAttempts} lần thử. Thử lại với CV ngắn hơn hoặc dùng BYOK key Gemini 2.5 Pro (output budget lớn hơn).`
+        : safetyBlocked
+          ? 'Gemini chặn output do safety filter. Thử CV không chứa nội dung nhạy cảm.'
+          : `Gemini trả về JSON không parse được sau ${llmAttempts} lần thử (finishReason=${finishReason ?? 'unknown'}). Output ${raw.length} ký tự — có thể model hallucinate. Thử lại.`;
       return err(
         'llm_invalid_json',
-        'Gemini trả về JSON không hợp lệ sau 2 lần thử. Có thể model bị truncate output — thử lại hoặc giảm số ký tự CV.',
+        userMsg,
         502,
-        { stage: 'llm', elapsedMs: stageElapsed() },
+        {
+          stage: 'llm',
+          elapsedMs: stageElapsed(),
+          // Surface a small excerpt of what the model actually returned so admin can debug
+          // without server logs. Capped at 400 chars to avoid leaking sensitive data.
+          upstreamRaw: raw.slice(0, 400),
+        },
       );
     }
 

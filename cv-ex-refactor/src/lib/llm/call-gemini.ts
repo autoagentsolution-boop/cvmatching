@@ -15,6 +15,8 @@ export interface LlmCallResult {
   text: string;
   promptTokens?: number;
   completionTokens?: number;
+  /** Gemini-style finish reason — STOP, MAX_TOKENS, SAFETY, etc. Undefined for non-Gemini providers. */
+  finishReason?: string;
 }
 
 export async function callGemini(opts: GeminiCallOpts): Promise<LlmCallResult> {
@@ -47,9 +49,22 @@ export async function callGemini(opts: GeminiCallOpts): Promise<LlmCallResult> {
 
   const json: unknown = await res.json();
   const text = extractGeminiText(json);
-  if (!text) throw new Error('Gemini trả về phản hồi rỗng');
+  const finishReason = extractGeminiFinishReason(json);
+  if (!text) {
+    // Surface truncation/safety triggers explicitly — caller decides whether to retry.
+    const reason = finishReason ? ` (finishReason=${finishReason})` : '';
+    throw new Error(`Gemini trả về phản hồi rỗng${reason}`);
+  }
   const usage = extractGeminiUsage(json);
-  return { text, ...usage };
+  return { text, ...usage, ...(finishReason ? { finishReason } : {}) };
+}
+
+function extractGeminiFinishReason(payload: unknown): string | undefined {
+  if (!payload || typeof payload !== 'object') return undefined;
+  const candidates = (payload as { candidates?: unknown }).candidates;
+  if (!Array.isArray(candidates) || candidates.length === 0) return undefined;
+  const first = candidates[0] as { finishReason?: unknown } | undefined;
+  return typeof first?.finishReason === 'string' ? first.finishReason : undefined;
 }
 
 function extractGeminiText(payload: unknown): string {
