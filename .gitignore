@@ -41,5 +41,13 @@ stitch_ai_resume_optimizer.zip
 **/*.tsbuildinfo
 **/next-env.d.ts
 
-.vercel
-.env*
+# Plan probe artifacts — keep plan.md tracked, exclude debug aids
+plans/**/*.mjs
+plans/**/*.html
+plans/**/*.xml
+plans/**/*.log
+plans/**/*-probe.*
+plans/**/probe-*.json
+plans/**/*next-data*.json
+plans/**/diag-*.mts
+!plans/**/plan.md
