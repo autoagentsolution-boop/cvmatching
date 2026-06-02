@@ -167,8 +167,10 @@ export function DashboardSidebar({
           </span>
           Privacy
         </Link>
-        {isAuthed ? (
-          // Logout posts to NextAuth signout endpoint — keep as <a> so it's a real navigation/POST, not client-side route
+        {isAuthed && (
+          // Logout posts to NextAuth signout endpoint — keep as <a> so it's a real navigation/POST, not client-side route.
+          // Guests (isAuthed=false) intentionally get no auth entry while login flow is still gated; flip the
+          // Logout/Login pattern back when public sign-in opens.
           <a
             href="/api/auth/signout"
             className="flex items-center gap-3 rounded-lg px-4 py-3 text-label-md text-on-surface-variant transition-colors hover:bg-surface-container-high"
@@ -176,14 +178,6 @@ export function DashboardSidebar({
             <span className="material-symbols-outlined text-[20px]" aria-hidden="true">logout</span>
             Logout
           </a>
-        ) : (
-          <Link
-            href="/sign-in"
-            className="flex items-center gap-3 rounded-lg px-4 py-3 text-label-md text-on-surface-variant transition-colors hover:bg-surface-container-high"
-          >
-            <span className="material-symbols-outlined text-[20px]" aria-hidden="true">login</span>
-            Đăng nhập
-          </Link>
         )}
       </div>
     </>
