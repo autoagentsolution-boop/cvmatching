@@ -13,6 +13,7 @@ export interface DashboardLayoutProps {
   topnavActions?: ReactNode;
   proCtaSlot?: ReactNode;
   children: ReactNode;
+  isAdmin?: boolean;
 }
 
 /**
@@ -31,6 +32,7 @@ export function DashboardLayout({
   topnavActions,
   proCtaSlot,
   children,
+  isAdmin = false,
 }: DashboardLayoutProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -41,7 +43,7 @@ export function DashboardLayout({
         className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-outline-variant bg-surface-container-low lg:flex"
         aria-label="Sidebar"
       >
-        <DashboardSidebar activeNav={activeNav} proCtaSlot={proCtaSlot} />
+        <DashboardSidebar activeNav={activeNav} proCtaSlot={proCtaSlot} isAdmin={isAdmin} />
       </aside>
 
       {/* Mobile/tablet drawer */}
@@ -54,6 +56,7 @@ export function DashboardLayout({
         <DashboardSidebar
           activeNav={activeNav}
           proCtaSlot={proCtaSlot}
+          isAdmin={isAdmin}
           onNavClick={() => setDrawerOpen(false)}
         />
       </Drawer>

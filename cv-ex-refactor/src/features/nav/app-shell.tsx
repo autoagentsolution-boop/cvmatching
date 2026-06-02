@@ -11,6 +11,7 @@ import { SettingsDrawerTrigger } from '@/features/analyze/settings-drawer-trigge
 
 interface AppShellProps {
   session: Session | null;
+  isAdmin: boolean;
   children: ReactNode;
 }
 
@@ -20,10 +21,11 @@ function deriveActiveNav(pathname: string): ActiveNav {
   if (pathname.startsWith('/career-path')) return 'career-path';
   if (pathname.startsWith('/refined-cv')) return 'refined-cv';
   if (pathname.startsWith('/job-fit')) return 'job-fit';
+  if (pathname.startsWith('/admin/usage')) return 'admin-usage';
   return 'analyze';
 }
 
-export function AppShell({ session, children }: AppShellProps) {
+export function AppShell({ session, isAdmin, children }: AppShellProps) {
   const pathname = usePathname();
   const activeNav = deriveActiveNav(pathname);
   const isAuthed = session !== null;
@@ -31,6 +33,7 @@ export function AppShell({ session, children }: AppShellProps) {
   return (
     <DashboardLayout
       activeNav={activeNav}
+      isAdmin={isAdmin}
       topnavActions={
         <>
           <VisitsBadge />

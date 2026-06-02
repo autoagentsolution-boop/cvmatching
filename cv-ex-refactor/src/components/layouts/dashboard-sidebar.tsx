@@ -8,9 +8,10 @@ export type ActiveNav =
   | 'history'
   | 'optimizations'
   | 'career-path'
-  | 'job-fit';
+  | 'job-fit'
+  | 'admin-usage';
 
-type NavGroup = 'start' | 'outputs' | 'archive';
+type NavGroup = 'start' | 'outputs' | 'archive' | 'admin';
 
 interface NavItem {
   key: ActiveNav;
@@ -24,9 +25,10 @@ const GROUP_LABELS: Record<NavGroup, string> = {
   start: 'Start',
   outputs: 'Outputs · cần Analyze trước',
   archive: 'Archive',
+  admin: 'Admin',
 };
 
-const GROUP_ORDER: NavGroup[] = ['start', 'outputs', 'archive'];
+const GROUP_ORDER: NavGroup[] = ['start', 'outputs', 'archive', 'admin'];
 
 const NAV_ITEMS: NavItem[] = [
   { key: 'analyze', label: 'Analyze', icon: 'analytics', href: '/', group: 'start' },
@@ -35,6 +37,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'job-fit', label: 'Job Fit & Study', icon: 'work', href: '/job-fit', group: 'outputs' },
   { key: 'history', label: 'History', icon: 'history', href: '/history', group: 'archive' },
   { key: 'optimizations', label: 'Optimizations', icon: 'auto_fix_high', href: '/optimizations', group: 'archive' },
+  { key: 'admin-usage', label: 'Usage', icon: 'analytics', href: '/admin/usage', group: 'admin' },
 ];
 
 function NavLink({
@@ -96,10 +99,12 @@ export interface DashboardSidebarProps {
   /** @deprecated Pass nothing — Pro CTA is now always rendered inline. */
   proCtaSlot?: ReactNode;
   onNavClick?: (() => void) | undefined;
+  /** When true, the Admin group renders. Derived from session.user.id ∈ ADMIN_USER_IDS. */
+  isAdmin?: boolean;
 }
 
 /** Private sidebar content — consumed by DashboardLayout (desktop) and its mobile Drawer. */
-export function DashboardSidebar({ activeNav, onNavClick }: DashboardSidebarProps) {
+export function DashboardSidebar({ activeNav, onNavClick, isAdmin = false }: DashboardSidebarProps) {
   return (
     <>
       <div className="flex items-center gap-3 px-3 py-6">
@@ -113,6 +118,7 @@ export function DashboardSidebar({ activeNav, onNavClick }: DashboardSidebarProp
 
       <nav className="flex-1 space-y-3 overflow-y-auto px-3 py-2" aria-label="Primary navigation">
         {GROUP_ORDER.map((group) => {
+          if (group === 'admin' && !isAdmin) return null;
           const items = NAV_ITEMS.filter((i) => i.group === group);
           if (items.length === 0) return null;
           return (

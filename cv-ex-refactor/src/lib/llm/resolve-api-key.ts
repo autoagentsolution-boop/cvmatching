@@ -41,17 +41,23 @@ export async function resolveApiKey(
     };
   }
 
-  // 2) Shared key — either signed-in user quota OR anonymous IP-based quota for pilot
+  // 2) Shared key — only available to signed-in users. Guests must use BYOK.
+  // Policy decision 2026-06-02: anonymous shared-key access removed to prevent
+  // free-tier budget drain by visitors; guests are directed to login or BYOK.
   const session = await auth().catch(() => null);
   const userId = session?.user?.id;
 
-  let quotaResult;
-  if (userId) {
-    quotaResult = await consumeQuotaForUser(userId, action);
-  } else {
-    const ip = ctx.ip ?? 'unknown';
-    quotaResult = await consumeQuotaForAnon(ip, action);
+  if (!userId) {
+    return {
+      ok: false,
+      status: 401,
+      code: 'auth_required',
+      message:
+        'Bạn cần đăng nhập (Google) hoặc dùng API key riêng (Settings → BYOK) để dùng tính năng này. Khách chưa đăng nhập không được dùng key chung của hệ thống.',
+    };
   }
+
+  const quotaResult = await consumeQuotaForUser(userId, action);
 
   if (!quotaResult.ok) {
     return {

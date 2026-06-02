@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { getSession } from '@/lib/get-session';
 import { AppShell } from '@/features/nav/app-shell';
+import { isAdminId } from '@/lib/usage/admin-auth';
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   let session = null;
@@ -10,5 +11,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     // getSession() may throw in dev when AUTH_SECRET is not set — safe to fall back to null
   }
 
-  return <AppShell session={session}>{children}</AppShell>;
+  const isAdmin = isAdminId(session?.user?.id);
+
+  return (
+    <AppShell session={session} isAdmin={isAdmin}>
+      {children}
+    </AppShell>
+  );
 }
