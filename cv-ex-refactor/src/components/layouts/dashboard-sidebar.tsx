@@ -102,10 +102,17 @@ export interface DashboardSidebarProps {
   onNavClick?: (() => void) | undefined;
   /** When true, the Admin group renders. Derived from session.user.id ∈ ADMIN_USER_IDS. */
   isAdmin?: boolean;
+  /** When true, sidebar shows Logout; otherwise shows Sign-in link. */
+  isAuthed?: boolean;
 }
 
 /** Private sidebar content — consumed by DashboardLayout (desktop) and its mobile Drawer. */
-export function DashboardSidebar({ activeNav, onNavClick, isAdmin = false }: DashboardSidebarProps) {
+export function DashboardSidebar({
+  activeNav,
+  onNavClick,
+  isAdmin = false,
+  isAuthed = false,
+}: DashboardSidebarProps) {
   return (
     <>
       <div className="flex items-center gap-3 px-3 py-6">
@@ -160,14 +167,24 @@ export function DashboardSidebar({ activeNav, onNavClick, isAdmin = false }: Das
           </span>
           Privacy
         </Link>
-        {/* Logout posts to NextAuth signout endpoint — keep as <a> so it's a real navigation/POST, not client-side route */}
-        <a
-          href="/api/auth/signout"
-          className="flex items-center gap-3 rounded-lg px-4 py-3 text-label-md text-on-surface-variant transition-colors hover:bg-surface-container-high"
-        >
-          <span className="material-symbols-outlined text-[20px]" aria-hidden="true">logout</span>
-          Logout
-        </a>
+        {isAuthed ? (
+          // Logout posts to NextAuth signout endpoint — keep as <a> so it's a real navigation/POST, not client-side route
+          <a
+            href="/api/auth/signout"
+            className="flex items-center gap-3 rounded-lg px-4 py-3 text-label-md text-on-surface-variant transition-colors hover:bg-surface-container-high"
+          >
+            <span className="material-symbols-outlined text-[20px]" aria-hidden="true">logout</span>
+            Logout
+          </a>
+        ) : (
+          <Link
+            href="/sign-in"
+            className="flex items-center gap-3 rounded-lg px-4 py-3 text-label-md text-on-surface-variant transition-colors hover:bg-surface-container-high"
+          >
+            <span className="material-symbols-outlined text-[20px]" aria-hidden="true">login</span>
+            Đăng nhập
+          </Link>
+        )}
       </div>
     </>
   );

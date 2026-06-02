@@ -34,6 +34,7 @@ export function AppShell({ session, isAdmin, children }: AppShellProps) {
     <DashboardLayout
       activeNav={activeNav}
       isAdmin={isAdmin}
+      isAuthed={isAuthed}
       topnavActions={
         <>
           <VisitsBadge />
