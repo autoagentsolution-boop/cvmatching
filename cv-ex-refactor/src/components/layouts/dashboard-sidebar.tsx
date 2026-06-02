@@ -37,7 +37,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'career-path', label: 'Career Path', icon: 'psychology', href: '/career-path', group: 'outputs' },
   { key: 'history', label: 'History', icon: 'history', href: '/history', group: 'archive' },
   { key: 'admin-usage', label: 'Usage', icon: 'analytics', href: '/admin/usage', group: 'admin' },
-  { key: 'admin-maintenance', label: 'Maintenance', icon: 'engineering', href: '/admin/maintenance', group: 'admin' },
+  { key: 'admin-maintenance', label: 'Site Controls', icon: 'engineering', href: '/admin/maintenance', group: 'admin' },
   // Job Fit & Study is admin-only during the v0.3 KV-seed pilot.
   { key: 'job-fit', label: 'Job Fit & Study (test)', icon: 'work', href: '/job-fit', group: 'admin' },
 ];

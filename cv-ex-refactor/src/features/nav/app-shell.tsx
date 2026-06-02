@@ -12,6 +12,7 @@ import { SettingsDrawerTrigger } from '@/features/analyze/settings-drawer-trigge
 interface AppShellProps {
   session: Session | null;
   isAdmin: boolean;
+  loginEnabled: boolean;
   children: ReactNode;
 }
 
@@ -26,7 +27,7 @@ function deriveActiveNav(pathname: string): ActiveNav {
   return 'analyze';
 }
 
-export function AppShell({ session, isAdmin, children }: AppShellProps) {
+export function AppShell({ session, isAdmin, loginEnabled, children }: AppShellProps) {
   const pathname = usePathname();
   const activeNav = deriveActiveNav(pathname);
   const isAuthed = session !== null;
@@ -40,7 +41,7 @@ export function AppShell({ session, isAdmin, children }: AppShellProps) {
         <>
           <VisitsBadge />
           <SettingsDrawerTrigger isAuthed={isAuthed} />
-          <UserMenu user={session?.user ?? null} />
+          <UserMenu user={session?.user ?? null} loginEnabled={loginEnabled || isAdmin} />
         </>
       }
     >

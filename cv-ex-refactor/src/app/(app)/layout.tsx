@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { getSession } from '@/lib/get-session';
 import { AppShell } from '@/features/nav/app-shell';
 import { isAdminUser } from '@/lib/usage/admin-auth';
+import { isLoginEnabled } from '@/lib/maintenance/login-flag';
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   let session = null;
@@ -12,9 +13,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   }
 
   const isAdmin = isAdminUser(session?.user);
+  const loginEnabled = await isLoginEnabled();
 
   return (
-    <AppShell session={session} isAdmin={isAdmin}>
+    <AppShell session={session} isAdmin={isAdmin} loginEnabled={loginEnabled}>
       {children}
     </AppShell>
   );

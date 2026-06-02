@@ -2,18 +2,34 @@
 
 import type { Session } from 'next-auth';
 import Image from 'next/image';
+import { FcGoogle } from 'react-icons/fc';
 import { Button } from '@/components/ui';
-import { signOutUser } from '@/features/auth/sign-in-server-actions';
+import { signOutUser, signInWithGoogle } from '@/features/auth/sign-in-server-actions';
 
 interface UserMenuProps {
   user: Session['user'] | null;
+  loginEnabled?: boolean;
 }
 
-export function UserMenu({ user }: UserMenuProps) {
+export function UserMenu({ user, loginEnabled = false }: UserMenuProps) {
   if (!user) {
-    // Login UI hidden during pilot — OAuth not yet configured.
-    // Restore when Google sign-in setup is complete.
-    return null;
+    // Guest. Public login is gated by KV flag — when off, no UI entry exists
+    // so the /sign-in URL cannot be reached except by admins. When on, render
+    // a Google button that programmatically starts OAuth (skipping the
+    // /sign-in landing page entirely).
+    if (!loginEnabled) return null;
+    return (
+      <form action={signInWithGoogle}>
+        <Button
+          variant="secondary"
+          size="sm"
+          type="submit"
+          leadingIcon={<FcGoogle aria-hidden="true" />}
+        >
+          Đăng nhập với Google
+        </Button>
+      </form>
+    );
   }
 
   return (
