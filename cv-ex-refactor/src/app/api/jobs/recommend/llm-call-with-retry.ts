@@ -18,6 +18,7 @@ export async function callRecommendLlm(
   apiKey: string,
   system: string,
   user: string,
+  signal?: AbortSignal,
 ): Promise<LlmCallResult> {
   const first = await callLLM({
     config: { ...llmConfig, apiKey },
@@ -25,6 +26,7 @@ export async function callRecommendLlm(
     user,
     expectJson: true,
     maxOutputTokens: 10000,
+    ...(signal ? { signal } : {}),
   });
 
   let raw = first.text;
@@ -32,8 +34,9 @@ export async function callRecommendLlm(
   let completionTokens = first.completionTokens;
   let parsedRaw = safeParseJson(raw);
 
-  if (!parsedRaw) {
+  if (!parsedRaw && !signal?.aborted) {
     // One retry with a larger token cap in case output was truncated.
+    // Skip retry if the deadline already fired — saves the budget for the catch path.
     try {
       const retry = await callLLM({
         config: { ...llmConfig, apiKey },
@@ -41,6 +44,7 @@ export async function callRecommendLlm(
         user,
         expectJson: true,
         maxOutputTokens: 12000,
+        ...(signal ? { signal } : {}),
       });
       raw = retry.text;
       promptTokens = (promptTokens ?? 0) + (retry.promptTokens ?? 0);

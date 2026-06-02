@@ -44,12 +44,25 @@ async function throttle(): Promise<void> {
  * Embed `text` using Gemini gemini-embedding-001 REST API.
  * Returns a Float32Array of 768 dimensions (via outputDimensionality).
  * Throws with status + body excerpt on non-2xx.
+ *
+ * `externalSignal` lets the caller propagate a route-level deadline so embed
+ * aborts before the outer maxDuration fires (and the inner 30s timeout still
+ * applies as a safety net).
  */
-export async function embedText(text: string, apiKey: string): Promise<Float32Array> {
+export async function embedText(
+  text: string,
+  apiKey: string,
+  externalSignal?: AbortSignal,
+): Promise<Float32Array> {
   await throttle();
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const onExternalAbort = () => controller.abort();
+  if (externalSignal) {
+    if (externalSignal.aborted) controller.abort();
+    else externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+  }
 
   let res: Response;
   try {
@@ -64,11 +77,15 @@ export async function embedText(text: string, apiKey: string): Promise<Float32Ar
       signal: controller.signal,
     });
   } catch (err) {
+    if (externalSignal?.aborted) {
+      throw new Error('Gemini embed aborted by route deadline');
+    }
     throw new Error(
       `Gemini embed request failed: ${err instanceof Error ? err.message : String(err)}`,
     );
   } finally {
     clearTimeout(timer);
+    if (externalSignal) externalSignal.removeEventListener('abort', onExternalAbort);
   }
 
   if (!res.ok) {

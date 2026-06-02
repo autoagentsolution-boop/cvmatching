@@ -10,6 +10,8 @@ export interface OpenAICallOpts {
   expectJson: boolean;
   /** Per-call cap on completion tokens. Omit to use provider default. */
   maxOutputTokens?: number;
+  /** External abort signal — caller-controlled deadline. */
+  signal?: AbortSignal;
 }
 
 export async function callOpenAI(opts: OpenAICallOpts): Promise<LlmCallResult> {
@@ -31,6 +33,7 @@ export async function callOpenAI(opts: OpenAICallOpts): Promise<LlmCallResult> {
       ...(opts.maxOutputTokens ? { max_tokens: opts.maxOutputTokens } : {}),
       ...(opts.expectJson ? { response_format: { type: 'json_object' } } : {}),
     }),
+    ...(opts.signal ? { signal: opts.signal } : {}),
   });
 
   if (!res.ok) {

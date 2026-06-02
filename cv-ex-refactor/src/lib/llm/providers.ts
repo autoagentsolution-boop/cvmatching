@@ -11,6 +11,8 @@ export interface CallLlmOpts {
   expectJson: boolean;
   /** Override per-call output cap. Defaults to provider built-in. */
   maxOutputTokens?: number;
+  /** External abort signal — caller-controlled deadline. */
+  signal?: AbortSignal;
 }
 
 export type { LlmCallResult };
@@ -21,6 +23,7 @@ export async function callLLM({
   user,
   expectJson,
   maxOutputTokens,
+  signal,
 }: CallLlmOpts): Promise<LlmCallResult> {
   if (config.provider === 'gemini') {
     return callGemini({
@@ -31,6 +34,7 @@ export async function callLLM({
       user,
       expectJson,
       ...(maxOutputTokens ? { maxOutputTokens } : {}),
+      ...(signal ? { signal } : {}),
     });
   }
 
@@ -47,5 +51,6 @@ export async function callLLM({
     user,
     expectJson,
     ...(maxOutputTokens ? { maxOutputTokens } : {}),
+    ...(signal ? { signal } : {}),
   });
 }

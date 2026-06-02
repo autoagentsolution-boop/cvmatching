@@ -7,6 +7,8 @@ export interface GeminiCallOpts {
   expectJson: boolean;
   /** Per-call cap; falls back to 16384 (covers analyze JSON ~8-15K chars). */
   maxOutputTokens?: number;
+  /** External abort signal — caller-controlled deadline. */
+  signal?: AbortSignal;
 }
 
 export interface LlmCallResult {
@@ -35,6 +37,7 @@ export async function callGemini(opts: GeminiCallOpts): Promise<LlmCallResult> {
         ...(opts.expectJson ? { responseMimeType: 'application/json' } : {}),
       },
     }),
+    ...(opts.signal ? { signal: opts.signal } : {}),
   });
 
   if (!res.ok) {
