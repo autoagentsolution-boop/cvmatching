@@ -2,21 +2,39 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 
-export type ActiveNav = 'analyze' | 'history' | 'optimizations' | 'career-path' | 'job-fit';
+export type ActiveNav =
+  | 'analyze'
+  | 'refined-cv'
+  | 'history'
+  | 'optimizations'
+  | 'career-path'
+  | 'job-fit';
+
+type NavGroup = 'start' | 'outputs' | 'archive';
 
 interface NavItem {
   key: ActiveNav;
   label: string;
   icon: string;
   href: string;
+  group: NavGroup;
 }
 
+const GROUP_LABELS: Record<NavGroup, string> = {
+  start: 'Start',
+  outputs: 'Outputs · cần Analyze trước',
+  archive: 'Archive',
+};
+
+const GROUP_ORDER: NavGroup[] = ['start', 'outputs', 'archive'];
+
 const NAV_ITEMS: NavItem[] = [
-  { key: 'analyze', label: 'Analyze', icon: 'analytics', href: '/' },
-  { key: 'history', label: 'History', icon: 'history', href: '/history' },
-  { key: 'optimizations', label: 'Optimizations', icon: 'auto_fix_high', href: '/optimizations' },
-  { key: 'career-path', label: 'Career Path', icon: 'psychology', href: '/career-path' },
-  { key: 'job-fit', label: 'Job Fit & Study', icon: 'work', href: '/job-fit' },
+  { key: 'analyze', label: 'Analyze', icon: 'analytics', href: '/', group: 'start' },
+  { key: 'refined-cv', label: 'Refined CV', icon: 'description', href: '/refined-cv', group: 'outputs' },
+  { key: 'career-path', label: 'Career Path', icon: 'psychology', href: '/career-path', group: 'outputs' },
+  { key: 'job-fit', label: 'Job Fit & Study', icon: 'work', href: '/job-fit', group: 'outputs' },
+  { key: 'history', label: 'History', icon: 'history', href: '/history', group: 'archive' },
+  { key: 'optimizations', label: 'Optimizations', icon: 'auto_fix_high', href: '/optimizations', group: 'archive' },
 ];
 
 function NavLink({
@@ -93,15 +111,26 @@ export function DashboardSidebar({ activeNav, onNavClick }: DashboardSidebarProp
         <p className="font-display text-headline-md font-bold text-primary">ResumeRefine</p>
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2" aria-label="Primary navigation">
-        {NAV_ITEMS.map((item) => (
-          <NavLink
-            key={item.key}
-            item={item}
-            active={activeNav === item.key}
-            onClick={onNavClick}
-          />
-        ))}
+      <nav className="flex-1 space-y-3 overflow-y-auto px-3 py-2" aria-label="Primary navigation">
+        {GROUP_ORDER.map((group) => {
+          const items = NAV_ITEMS.filter((i) => i.group === group);
+          if (items.length === 0) return null;
+          return (
+            <div key={group} className="space-y-1">
+              <div className="px-4 pb-1 pt-2 text-label-sm font-semibold uppercase tracking-wide text-on-surface-variant/70">
+                {GROUP_LABELS[group]}
+              </div>
+              {items.map((item) => (
+                <NavLink
+                  key={item.key}
+                  item={item}
+                  active={activeNav === item.key}
+                  onClick={onNavClick}
+                />
+              ))}
+            </div>
+          );
+        })}
       </nav>
 
       {/* Pro CTA — always visible, Phase 2 upgrade affordance */}

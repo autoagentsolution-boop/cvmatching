@@ -92,11 +92,11 @@ export function CareerPathPage() {
       {!hasCv ? (
         <EmptyState
           icon={<MdRoute className="text-4xl" aria-hidden="true" />}
-          title="Cần CV để bắt đầu"
-          description="Hãy phân tích CV ở trang Analyze trước — chúng tôi sẽ dùng kết quả đó để đề xuất các hướng phát triển phù hợp."
+          title="Cần phân tích CV trước"
+          description="Career Path đề xuất hướng nghề nghiệp dài hạn dựa trên CV của bạn. Hãy bắt đầu ở Analyze (paste CV) — kết quả sẽ dùng để gợi ý 3-5 path khả thi + roadmap."
           action={
             <Button asChild variant="primary">
-              <Link href="/">Go to Analyze</Link>
+              <Link href="/">Bắt đầu ở Analyze</Link>
             </Button>
           }
         />

@@ -18,6 +18,8 @@ function deriveActiveNav(pathname: string): ActiveNav {
   if (pathname.startsWith('/history')) return 'history';
   if (pathname.startsWith('/optimizations')) return 'optimizations';
   if (pathname.startsWith('/career-path')) return 'career-path';
+  if (pathname.startsWith('/refined-cv')) return 'refined-cv';
+  if (pathname.startsWith('/job-fit')) return 'job-fit';
   return 'analyze';
 }
 

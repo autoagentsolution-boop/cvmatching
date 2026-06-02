@@ -18,11 +18,11 @@ export function RefinedCvView() {
   if (!matchedCv) {
     return (
       <EmptyState
-        title="No refined CV yet"
-        description="Run an analysis and click Generate refined CV to see your tailored markdown here."
+        title="Chưa có Refined CV"
+        description="Refined CV là CV được rewrite cho một JD cụ thể. Hãy chạy Analyze (paste CV + JD) trước, rồi bấm Generate refined CV trên trang kết quả."
         action={
           <Button asChild variant="primary">
-            <Link href="/">Go to Analyze</Link>
+            <Link href="/">Bắt đầu ở Analyze</Link>
           </Button>
         }
       />
