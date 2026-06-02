@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 
-export type ActiveNav = 'analyze' | 'history' | 'optimizations' | 'career-path';
+export type ActiveNav = 'analyze' | 'history' | 'optimizations' | 'career-path' | 'job-fit';
 
 interface NavItem {
   key: ActiveNav;
@@ -16,6 +16,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'history', label: 'History', icon: 'history', href: '/history' },
   { key: 'optimizations', label: 'Optimizations', icon: 'auto_fix_high', href: '/optimizations' },
   { key: 'career-path', label: 'Career Path', icon: 'psychology', href: '/career-path' },
+  { key: 'job-fit', label: 'Job Fit & Study', icon: 'work', href: '/job-fit' },
 ];
 
 function NavLink({

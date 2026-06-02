@@ -6,6 +6,7 @@ import { RefineToolsBlock } from './refine-tools-block';
 import { RefinedCvView } from './refined-cv-view';
 import { MatchScoreBlockAside } from './match-score-block-aside';
 import { CoverLetterStub } from './cover-letter-stub';
+import { JobFitCtaSection } from './job-fit-cta-section';
 
 /**
  * RSC — composes DetailPanelLayout for the /refined-cv route.
@@ -34,6 +35,7 @@ export function RefinedCvPage() {
       asideWidth="md"
     >
       <RefinedCvView />
+      <JobFitCtaSection />
     </DetailPanelLayout>
   );
 }
