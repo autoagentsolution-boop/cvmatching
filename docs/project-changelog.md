@@ -1,5 +1,88 @@
 # Project Changelog
 
+## v0.3 — 2026-06-02 (Job Fit & Study + LLM batch recommendations)
+
+### Features
+
+#### Job Fit & Study (`/job-fit`, `/job-fit/[jobId]`)
+- **Recommendation pipeline:** Single `/api/jobs/recommend` POST call returns 5-10 jobs matching CV, scored on 9 dimensions (tech skills, domain knowledge, seniority fit, learning curve, remote, growth, location, industry, soft skills).
+- **Study topics per job:** Each recommendation includes 5-10 curated learning topics with tier (basic/intermediate/advanced), estimated hours, and job-specific rationale.
+- **Job detail page:** Read-only 9-dim score sliders (user can override sliders client-side to recompute overall score, test match sensitivity).
+- **Sidebar navigation:** Added "Job Fit & Study" as 5th nav item after Career Path.
+- **Cursor redirect & engagement tracking:** User clicks "Apply" → `/api/r/[jobId]` → records click metric → 302 external redirect.
+- **Topic dislike feedback:** User click "Không thích" on topic → `/api/topics/feedback` POST → aggregates dislike counters and logs.
+
+Files added: 40+ across `src/lib/jobs/`, `src/features/job-fit/`, `src/app/api/jobs/`, `src/app/api/r/`, `src/app/api/topics/`, `src/components/job-*`.
+
+#### Ingest CLI (`npm run ingest`)
+- Interactive paste mode, file batch import, job stats display, manual expiry, embedding rebuild.
+- 150-job seed dataset (80 tech, 30 marketing, 20 finance, 20 sales/ops) pre-embedded.
+- Auto-classifies vertical (tech/finance/marketing/etc) + seniority (intern/junior/mid/senior/lead) from title + company.
+
+#### Infrastructure
+
+**Cost guard + kill-switch:**
+- Per-bucket daily spend tracking (`metrics:cost:<YMD>:<bucket>`).
+- Alert webhook fires at `ALERT_SHARED_DAILY_COST_USD` (default $2.50) and `ALERT_SHARED_DAILY_CALLS`.
+- Hard kill-switch at $3/day cumulatively — endpoint returns 503 until cost guard manually reset.
+
+**Cron refresh pipeline:**
+- Vercel Cron Pro: `0 20 * * *` (20:00 UTC = 3am ICT) daily.
+- HEAD/GET each job source URL; mark expired (404/410) or verify (200 + title match).
+- Auto-archive jobs with `verifiedAt > 21 days`.
+- Cursor-based resumable batch (150 jobs × 2s/req = ~5min, fits 300s deadline).
+- Alert webhook if active pool < 50 jobs.
+
+**New quota bucket:**
+- `job-recommend`: 5 calls/day anon, 12 calls/day signed-in, unlimited BYOK.
+
+**Environment variables added:**
+- `EMBED_CACHE_SECRET`: HMAC key for CV embedding cache (TTL 6h).
+- `CRON_SECRET`: Vercel cron auth Bearer token (auto-injected on Pro tier).
+- `ALERT_WEBHOOK_URL`: Optional Slack/Discord webhook for cost/pool warnings.
+
+### Privacy & Documentation
+
+**Docs expanded (v0.3 blocking):**
+- `docs/privacy.md`: All 6 sections now include concrete KV keys, TTLs, deletion process, and new GDPR-aligned "takedown channel" email + 7-day SLA.
+- `docs/deployment.md`: Full runbook with env var table, KV inventory (18 key patterns), quota bucket table, phase rollback procedure, smoke checklist.
+- `docs/system-architecture.md`: New "Job Fit & Study" subsection with data-flow diagram (Mermaid), cost reference, privacy reference.
+- `docs/development-roadmap.md`: v0.3 marked shipped; post-ship monitoring 2-week window (30% activation, 40% engagement, <15% dislike, 15% CTR).
+
+### Testing
+
+- Unit tests: cosine similarity, embedding pack/unpack roundtrip, vertical + seniority classifiers, normalization, refresh batch with mocked fetch.
+- Schema tests: recommend body validation, topic feedback strict schema (rejects `reason` field).
+- Integration smoke tests: recommend endpoint (env-gated), redirect 302, feedback 204/400.
+- Smoke bash script: cacheable embed, hit redirect, invalid feedback rejection.
+- Test coverage: 40+ test cases across 8 test files.
+
+### Migration notes
+
+**v0.2 → v0.3:**
+- No data migration needed (KV-only, per-session CV text).
+- New quota bucket `job-recommend` starts fresh (no historical data).
+- `EMBED_CACHE_SECRET` required in production — rollback impossible without it.
+- Cron schedule added to `vercel.ts` — type-check before deploying.
+
+### Known limits & deferred
+
+- **No playwright scraper** (v0.3a manual paste only; v0.3b planned for live scrapers).
+- **No resource links per topic** (planned v0.3.5 to reduce hallucination risk).
+- **No auth-tied job history** (client-side sessionStorage only; persistent tracking deferred to v0.4).
+- **Topic feedback counters only** — no free-text reason field (privacy-first approach).
+
+### Commits
+
+- P0 hardening: `2bea204`
+- P1 ingest + seed: `2b4692a`
+- P2 recommend endpoint: `e16e802`
+- P3 UI pages: `fe97bd5`
+- P4 cron + redirect + feedback: `aaf7470`
+- P5 tests + docs + smoke: `[commit hash TBD on merge]`
+
+---
+
 ## v0.2 — 2026-05-28 (Career Path + UX hardening)
 
 ### Features

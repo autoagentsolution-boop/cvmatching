@@ -1,0 +1,88 @@
+NGUYỄN VĂN TEST
+Frontend Developer | Ho Chi Minh City, Vietnam
+Email: nguyenvantest@example.com | Phone: +84-909-000-000 | GitHub: github.com/example-user
+
+────────────────────────────────────────────────────────────
+TÓM TẮT (SUMMARY)
+────────────────────────────────────────────────────────────
+Lập trình viên Frontend với 4 năm kinh nghiệm xây dựng ứng dụng web hiện đại sử dụng
+React, TypeScript và Next.js. Có kinh nghiệm làm việc trong môi trường Agile, thành thạo
+tối ưu hóa hiệu suất giao diện người dùng và tích hợp RESTful API. Mong muốn gia nhập
+đội ngũ kỹ thuật năng động, đóng góp vào các sản phẩm có tác động lớn đến người dùng
+cuối tại Việt Nam và khu vực Đông Nam Á.
+
+────────────────────────────────────────────────────────────
+KINH NGHIỆM LÀM VIỆC (WORK EXPERIENCE)
+────────────────────────────────────────────────────────────
+
+Senior Frontend Developer
+[Công ty TNHH Phần Mềm Ví Dụ A] — Ho Chi Minh City
+Tháng 03/2022 – Hiện tại
+
+• Phát triển và duy trì hệ thống quản lý nội dung (CMS) nội bộ sử dụng React 18,
+  TypeScript, Zustand và TailwindCSS phục vụ hơn 200 biên tập viên mỗi ngày.
+• Tối ưu hóa hiệu suất bundle: giảm 40% kích thước bundle bằng cách áp dụng
+  code-splitting, lazy loading và tree-shaking.
+• Xây dựng design system thống nhất với hơn 50 component tái sử dụng theo chuẩn
+  Storybook, giảm thời gian phát triển tính năng mới xuống 30%.
+• Tích hợp CI/CD pipeline (GitHub Actions) cho quy trình review và deploy tự động.
+• Hướng dẫn và mentor 2 lập trình viên junior trong nhóm về best practices React.
+
+Mid Frontend Developer
+[Công ty Cổ Phần Ví Dụ B] — Ho Chi Minh City
+Tháng 06/2020 – Tháng 02/2022
+
+• Xây dựng trang thương mại điện tử B2C sử dụng Next.js (SSR/SSG), tích hợp với
+  backend NestJS thông qua REST API và GraphQL.
+• Phát triển tính năng real-time chat cho khách hàng sử dụng WebSocket và React Query.
+• Viết unit test và integration test với Jest và React Testing Library, đạt coverage > 75%.
+• Tham gia sprint planning và retrospective theo quy trình Scrum 2 tuần một lần.
+
+Junior Frontend Developer
+[Startup Ví Dụ C] — Ho Chi Minh City
+Tháng 08/2019 – Tháng 05/2020
+
+• Chuyển đổi mockup từ Figma sang giao diện React responsive cho ứng dụng quản lý
+  nhân sự nội bộ.
+• Sửa lỗi giao diện và cải thiện accessibility theo chuẩn WCAG 2.1.
+• Học và áp dụng Redux Toolkit để quản lý state toàn cục cho ứng dụng.
+
+────────────────────────────────────────────────────────────
+KỸ NĂNG (SKILLS)
+────────────────────────────────────────────────────────────
+
+Ngôn ngữ lập trình: TypeScript, JavaScript (ES2022+), HTML5, CSS3
+Frameworks & Libraries: React 18, Next.js 14, Vue 3, TailwindCSS, Zustand, React Query
+Testing: Jest, Vitest, React Testing Library, Playwright (E2E)
+Tools: Git, GitHub Actions, Vite, Webpack, ESLint, Prettier, Storybook
+APIs: RESTful API, GraphQL, WebSocket
+DevOps cơ bản: Docker (development), Vercel, Netlify
+Soft skills: Làm việc nhóm, giao tiếp rõ ràng, chủ động học hỏi
+
+────────────────────────────────────────────────────────────
+HỌC VẤN (EDUCATION)
+────────────────────────────────────────────────────────────
+
+Kỹ sư Công nghệ Thông tin
+Trường Đại Học Ví Dụ Kỹ Thuật — Ho Chi Minh City
+Tốt nghiệp: Tháng 06/2019 | GPA: 3.4/4.0
+
+────────────────────────────────────────────────────────────
+DỰ ÁN CÁ NHÂN (PROJECTS)
+────────────────────────────────────────────────────────────
+
+VN Job Tracker (github.com/example-user/vn-job-tracker)
+• Ứng dụng theo dõi ứng tuyển việc làm cá nhân xây dựng bằng Next.js App Router,
+  Prisma ORM và PostgreSQL. Hỗ trợ import JD từ URL và phân tích kỹ năng tự động.
+• Deploy trên Vercel (free tier) với CI tự động qua GitHub Actions.
+
+Open Source UI Components (github.com/example-user/vn-ui-kit)
+• Thư viện component React mã nguồn mở với 20+ component, hỗ trợ dark mode,
+  i18n (vi/en), và accessibility. Đã đạt 120 GitHub stars.
+
+────────────────────────────────────────────────────────────
+CHỨNG CHỈ (CERTIFICATIONS)
+────────────────────────────────────────────────────────────
+
+• Meta Frontend Developer Certificate — Coursera, 2023
+• Google UX Design Certificate — Coursera, 2022

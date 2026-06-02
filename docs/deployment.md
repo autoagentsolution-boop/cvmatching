@@ -41,13 +41,27 @@ Vercel Dashboard → **Settings → Environment Variables**.
 
 ### Required for Production
 
-| Variable | Notes |
-|---|---|
-| `AUTH_SECRET` | `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`. Also derives the BYOK vault encryption key. |
-| `GEMINI_API_KEY` | Shared-key path. **Production scope only.** |
-| `OPENAI_API_KEY` | Optional; same rule. |
-| `KV_REST_API_URL` | Auto-injected. |
-| `KV_REST_API_TOKEN` | Auto-injected. |
+| Variable | Scope | Purpose |
+|---|---|---|
+| `AUTH_SECRET` | Prod + preview | `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`. Derives BYOK vault AES-GCM key. |
+| `GEMINI_API_KEY` | Prod only | Shared-key LLM path. Analyze, career-path, job-fit endpoints. |
+| `KV_REST_API_URL` | All | Auto-injected by Vercel KV. Upstash Redis endpoint. |
+| `KV_REST_API_TOKEN` | All | Auto-injected by Vercel KV. Auth token for Upstash. |
+| `EMBED_CACHE_SECRET` | Prod + preview | HMAC key for CV embedding cache (v0.3). Min 32 bytes. Rotate quarterly. |
+| `CRON_SECRET` | Prod only | Bearer token for `/api/jobs/refresh` cron. Auto-injected on Vercel Pro. Min 16 chars for local testing. |
+| `ADMIN_USER_IDS` | Prod + preview | Comma-separated email allowlist for `/admin/usage` dashboard. Blocking: if empty, dashboard returns 404. |
+
+### Optional / Cost & Alerts
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `OPENAI_API_KEY` | (unset) | Fallback LLM provider if `GEMINI_API_KEY` absent. |
+| `ALERT_WEBHOOK_URL` | (unset) | Slack/Discord webhook for cost/pool warnings. If unset, alerts silent. |
+| `ALERT_SHARED_DAILY_COST_USD` | 2.50 | Fire alert when shared-key spend/day crosses this (USD). |
+| `ALERT_SHARED_DAILY_CALLS` | 200 | Fire alert when shared-key calls/day cross this. |
+| `DISABLE_SHARED_KEY` | (unset) | Set `1` to force BYOK-only mode (emergency kill-switch). |
+| `LOG_LLM_DEBUG` | (unset) | Set `1` to log raw LLM output on parse failure (dev only — privacy concern in prod). |
+| `CSP_REPORT_ONLY` | (unset) | Set `1` to send CSP header as `Report-Only` instead of enforcing (staging use). |
 
 ### Optional / feature flags
 
@@ -295,3 +309,80 @@ pnpm ingest -- --rebuild-embeddings  # re-embed all active jobs (slow, costs Gem
 - Top-disliked study topics (weekly)
 
 Data is read from KV keys: `metrics:cost:<YMD>:job-recommend`, `metrics:click:*:<YMD>`, `metrics:refresh:<YMD>`, `dislikes:*:<weekYMD>`.
+
+---
+
+## 13. KV key inventory — complete namespace
+
+**Job storage:**
+- `job:<jobId>` → full job record (title, company, vertical, embedding, verifiedAt, etc.). TTL: 21d.
+- `jobs:active` → set of active job IDs (auto-refresh cursor scans). TTL: none.
+- `jobs:expired` → set of expired/removed job IDs (archive). TTL: none.
+
+**Embeddings (corpus):**
+- `embeddings:active:v<n>` → chunked packed Float32Array blob (250 jobs/chunk). Module memory cached. TTL: none.
+- `embed-cache:<hmac>` → CV embedding cache. HMAC-SHA256(cvText, EMBED_CACHE_SECRET). TTL: 6h.
+
+**Metrics:**
+- `metrics:cost:<YMD>:<bucket>` → daily cumulative spend per bucket (USD string). Buckets: `analyze`, `rewrite`, `career-path`, `job-recommend`. TTL: 2d.
+- `metrics:click:<jobId>:<YMD>` → click count on job redirect. TTL: 2d.
+- `metrics:click:total:<YMD>` → total clicks all jobs today. TTL: 2d.
+- `metrics:refresh:<YMD>` → cron tick stats (ok, expired, errors). TTL: 2d.
+
+**Rate limit & quota:**
+- `quota:<bucketName>:<identifier>:<resetHour>` → consumed quota count (analyzed by `src/lib/quota/gate.ts`). TTL: per bucket (1d typical).
+
+**Feedback & dislike tracking:**
+- `dislikes:<topicId>:<weekYMD>` → counter for dislike event this week. TTL: 60d.
+- `topic-feedback:<topicId>` → list (max 1000) of {jobId, action, timestamp}. TTL: none — bounded by `ltrim(0, 999)`.
+
+**Admin / operational:**
+- `refresh:cursor` → 0-indexed position in jobs:active for resumable cron batch. TTL: none.
+- `kill-switch:<bucket>` → "true" flag if cost guard triggered; blocks endpoint. TTL: 24h.
+- (v0.1–v0.2) `visits:<YMD>` → visit count (total + per-IP dedup). TTL: none.
+
+**Search & filtering (future expansion):**
+Reserved for v0.4+ if full-text or faceted search added.
+
+---
+
+## 14. Quota bucket table — all versions
+
+| Bucket | Anon limit | Signed-in | BYOK | Notes |
+|---|---|---|---|---|
+| `analyze` | 3/day | 10/day | unlimited | CV-JD analysis |
+| `rewrite` | 1/day | 3/day | unlimited | Resume rewrite |
+| `career-path` | 2/day | 3/day | unlimited | Career roadmap (v0.2+) |
+| `career-path-suggest` | 10/min | 20/min | unlimited | Passthrough IP rate-limit (no quota debit) |
+| `job-recommend` | 5/day | 12/day | unlimited | Job recommendations (v0.3+) |
+
+---
+
+## 15. Rollback procedure per phase
+
+| Phase | Status | Rollback target |
+|---|---|---|
+| P0 (Hardening) | ✓ shipped | n/a (base foundation) |
+| P1 (Ingest + seed) | ✓ shipped | commit `2b4692a` (before P2 recommend endpoint) |
+| P2 (Recommend endpoint) | ✓ shipped | commit `e16e802` (before P3 UI) |
+| P3 (UI job-fit pages) | ✓ shipped | commit `fe97bd5` (before P4 cron/redirect) |
+| P4 (Cron + redirect + feedback) | ✓ shipped | commit `aaf7470` (before P5 docs) |
+| P5 (Tests + docs + deploy) | in progress | current main branch (final ship target) |
+
+**Rollback procedure:**
+1. Vercel Dashboard → Deployments → select previous good commit.
+2. Click ⋯ → **Promote to Production**.
+3. KV state persists (decoupled from app version).
+4. If env vars changed (e.g., `EMBED_CACHE_SECRET` rotated): redeploy to invalidate old cache entries.
+
+---
+
+## 16. Smoke checklist after deploy
+
+1. Homepage `/` renders; "Match your profile…" visible
+2. CV Analyze works (shared-key anon path): paste sample CV+JD → result in <10s
+3. `/admin/usage` accessible (verify `ADMIN_USER_IDS` set)
+4. **v0.3 new:** `/job-fit` page loads (empty state: "paste CV")
+5. **v0.3 new:** `/api/jobs/refresh` responds with Bearer auth, cron schedule live (`vercel.ts` type-checks)
+6. Verify cost guard: `metrics:cost:<today>:job-recommend` exists in KV
+7. KV pool stats: `jobs:active` has entries; `embeddings:active:v<n>` blob exists
