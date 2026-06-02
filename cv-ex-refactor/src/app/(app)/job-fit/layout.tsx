@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { notFound } from 'next/navigation';
 import { getSession } from '@/lib/get-session';
-import { isAdminId } from '@/lib/usage/admin-auth';
+import { isAdminUser } from '@/lib/usage/admin-auth';
 
 /**
  * Gate the /job-fit/* subtree to admin testers while the 150-job pilot KV
@@ -10,7 +10,7 @@ import { isAdminId } from '@/lib/usage/admin-auth';
  */
 export default async function JobFitLayout({ children }: { children: ReactNode }) {
   const session = await getSession().catch(() => null);
-  if (!isAdminId(session?.user?.id)) {
+  if (!isAdminUser(session?.user)) {
     notFound();
   }
   return <>{children}</>;

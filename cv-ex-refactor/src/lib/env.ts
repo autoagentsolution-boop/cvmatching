@@ -19,6 +19,7 @@ const serverSchema = z.object({
   LOG_LLM_DEBUG: z.string().optional(),
   CSP_REPORT_ONLY: z.string().optional(),
   ADMIN_USER_IDS: z.string().optional(),
+  ADMIN_USER_EMAILS: z.string().optional(),
   ALERT_WEBHOOK_URL: z.string().url().optional(),
   ALERT_SHARED_DAILY_CALLS: z.string().optional(),
   ALERT_SHARED_DAILY_COST_USD: z.string().optional(),

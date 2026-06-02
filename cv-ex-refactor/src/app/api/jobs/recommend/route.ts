@@ -12,6 +12,8 @@ import { microUsdCost } from '@/lib/llm/model-prices';
 import { logLlmCall } from '@/lib/llm/safe-logger';
 import { callRecommendLlm } from './llm-call-with-retry';
 import type { Job } from '@/lib/jobs/types';
+import { getSession } from '@/lib/get-session';
+import { isAdminUser } from '@/lib/usage/admin-auth';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -85,6 +87,14 @@ function classifyLlmError(msg: string): { code: string; status: number; userMsg:
 }
 
 export async function POST(req: NextRequest) {
+  // v0.3 pilot lockdown: route is admin-only while the 150-job KV seed is
+  // being tested. UI lockdown already hides sidebar + CTA + page subtree;
+  // this handler-level gate prevents direct POST by anyone who guesses the URL.
+  const session = await getSession().catch(() => null);
+  if (!isAdminUser(session?.user)) {
+    return new NextResponse('Not found', { status: 404 });
+  }
+
   const json = await req.json().catch(() => null);
   const parsed = RecommendBodySchema.safeParse(json);
   if (!parsed.success) {

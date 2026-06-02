@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/get-session';
-import { isAdminId } from '@/lib/usage/admin-auth';
+import { isAdminUser } from '@/lib/usage/admin-auth';
 import { currentYm, getUsageSnapshot } from '@/lib/usage/read-usage';
 
 export const runtime = 'nodejs';
@@ -20,7 +20,7 @@ function row(cells: (string | number)[]): string {
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
-  if (!isAdminId(session?.user?.id)) {
+  if (!isAdminUser(session?.user)) {
     return new NextResponse('Not found', { status: 404 });
   }
 
