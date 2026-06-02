@@ -9,7 +9,8 @@ export type ActiveNav =
   | 'optimizations'
   | 'career-path'
   | 'job-fit'
-  | 'admin-usage';
+  | 'admin-usage'
+  | 'admin-maintenance';
 
 type NavGroup = 'start' | 'outputs' | 'archive' | 'admin';
 
@@ -35,8 +36,13 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'refined-cv', label: 'Refined CV', icon: 'description', href: '/refined-cv', group: 'outputs' },
   { key: 'career-path', label: 'Career Path', icon: 'psychology', href: '/career-path', group: 'outputs' },
   { key: 'history', label: 'History', icon: 'history', href: '/history', group: 'archive' },
-  { key: 'optimizations', label: 'Optimizations', icon: 'auto_fix_high', href: '/optimizations', group: 'archive' },
+  // 'Optimizations' page is a Phase-2 placeholder; real optimization features live as tabs
+  // inside Analyze results (keyword coverage, recommendations, refined-cv CTA). Hidden from
+  // sidebar to avoid sending users to a dead-end empty state. Restore the entry below once
+  // the standalone page has real content.
+  // { key: 'optimizations', label: 'Optimizations', icon: 'auto_fix_high', href: '/optimizations', group: 'archive' },
   { key: 'admin-usage', label: 'Usage', icon: 'analytics', href: '/admin/usage', group: 'admin' },
+  { key: 'admin-maintenance', label: 'Maintenance', icon: 'engineering', href: '/admin/maintenance', group: 'admin' },
   // Job Fit & Study is admin-only during the v0.3 KV-seed pilot.
   { key: 'job-fit', label: 'Job Fit & Study (test)', icon: 'work', href: '/job-fit', group: 'admin' },
 ];
