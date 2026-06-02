@@ -90,4 +90,30 @@ describe('classifySeniority', () => {
   it('Lead Intern → intern (intern pattern checked first)', () => {
     expect(classifySeniority('Lead Intern')).toBe('intern');
   });
+
+  // Vietnamese patterns
+  it('Trưởng phòng Marketing → lead', () => {
+    expect(classifySeniority('Trưởng phòng Marketing')).toBe('lead');
+  });
+  it('Trưởng nhóm Kinh doanh → lead', () => {
+    expect(classifySeniority('Trưởng nhóm Kinh doanh')).toBe('lead');
+  });
+  it('Trưởng ban Kỹ thuật → lead', () => {
+    expect(classifySeniority('Trưởng ban Kỹ thuật')).toBe('lead');
+  });
+  it('Giám đốc Tài chính → lead', () => {
+    expect(classifySeniority('Giám đốc Tài chính')).toBe('lead');
+  });
+  it('Phó Giám đốc Vận hành → lead', () => {
+    expect(classifySeniority('Phó Giám đốc Vận hành')).toBe('lead');
+  });
+  it('Chuyên viên cao cấp Kế toán → senior', () => {
+    expect(classifySeniority('Chuyên viên cao cấp Kế toán')).toBe('senior');
+  });
+  it('Nhân viên Kế toán → mid (no level signal)', () => {
+    expect(classifySeniority('Nhân viên Kế toán')).toBe('mid');
+  });
+  it('Trưởng nhóm Thực tập sinh → intern (intern beats lead)', () => {
+    expect(classifySeniority('Trưởng nhóm Thực tập sinh')).toBe('intern');
+  });
 });

@@ -14,7 +14,7 @@ export interface Job {
   tier?: Tier;
   description: string;
   sourceUrl: string;
-  source: 'itviec' | 'topcv' | 'vnw' | 'other';
+  source: 'itviec' | 'topcv' | 'vnw' | 'vl24h' | 'other';
   location: string;
   postedAt: string;
   verifiedAt: string;

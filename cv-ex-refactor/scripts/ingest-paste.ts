@@ -28,11 +28,11 @@ export async function run(_args: string[]): Promise<void> {
     const company = await prompt(rl, 'Company: ');
     const description = await prompt(rl, 'Description (paste, then Enter): ');
     const sourceUrl = await prompt(rl, 'Source URL: ');
-    const sourceRaw = await prompt(rl, 'Source (itviec/topcv/vnw/other) [other]: ') || 'other';
+    const sourceRaw = await prompt(rl, 'Source (itviec/topcv/vnw/vl24h/other) [other]: ') || 'other';
     const location = await prompt(rl, 'Location (e.g. Hồ Chí Minh): ');
     const postedAt = await prompt(rl, 'Posted at (ISO date, e.g. 2026-05-15): ');
 
-    const source = (['itviec', 'topcv', 'vnw', 'other'].includes(sourceRaw)
+    const source = (['itviec', 'topcv', 'vnw', 'vl24h', 'other'].includes(sourceRaw)
       ? sourceRaw
       : 'other') as Job['source'];
 

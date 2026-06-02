@@ -64,12 +64,19 @@ export function classifyVertical(title: string, company: string): Vertical {
 
 /**
  * Classify seniority from job title using regex patterns.
+ * Mix of English and Vietnamese patterns — VN job boards (vl24h, topcv) post in Vietnamese.
  * Defaults to 'mid' when no pattern matches.
  */
 export function classifySeniority(title: string): Seniority {
   if (/intern|internship|thực tập/i.test(title)) return 'intern';
-  if (/\blead\b|principal|staff engineer|head of|chapter lead/i.test(title)) return 'lead';
-  if (/senior|\bsr\b|sr\./i.test(title)) return 'senior';
+  if (
+    /\blead\b|principal|staff engineer|head of|chapter lead|trưởng phòng|trưởng nhóm|trưởng ban|trưởng bộ phận|giám đốc|phó giám đốc/i.test(
+      title,
+    )
+  ) {
+    return 'lead';
+  }
+  if (/senior|\bsr\b|sr\.|cao cấp/i.test(title)) return 'senior';
   if (/junior|\bjr\b|jr\.|fresher|entry.level|mới ra trường/i.test(title)) return 'junior';
   if (/\bmid\b|middle/i.test(title)) return 'mid';
   return 'mid';

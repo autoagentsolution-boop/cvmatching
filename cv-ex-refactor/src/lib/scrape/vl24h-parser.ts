@@ -137,7 +137,7 @@ export interface VlJobInput {
   company: string;
   description: string;
   sourceUrl: string;
-  source: 'other';
+  source: 'vl24h';
   location: string;
   postedAt: string;
   vertical: Vertical;
@@ -161,7 +161,7 @@ export function ldToJobInput(
     company: ld.hiringOrganization.name.trim(),
     description: desc,
     sourceUrl,
-    source: 'other',
+    source: 'vl24h',
     location: flattenLocation(ld.jobLocation) || 'Vietnam',
     postedAt,
     vertical,
