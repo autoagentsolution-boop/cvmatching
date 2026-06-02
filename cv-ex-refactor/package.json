@@ -8,7 +8,8 @@
     "start": "next start",
     "test": "vitest run",
     "test:watch": "vitest",
-    "ingest": "tsx --env-file=.env.local scripts/ingest-jobs.ts"
+    "ingest": "tsx --env-file=.env.local scripts/ingest-jobs.ts",
+    "kill-switch": "tsx --env-file=.env.local scripts/cost-kill-switch.ts"
   },
   "dependencies": {
     "@mozilla/readability": "^0.6.0",

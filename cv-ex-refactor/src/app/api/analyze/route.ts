@@ -6,6 +6,7 @@ import { callLLM } from '@/lib/llm/providers';
 import { safeParseJson } from '@/lib/llm/safe-parse-json';
 import { normalizeAnalysis } from '@/lib/llm/normalize-analysis';
 import { logLlmCall } from '@/lib/llm/safe-logger';
+import { checkKillSwitch } from '@/lib/cost/guard';
 import { env } from '@/lib/env';
 
 export const runtime = 'nodejs';
@@ -33,6 +34,19 @@ export async function POST(req: NextRequest) {
   const resolved = await resolveApiKey(body.llm, 'analyze', { byokToken, ip });
   if (!resolved.ok) {
     return err(resolved.code, resolved.message, resolved.status);
+  }
+
+  // Cost kill-switch only applies to shared-key callers. BYOK users bring their own
+  // billing and are not subject to the platform-wide kill-switch.
+  if (!resolved.byok) {
+    const killCheck = await checkKillSwitch('analyze');
+    if (!killCheck.ok) {
+      return err(
+        'service_unavailable',
+        'Tính năng Analyze tạm thời bị tắt do vượt ngưỡng chi phí. Vui lòng dùng API key riêng (Settings → BYOK) hoặc thử lại sau.',
+        503,
+      );
+    }
   }
 
   const { system, user } = buildAnalyzePrompts(body);

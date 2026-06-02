@@ -6,6 +6,7 @@ import { callLLM } from '@/lib/llm/providers';
 import { safeParseJson } from '@/lib/llm/safe-parse-json';
 import { normalizeCareerPath } from '@/lib/llm/normalize-career-path';
 import { logLlmCall } from '@/lib/llm/safe-logger';
+import { checkKillSwitch } from '@/lib/cost/guard';
 import { env } from '@/lib/env';
 
 export const runtime = 'nodejs';
@@ -33,6 +34,17 @@ export async function POST(req: NextRequest) {
   const resolved = await resolveApiKey(body.llm, 'career-path', { byokToken, ip });
   if (!resolved.ok) {
     return err(resolved.code, resolved.message, resolved.status);
+  }
+
+  if (!resolved.byok) {
+    const killCheck = await checkKillSwitch('career-path');
+    if (!killCheck.ok) {
+      return err(
+        'service_unavailable',
+        'Tính năng Career Path tạm thời bị tắt do vượt ngưỡng chi phí. Vui lòng dùng API key riêng (Settings → BYOK) hoặc thử lại sau.',
+        503,
+      );
+    }
   }
 
   const { system, user } = buildCareerPathPrompts(body);

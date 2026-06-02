@@ -4,6 +4,7 @@ import { resolveApiKey } from '@/lib/llm/resolve-api-key';
 import { buildGenerateCvPrompts } from '@/lib/llm/prompt-generate-cv';
 import { callLLM } from '@/lib/llm/providers';
 import { logLlmCall } from '@/lib/llm/safe-logger';
+import { checkKillSwitch } from '@/lib/cost/guard';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -37,6 +38,17 @@ export async function POST(req: NextRequest) {
   const resolved = await resolveApiKey(body.llm, 'generate-cv', { byokToken, ip });
   if (!resolved.ok) {
     return err(resolved.code, resolved.message, resolved.status);
+  }
+
+  if (!resolved.byok) {
+    const killCheck = await checkKillSwitch('generate-cv');
+    if (!killCheck.ok) {
+      return err(
+        'service_unavailable',
+        'Tính năng Generate CV tạm thời bị tắt do vượt ngưỡng chi phí. Vui lòng dùng API key riêng (Settings → BYOK) hoặc thử lại sau.',
+        503,
+      );
+    }
   }
 
   const { system, user } = buildGenerateCvPrompts(body);

@@ -116,9 +116,15 @@ export async function POST(req: NextRequest) {
   const resolved = await resolveApiKey(llmConfig, 'job-recommend', { byokToken, ip });
   if (!resolved.ok) return err(resolved.code, resolved.message, resolved.status);
 
-  const killCheck = await checkKillSwitch('job-recommend');
-  if (!killCheck.ok) {
-    return err('service_unavailable', 'Tính năng Job Fit tạm thời bị tắt do vượt ngưỡng chi phí. Vui lòng thử lại sau.', 503);
+  if (!resolved.byok) {
+    const killCheck = await checkKillSwitch('job-recommend');
+    if (!killCheck.ok) {
+      return err(
+        'service_unavailable',
+        'Tính năng Job Fit tạm thời bị tắt do vượt ngưỡng chi phí. Vui lòng dùng API key riêng (Settings → BYOK) hoặc thử lại sau.',
+        503,
+      );
+    }
   }
 
   const requestStart = Date.now();
