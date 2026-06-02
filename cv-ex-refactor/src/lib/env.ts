@@ -25,6 +25,9 @@ const serverSchema = z.object({
   // v0.3 Phase 2: HMAC key for KV embed cache keys. Required in prod; optional in dev.
   // Runtime call sites in Phase 2+ will fail closed (503) if absent.
   EMBED_CACHE_SECRET: z.string().min(32).optional(),
+  // v0.3 Phase 4: Bearer token for cron route. Vercel Pro auto-injects this.
+  // Optional so local dev starts without it; refresh route rejects when absent in prod.
+  CRON_SECRET: z.string().min(16).optional(),
 });
 
 export const env = serverSchema.parse(process.env);

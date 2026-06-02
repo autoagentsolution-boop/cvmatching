@@ -213,43 +213,85 @@ Check `KV_REST_API_URL` + `KV_REST_API_TOKEN` are set on the deployed environmen
 
 ---
 
-## 12. Refresh cron rate-limit rules (v0.3 Job Fit)
+## 12. Job Fit & Study — v0.3 Phase 4 runbook
 
-The seed-job refresh cron (`/api/cron/refresh-jobs`) fetches live job listings from external sources. These rules prevent bot-detection blocks and stay within Vercel Pro's 300s function timeout.
+### Cron refresh (`GET /api/jobs/refresh`)
 
-### Outbound request constraints
+| Setting | Value |
+|---|---|
+| Schedule | `0 20 * * *` (20:00 UTC = 03:00 ICT, daily) |
+| Vercel tier required | **Pro** (`maxDuration = 300s`) |
+| Max batch | ~150 jobs × 2s = ~5 min; 30s deadline buffer baked in |
+| Cursor resume | `refresh:cursor` KV key; auto-wraps to 0 when all jobs processed |
+| Pool-low alert | Fires `ALERT_WEBHOOK_URL` when active pool < 50 after tick |
 
-| Rule | Value | Rationale |
-|---|---|---|
-| User-Agent header | `ResumeRefineRefreshBot/1.0` | Required on every outbound HEAD/GET; identifies the crawler to source sites |
-| Minimum delay between requests | ≥ 2000 ms | Avoid rate-limit triggering on source sites |
-| Jitter per delay | ± 500 ms random | Prevents burst pattern detection |
-| Hard deadline break | 270 s elapsed | Leaves 30 s buffer before Vercel Pro's 300 s function timeout |
-| Cursor resume | Store last-processed index in KV (`cron:cursor:<source>`) | Allows next run to continue from where timeout cut off |
+**Outbound crawl constraints:**
 
-### Implementation notes (Phase 4)
+| Rule | Value |
+|---|---|
+| User-Agent | `ResumeRefineRefreshBot/1.0` |
+| Delay between requests | 1500 ms ± 500 ms jitter |
+| Hard deadline break | 270 s elapsed (30 s buffer under 300 s `maxDuration`) |
+| Auto-expire | Jobs with `verifiedAt > 21d` moved to `jobs:expired` every tick |
 
-```ts
-// Pseudocode — actual implementation lands in Phase 4 src/lib/jobs/refresh-runner.ts
-const UA = 'ResumeRefineRefreshBot/1.0';
-const MIN_DELAY_MS = 2000;
-const JITTER_MS = 500;
-const DEADLINE_SEC = 270;
+**If downgraded to Hobby tier (maxDuration = 60s):** reduce to ~25 jobs/tick, add 5 schedules/day, adjust `SLEEP_MS` to 2000 in `refresh/route.ts`.
 
-for (const job of pendingJobs) {
-  if (elapsedSec() >= DEADLINE_SEC) { await saveCursor(job.id); break; }
-  await fetch(job.url, { headers: { 'User-Agent': UA } });
-  await sleep(MIN_DELAY_MS + Math.random() * JITTER_MS * 2 - JITTER_MS);
-}
+### Environment variable: `CRON_SECRET`
+
+Vercel Pro **auto-injects** `CRON_SECRET` as `Authorization: Bearer <secret>` on every cron invocation. No manual setup required in Vercel Dashboard for Pro projects.
+
+For local smoke testing, add to `.env.local` (gitignored):
+```
+CRON_SECRET=your-local-test-secret-min-16-chars
 ```
 
-### Kill-switch override runbook
+Install the `@vercel/config` devDep (already in `package.json` after Phase 4):
+```powershell
+pnpm add -D @vercel/config
+```
 
-If the cost guard (`lib/cost/guard.ts`) sets `kill-switch:<bucket>` and blocks the cron or endpoint, a human operator must manually clear it:
+The `vercel.ts` TypeScript config at `cv-ex-refactor/vercel.ts` defines the cron schedule. Type-check with:
+```powershell
+npx tsc --noEmit
+```
+
+### Kill-switch reset runbook
+
+If the cost guard sets `kill-switch:job-recommend` (fires at $3/day cumulative):
 
 ```bash
-# Using Vercel KV CLI (or Upstash console → CLI tab)
-kv.del('kill-switch:job-recommend')
+# Upstash console → CLI tab, or via kv-client in a one-off script:
+DEL kill-switch:job-recommend
 ```
 
-After clearing, the next request proceeds normally. The flag auto-expires in 24h if not manually cleared — but cost will re-trigger it if spend remains above $3/day. Fix the root cause (bad model call loop, abuse) before clearing.
+The flag auto-expires in 24h. Fix the root cause (abuse loop, runaway model calls) before clearing — cost will re-trigger it if spend stays above $3/day.
+
+### Refresh cursor reset
+
+If cursor gets stuck or you want a full re-scan from job index position 0:
+
+```bash
+DEL refresh:cursor
+```
+
+Next cron tick starts from the beginning of `jobs:active`.
+
+### Ingest CLI runbook
+
+```powershell
+# From cv-ex-refactor/
+pnpm ingest                          # paste mode (interactive)
+pnpm ingest -- --file data/seed-jobs.json   # file mode
+pnpm ingest -- --stats               # show current pool stats
+pnpm ingest -- --expire <jobId>      # manual expire
+pnpm ingest -- --rebuild-embeddings  # re-embed all active jobs (slow, costs Gemini tokens)
+```
+
+### Admin dashboard: Job Fit section
+
+`/admin/usage` now shows a "Job Fit & Study" section with:
+- Today's recommend cost + refresh stats
+- Top-10 clicked jobs (by jobId)
+- Top-disliked study topics (weekly)
+
+Data is read from KV keys: `metrics:cost:<YMD>:job-recommend`, `metrics:click:*:<YMD>`, `metrics:refresh:<YMD>`, `dislikes:*:<weekYMD>`.

@@ -78,6 +78,15 @@ export async function getJobBatch(ids: string[]): Promise<Job[]> {
   return results.filter((j): j is Job => j !== null);
 }
 
+/**
+ * Update verifiedAt timestamp for a job without touching other fields.
+ * Used by the refresh cron to mark a job as live without re-ingesting.
+ */
+export async function touchVerifiedAt(id: string, isoTimestamp: string): Promise<void> {
+  assertKv();
+  await kv.hset(`job:${id}`, { verifiedAt: isoTimestamp } as unknown as Record<string, unknown>);
+}
+
 // ── Embedding blob version management ──────────────────────────────────────
 
 export async function getActiveBlobVersion(): Promise<string | null> {

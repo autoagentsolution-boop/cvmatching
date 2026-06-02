@@ -39,6 +39,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vercel/config": "^0.5.1",
     "@vitest/coverage-v8": "^4.1.7",
     "dotenv": "^16.4.7",
     "prettier": "^3.8.3",

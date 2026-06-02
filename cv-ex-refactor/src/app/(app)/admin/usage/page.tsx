@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
 import { currentYm, getUsageSnapshot, type UserUsageRow } from '@/lib/usage/read-usage';
+import { getJobFitStats } from '@/lib/usage/read-job-fit-stats';
 import { microUsdToString } from '@/lib/llm/model-prices';
+import { JobFitStatsSection } from './job-fit-stats-section';
+import { vnDateString } from '@/lib/quota/vn-date';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -47,6 +50,8 @@ export default async function AdminUsagePage({
   const days = parseDays(sp.days);
 
   const snapshot = await getUsageSnapshot(month, days);
+  const todayYmd = vnDateString();
+  const jobFitStats = await getJobFitStats(todayYmd);
 
   const totalUsers = snapshot.users.length;
   const totalCalls = snapshot.users.reduce(
@@ -192,6 +197,8 @@ export default async function AdminUsagePage({
           </table>
         </div>
       </section>
+
+      <JobFitStatsSection stats={jobFitStats} ymd={todayYmd} />
     </div>
   );
 }
