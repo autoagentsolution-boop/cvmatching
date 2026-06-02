@@ -98,7 +98,7 @@ Tài liệu này mô tả chính xác dữ liệu nào được lưu trữ, ở 
 
 ## 6. Yêu cầu xóa dữ liệu — liên hệ & quy trình
 
-**Địa chỉ liên hệ:** Gửi email tới **privacy@example.com** với tiêu đề:
+**Địa chỉ liên hệ:** Gửi email tới **auto.agent.solution@gmail.com** với tiêu đề:
 ```
 [ResumeRefine] Yêu cầu xóa dữ liệu cá nhân
 ```
