@@ -1,5 +1,142 @@
 # Project Changelog
 
+## v0.3.1 — 2026-06-02 evening (pilot lockdown + ops UX)
+
+Post-ship session. Real prod KV seeded with 150 vl24h jobs; multiple
+operational hardenings; admin UX polish ahead of opening shared key
+to public users once usage analysis on the ultra-tier API key completes.
+
+### Auth & cost lockdown
+
+- **Anonymous shared-key removed** (`resolve-api-key.ts`): guests now get 401
+  `auth_required` instead of consuming the shared `GEMINI_API_KEY` with the
+  IP-based stricter quota. Anyone reaching the LLM must either log in via
+  Google or paste their own key via BYOK Settings drawer.
+- **Email-based admin allowlist** (`ADMIN_USER_EMAILS` env): added alongside
+  the existing `ADMIN_USER_IDS` (Google sub) check. Operators can promote a
+  teammate by adding their gmail without first asking them to log in. New
+  `isAdminUser(session.user)` aggregates both checks; six call sites
+  migrated (admin/* layout, job-fit/* layout, refined-cv-page CTA gate,
+  export-usage handler, recommend handler, app-shell sidebar flag).
+- **Three-layer admin bypass**:
+  1. `DISABLE_SHARED_KEY=1` env — admin keeps shared-key path (resolveApiKey
+     skips the env check when caller is admin).
+  2. `kill-switch:*` KV flags — admin skips the per-bucket cost gate in all
+     four LLM routes (`analyze`, `generate-cv`, `career-path`, `job-recommend`).
+  3. Maintenance flag — proxy.ts decodes the NextAuth JWT cookie and lets
+     admins through the 503 page.
+- **Public login gated** by `login:enabled` KV flag (fail-CLOSED):
+  `/sign-in` returns 404 when off; topnav login button hidden; guests have
+  no UI path to OAuth. Admin sessions bypass.
+- **Site-wide maintenance toggle** via `maintenance:mode` KV flag — proxy.ts
+  returns 503 + Vietnamese maintenance HTML on every page navigation.
+  Admin bypasses via JWT.
+
+### Operator surfaces
+
+- **Admin UI**: `/admin/maintenance` rebranded to "Site Controls"; toggles
+  for both maintenance and public login. Bypass-aware so admin never locks
+  themselves out.
+- **CLI scripts** (read `.env.local`):
+  - `pnpm run kill-switch status | on <bucket> | off <bucket> | --all`
+  - `pnpm run maintenance status | on | off`
+  - `pnpm run login-flag status | on | off`
+- **Diagnostic endpoint**: `GET /api/whoami` returns the caller's session
+  shape + admin status. Non-admin response redacts env hints; admin
+  response includes `adminEmailsLower` for misconfig debugging.
+
+### Latency & quality
+
+- **Job Fit recommend pipeline**:
+  - `topKCandidates` cut from K=20 → K=10 (~50% LLM time saving).
+  - Prompt asks 3-5 jobs × 3-5 study topics (was 5-10 × 5-10).
+  - `callRecommendLlm` bumps `maxOutputTokens` 10K/12K → 16K/24K + extracts
+    Gemini `finishReason`. Errors now classify into `MAX_TOKENS`, `SAFETY`,
+    or generic with raw output excerpt for admin debugging.
+  - Internal deadline at `maxDuration - 5s` propagates an AbortSignal
+    through `embedText`, `callGemini`, `callLLM` — Vercel no longer kills
+    the function before our catch returns a structured error.
+- **Job Fit list page**: removed mount-time auto-refetch that burned a
+  Gemini call on every revisit after the 6h cache expired. Now requires
+  an explicit "Tìm job phù hợp" click; cached results render instantly.
+- **User-facing errors**: list page no longer leaks Gemini/JSON/token
+  wording — shows "Đề xuất job thất bại — Hệ thống đang gặp sự cố. Vui
+  lòng thử lại sau." regardless of underlying cause. Admins still get the
+  full code + detail in the network response.
+
+### Embedding & job data
+
+- **Gemini API migration**: `text-embedding-004` deprecation broke
+  `/api/jobs/recommend` in prod (500 from embedContent 404). Swapped to
+  `gemini-embedding-001` with `outputDimensionality: 768` + manual L2
+  normalization at `embedText` return (model output is not unit-length
+  when dimensionality is truncated; `cosineSim` assumes L2-normalized).
+  One-shot migration `scripts/normalize-stored-embeddings.ts` re-normalized
+  the 150 existing stored vectors (avg prior L2 = 0.59).
+- **Latent KV bug fixed**: `loadBlobChunks` did `JSON.parse(idsRaw)` on
+  what TS believed was a string, but Upstash REST auto-parses
+  JSON-stringified values on `get` — the array came back already parsed,
+  so JSON.parse threw SyntaxError. Surfaced for the first time today
+  when the embeddings blob was populated in prod.
+- **vieclam24h.vn scraper**: TopCV/ITviec/JobsGO are Cloudflare-blocked
+  at the TLS-fingerprint layer; vl24h returns 200 with Schema.org
+  JobPosting ld+json on detail pages. New `scripts/scrape-vl24h.ts` +
+  parser library yields 150 real Vietnamese jobs across 6 verticals
+  (25 each: tech, marketing, finance, sales, ops, other).
+- **Vertical taxonomy**: extended `Job.source` enum with `'vl24h'`;
+  `classifySeniority` learned Vietnamese patterns (`trưởng phòng/nhóm/ban`,
+  `giám đốc`, `cao cấp`). Migration `scripts/backfill-vl24h-source.ts`
+  retagged the 150 existing rows and re-classified seniority — 3 jobs
+  bumped from `mid` to `lead` post-patterns.
+
+### UI polish
+
+- **Sidebar flattened**: dropped Start/Outputs/Archive/Admin group headings;
+  flat list in workflow order (Analyze → Refined CV → Career Path → History
+  → admin-only items). Admin-only is now a per-item `adminOnly` flag.
+- **Job Fit & Study moved to admin-only** during the v0.3 KV-seed pilot;
+  hidden from non-admin sidebar + CTA + page route + handler.
+- **Refined CV** added to sidebar (was reachable only from Analyze results).
+- **Empty-state CTAs** for Refined CV / Career Path / Job Fit all point
+  back to `/` (Analyze) instead of hopping through each other — flatter,
+  less circular flow.
+- **Optimizations entry** removed from sidebar (page is a Phase-2
+  placeholder; real optimization features are tabs inside Analyze results).
+- **Interview Questions** tab dropped from results — it rendered a stub.
+- **Reset to AI scores** button now shows a 1.5s "✓ Đã reset về điểm AI"
+  confirmation flash so users perceive the click even when their slider
+  values already matched the AI scores (the no-op case that previously
+  read as broken).
+- **Logout button** hidden for guests (used to render unconditionally and
+  send unauthed users into a confusing signout flow).
+
+### Files added (selected)
+
+- `scripts/scrape-vl24h.ts`, `scripts/cost-kill-switch.ts`,
+  `scripts/maintenance-mode.ts`, `scripts/login-flag.ts`,
+  `scripts/normalize-stored-embeddings.ts`, `scripts/backfill-vl24h-source.ts`
+- `src/lib/scrape/vl24h-parser.ts`, `src/lib/maintenance/maintenance-mode.ts`,
+  `src/lib/maintenance/login-flag.ts`, `src/lib/jobs/classify-cv-vertical.ts`,
+  `src/lib/jobs/vertical-index.ts`
+- `src/app/api/whoami/route.ts`, `src/app/api/admin/maintenance/route.ts`,
+  `src/app/api/admin/login-flag/route.ts`,
+  `src/app/(app)/admin/maintenance/page.tsx` (+ toggle components),
+  `src/app/(app)/job-fit/layout.tsx`
+
+### Open follow-ups
+
+- Pre-filter recommend candidates by CV vertical (using
+  `classifyCvVertical` + `vertical-index`) — library code written this
+  session, not yet wired into the route. Would tighten match quality and
+  shave another ~30-50% off LLM time if candidates drop to 5 from a denser
+  same-vertical pool.
+- Hybrid refresh cron with top-up scraping (deferred to
+  `plans/260602-1739-hybrid-refresh-topup/`).
+- `consumeQuotaForAnon` is dead code in the resolver path; remove in a
+  cleanup commit.
+
+---
+
 ## v0.3 — 2026-06-02 (Job Fit & Study + LLM batch recommendations)
 
 ### Features

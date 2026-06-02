@@ -101,8 +101,8 @@ export function SettingsPanelBlock({ isAuthed: _isAuthed }: SettingsPanelBlockPr
         </p>
         <p className="text-label-sm text-on-surface-variant">
           {hasRegisteredKey
-            ? `Key đuôi …${registeredKeyTail ?? '????'} — không giới hạn quota.`
-            : 'Giới hạn 3 phân tích và 1 viết lại CV mỗi ngày. Muốn nhiều hơn, nhập key riêng bên dưới.'}
+            ? `Key đuôi …${registeredKeyTail ?? '????'} — không giới hạn quota từ hệ thống (chỉ giới hạn theo quota của key).`
+            : 'Cần đăng nhập (Google) để dùng key chung. Quota mỗi ngày: 5 phân tích · 2 viết lại CV · 3 lộ trình nghề nghiệp. Reset 00:00 giờ VN. Muốn không giới hạn, nhập key riêng bên dưới.'}
         </p>
       </div>
 

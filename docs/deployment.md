@@ -386,3 +386,110 @@ Reserved for v0.4+ if full-text or faceted search added.
 5. **v0.3 new:** `/api/jobs/refresh` responds with Bearer auth, cron schedule live (`vercel.ts` type-checks)
 6. Verify cost guard: `metrics:cost:<today>:job-recommend` exists in KV
 7. KV pool stats: `jobs:active` has entries; `embeddings:active:v<n>` blob exists
+
+---
+
+## 17. Pilot lockdown runbook (post v0.3 ship, 2026-06-02)
+
+After ship date, the site is locked down to control free-tier Gemini cost
+while admin completes usage analysis on the ultra-tier API key. Lockdown
+state is enforced by three orthogonal switches; admins bypass all three.
+
+### Current lockdown state (as of 2026-06-02 ~21:00 ICT)
+
+| Switch | State | Storage | Effect on non-admin |
+|---|---|---|---|
+| `DISABLE_SHARED_KEY=1` | ON | Vercel env | All non-BYOK requests → 503 `shared_key_disabled` at `resolveApiKey` |
+| `kill-switch:*` (4 buckets) | ON | KV `kill-switch:<bucket>` = `'1'` | Per-action 503 `service_unavailable` at route handler |
+| `login:enabled` | OFF | KV `login:enabled` deleted | `/sign-in` returns 404; topnav login button hidden |
+
+Admin (`auto.agent.solution@gmail.com` per `ADMIN_USER_EMAILS`) bypasses all
+three: resolves via `resolveApiKey` returning `isAdmin: true`; routes skip
+`checkKillSwitch` when `resolved.byok || resolved.isAdmin`; `/sign-in` page
+treats admin sessions as authed and redirects to `/`.
+
+### Re-enable procedure (when usage analysis complete)
+
+**Step 1 — Enable public login first** (gives users an entry point):
+
+```powershell
+cd cv-ex-refactor
+pnpm run login-flag on
+# Or: admin UI → /admin/maintenance → "Site Controls" → Public login toggle
+```
+
+**Step 2 — Lift the kill-switches**:
+
+```powershell
+pnpm run kill-switch off --all
+pnpm run kill-switch status   # verify all four show off
+```
+
+**Step 3 — Lift the env-level shared-key block**:
+
+Vercel Dashboard → Project → Settings → Environment Variables → delete (or
+blank) `DISABLE_SHARED_KEY` → **Redeploy** (env change does not propagate
+without redeploy). Confirm:
+
+```powershell
+vercel env ls production | findstr DISABLE_SHARED_KEY
+# Expected: no row, or row with empty value
+```
+
+**Step 4 — Smoke**:
+
+1. Open private/incognito browser → `https://resume-refactor.vercel.app`
+2. Click **"Đăng nhập với Google"** in topnav → complete OAuth
+3. Paste a sample CV + JD → click Analyze → result in <10s
+4. Visit `/refined-cv` → click Generate → markdown opens
+5. Visit `/career-path` → suggestions load
+6. Verify `/api/whoami` (logged-in): `{ admin: { isAdmin: false }, authed: true }`
+7. Monitor `/admin/usage` over next 2-4 hours — confirm daily spend stays
+   well below `ALERT_SHARED_DAILY_COST_USD` (default $2.50)
+
+### Quotas in effect once shared key is re-enabled
+
+Per `src/lib/quota/consume-quota.ts`. Anonymous shared-key path was removed
+2026-06-02; only signed-in users hit the shared key.
+
+| Action | Logged-in daily cap | Notes |
+|---|---|---|
+| `analyze` | 5 | Match endpoint |
+| `generate-cv` | 2 | Polished CV |
+| `career-path` | 3 | Roadmap |
+| `job-recommend` | 12 | Admin-only currently |
+| `extract-must-haves` | unlimited (passthrough) | IP-rate-limited separately |
+| `career-path-suggest` | unlimited (passthrough) | IP-rate-limited separately |
+
+Reset 00:00 ICT (Vietnam midnight). BYOK users skip quotas entirely.
+
+### Roll back fast (if cost spike detected)
+
+Reverse Step 3 (most aggressive) → Step 2 → Step 1:
+
+```powershell
+# Quickest: bring back the kill-switches without redeploy
+pnpm run kill-switch on --all
+
+# If users already mid-session, also close login:
+pnpm run login-flag off
+
+# If KV unavailable / can't run CLI: set DISABLE_SHARED_KEY=1 on Vercel + redeploy
+```
+
+Admin bypass keeps the admin dashboard reachable during rollback. Existing
+non-admin sessions hit 503 on next LLM call; their UI shows a friendly
+error toast (per fix in commit `4636ce8`).
+
+### Operator CLI reference
+
+All three controls have CLI wrappers and read `.env.local` for KV creds:
+
+| Command | Purpose |
+|---|---|
+| `pnpm run login-flag status | on | off` | Toggle public login |
+| `pnpm run kill-switch status | on <bucket> | off <bucket> | on --all | off --all` | Toggle per-bucket cost kill-switch |
+| `pnpm run maintenance status | on | off` | Toggle site-wide maintenance (returns 503 + HTML on every page nav) |
+
+The maintenance toggle is the heaviest — use only for true outages, not
+budget control.
