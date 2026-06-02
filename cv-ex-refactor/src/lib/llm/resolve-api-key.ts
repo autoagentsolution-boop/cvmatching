@@ -7,6 +7,7 @@ import {
   type QuotaAction,
 } from '@/lib/quota/consume-quota';
 import { getKey as getVaultKey } from '@/lib/byok-vault/store';
+import { isAdminUser } from '@/lib/usage/admin-auth';
 
 export type KeyResolution =
   | { ok: true; apiKey: string; byok: boolean; quotaRemaining: number | null; userId?: string }
@@ -32,7 +33,14 @@ export async function resolveApiKey(
     // user still works during pilot rather than getting a hard error.
   }
 
-  if (env.DISABLE_SHARED_KEY === '1') {
+  // 2) Shared key — only available to signed-in users. Guests must use BYOK.
+  // Policy decision 2026-06-02: anonymous shared-key access removed to prevent
+  // free-tier budget drain by visitors; guests are directed to login or BYOK.
+  const session = await auth().catch(() => null);
+  const userId = session?.user?.id;
+  const isAdmin = isAdminUser(session?.user);
+
+  if (env.DISABLE_SHARED_KEY === '1' && !isAdmin) {
     return {
       ok: false,
       status: 503,
@@ -40,12 +48,6 @@ export async function resolveApiKey(
       message: 'Shared key tạm thời không khả dụng. Vui lòng dùng API key của bạn (BYOK) trong Settings.',
     };
   }
-
-  // 2) Shared key — only available to signed-in users. Guests must use BYOK.
-  // Policy decision 2026-06-02: anonymous shared-key access removed to prevent
-  // free-tier budget drain by visitors; guests are directed to login or BYOK.
-  const session = await auth().catch(() => null);
-  const userId = session?.user?.id;
 
   if (!userId) {
     return {
