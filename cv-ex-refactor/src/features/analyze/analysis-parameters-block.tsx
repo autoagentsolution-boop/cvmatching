@@ -121,6 +121,7 @@ export function AnalysisParametersBlock() {
   const [benchmarks, setBenchmarks] = useState(true);
   const [atsCheck, setAtsCheck] = useState(false);
   const [actionVerbs, setActionVerbs] = useState(true);
+  const [resetFlash, setResetFlash] = useState(false);
 
   const hasAnalyzed = result !== null;
 
@@ -131,6 +132,10 @@ export function AnalysisParametersBlock() {
   function resetToAiScores() {
     if (!result) return;
     setField('weights', hydrateWeightsFromResult(result));
+    setResetFlash(true);
+    // Visual feedback even when weights already match AI scores (no slider movement).
+    // Without this, the user perceives the click as a no-op.
+    setTimeout(() => setResetFlash(false), 1500);
   }
 
   return (
@@ -149,9 +154,14 @@ export function AnalysisParametersBlock() {
             type="button"
             onClick={resetToAiScores}
             aria-label="Reset slider values to AI-suggested scores"
-            className="self-start rounded-full border border-outline-variant bg-surface-container-low px-4 py-1 text-label-sm font-bold text-on-surface-variant transition-colors hover:bg-surface-container focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-tertiary-container/40 md:self-auto"
+            aria-live="polite"
+            className={`self-start rounded-full border px-4 py-1 text-label-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-tertiary-container/40 md:self-auto ${
+              resetFlash
+                ? 'border-on-tertiary-container/40 bg-tertiary-container text-on-tertiary-container'
+                : 'border-outline-variant bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
+            }`}
           >
-            Reset to AI scores
+            {resetFlash ? '✓ Đã reset về điểm AI' : 'Reset to AI scores'}
           </button>
         )}
       </header>
