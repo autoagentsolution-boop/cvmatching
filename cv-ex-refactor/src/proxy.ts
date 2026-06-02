@@ -1,5 +1,15 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { recordVisit } from '@/lib/analytics/visit-counter';
+import { isMaintenanceMode, maintenanceHtml } from '@/lib/maintenance/maintenance-mode';
+
+// Path prefixes that admins (and the maintenance toggle) need accessible
+// while the rest of the site is locked down.
+const MAINTENANCE_BYPASS_PREFIXES = ['/api/whoami', '/api/health', '/maintenance-ok'];
+
+function shouldBypassMaintenance(request: NextRequest): boolean {
+  const pathname = request.nextUrl.pathname;
+  return MAINTENANCE_BYPASS_PREFIXES.some((p) => pathname.startsWith(p));
+}
 
 /**
  * CSP with per-request nonce + strict-dynamic. Defense-in-depth against XSS,
@@ -41,7 +51,21 @@ function buildCsp(nonce: string): string {
   ].join('; ');
 }
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
+  // Maintenance gate — checked first so a bad render path doesn't bypass it.
+  // The KV check is cached 5s per process; cost is sub-ms on the hot path.
+  // Whitelist admin diagnostic endpoints so they stay reachable for status.
+  if (!shouldBypassMaintenance(request) && (await isMaintenanceMode())) {
+    return new NextResponse(maintenanceHtml(), {
+      status: 503,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'Retry-After': '300',
+      },
+    });
+  }
+
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
   const csp = buildCsp(nonce);
   const headerName =
