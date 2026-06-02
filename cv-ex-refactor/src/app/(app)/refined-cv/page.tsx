@@ -1,5 +1,5 @@
 import { RefinedCvPage } from '@/features/refined-cv/refined-cv-page';
 
-export default function Page() {
+export default async function Page() {
   return <RefinedCvPage />;
 }

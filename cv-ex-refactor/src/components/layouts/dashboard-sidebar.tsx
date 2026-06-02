@@ -34,10 +34,11 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'analyze', label: 'Analyze', icon: 'analytics', href: '/', group: 'start' },
   { key: 'refined-cv', label: 'Refined CV', icon: 'description', href: '/refined-cv', group: 'outputs' },
   { key: 'career-path', label: 'Career Path', icon: 'psychology', href: '/career-path', group: 'outputs' },
-  { key: 'job-fit', label: 'Job Fit & Study', icon: 'work', href: '/job-fit', group: 'outputs' },
   { key: 'history', label: 'History', icon: 'history', href: '/history', group: 'archive' },
   { key: 'optimizations', label: 'Optimizations', icon: 'auto_fix_high', href: '/optimizations', group: 'archive' },
   { key: 'admin-usage', label: 'Usage', icon: 'analytics', href: '/admin/usage', group: 'admin' },
+  // Job Fit & Study is admin-only during the v0.3 KV-seed pilot.
+  { key: 'job-fit', label: 'Job Fit & Study (test)', icon: 'work', href: '/job-fit', group: 'admin' },
 ];
 
 function NavLink({

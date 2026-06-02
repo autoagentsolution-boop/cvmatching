@@ -1,5 +1,7 @@
 import { DetailPanelLayout } from '@/components/layouts';
 import { PageHeader } from '@/components/ui';
+import { getSession } from '@/lib/get-session';
+import { isAdminId } from '@/lib/usage/admin-auth';
 import { DownloadActions } from './download-actions';
 import { KeyEnhancementsBlock } from './key-enhancements-block';
 import { RefineToolsBlock } from './refine-tools-block';
@@ -13,8 +15,12 @@ import { JobFitCtaSection } from './job-fit-cta-section';
  * Auth check omitted: BYOK guests must access their generated CV without auth.
  * Locked decisions #4 (no PDF), #9 (plain markdown).
  * Cover Letter: Phase 2 placeholder stub rendered in aside.
+ * Job Fit CTA is admin-only during the v0.3 KV-seed pilot.
  */
-export function RefinedCvPage() {
+export async function RefinedCvPage() {
+  const session = await getSession().catch(() => null);
+  const isAdmin = isAdminId(session?.user?.id);
+
   return (
     <DetailPanelLayout
       header={
@@ -35,7 +41,7 @@ export function RefinedCvPage() {
       asideWidth="md"
     >
       <RefinedCvView />
-      <JobFitCtaSection />
+      {isAdmin && <JobFitCtaSection />}
     </DetailPanelLayout>
   );
 }
