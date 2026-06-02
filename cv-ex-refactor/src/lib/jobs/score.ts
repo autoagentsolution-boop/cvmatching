@@ -23,7 +23,7 @@ export class JobIndexNotReadyError extends Error {
 
 /**
  * Cosine similarity between two 768-dim vectors.
- * Gemini text-embedding-004 outputs L2-normalized vectors → dot product == cosine.
+ * Vectors are L2-normalized at embed time (see embed.ts), so dot product == cosine.
  */
 export function cosineSim(a: Float32Array, b: Float32Array): number {
   let dot = 0;

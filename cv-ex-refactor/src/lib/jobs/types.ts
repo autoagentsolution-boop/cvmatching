@@ -1,5 +1,5 @@
 // Job domain types for v0.3 Job Fit & Study feature.
-// id = sha256(sourceUrl).slice(0,16); embedding = base64 Float32Array(768, Gemini text-embedding-004).
+// id = sha256(sourceUrl).slice(0,16); embedding = base64 Float32Array(768, Gemini gemini-embedding-001, L2-normalized).
 
 export type Vertical = 'tech' | 'marketing' | 'finance' | 'sales' | 'ops' | 'other';
 export type Seniority = 'intern' | 'junior' | 'mid' | 'senior' | 'lead';
@@ -18,7 +18,7 @@ export interface Job {
   location: string;
   postedAt: string;
   verifiedAt: string;
-  // base64-encoded Float32Array(768) — Gemini text-embedding-004
+  // base64-encoded Float32Array(768) — Gemini gemini-embedding-001, L2-normalized
   embedding: string;
 }
 
