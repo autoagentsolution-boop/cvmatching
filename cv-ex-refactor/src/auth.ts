@@ -16,9 +16,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Google({
       clientId: env.GOOGLE_CLIENT_ID ?? '',
       clientSecret: env.GOOGLE_CLIENT_SECRET ?? '',
-      // Always show Google account picker — prevents silent re-use of the
-      // browser's active Google session when user wants to switch accounts.
-      authorization: { params: { prompt: 'select_account' } },
+      // Force Google to show the account chooser + re-auth screen on every
+      // sign-in. `consent` re-prompts consent (covers fresh-scope changes);
+      // `select_account` shows the account picker even when one Google session
+      // is already active. Combined value 'consent select_account' is the
+      // most reliable way to switch accounts during admin setup.
+      authorization: { params: { prompt: 'consent select_account' } },
     }),
   ],
   session: { strategy: 'jwt' },
