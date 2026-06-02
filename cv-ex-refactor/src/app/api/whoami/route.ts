@@ -1,6 +1,7 @@
 // Diagnostic endpoint — returns the caller's session shape and admin status.
-// No secrets exposed. Useful for debugging "why doesn't the Admin sidebar show?"
-// without needing Vercel logs.
+// Non-admin response is minimal (authed + sanitized user object) to avoid
+// leaking env config (admin count, email list). Admin response includes
+// matched-by-* flags and env hints for debugging admin-list misconfig.
 
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/get-session';
@@ -13,9 +14,28 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   const session = await getSession().catch(() => null);
   const user = session?.user ?? null;
+  const isAdmin = isAdminUser(user);
 
-  return NextResponse.json({
+  const base = {
     authed: user !== null,
+    user: user
+      ? {
+          // id intentionally omitted for non-admin response — Google sub is PII-adjacent.
+          email: user.email ?? null,
+          name: user.name ?? null,
+        }
+      : null,
+    admin: { isAdmin },
+  };
+
+  if (!isAdmin) {
+    return NextResponse.json(base);
+  }
+
+  // Admin-only diagnostic payload — env counts + lowercased email list so the
+  // operator can verify ADMIN_USER_EMAILS is set and matches their login.
+  return NextResponse.json({
+    ...base,
     user: user
       ? {
           id: user.id ?? null,
@@ -24,12 +44,11 @@ export async function GET() {
         }
       : null,
     admin: {
-      isAdmin: isAdminUser(user),
+      isAdmin,
       matchedById: isAdminId(user?.id),
       matchedByEmail: isAdminEmail(user?.email),
     },
     envHints: {
-      // Only show non-secret meta: counts and lowercase preview.
       adminIdsCount: (env.ADMIN_USER_IDS ?? '').split(',').filter((s) => s.trim().length > 0).length,
       adminEmailsCount: (env.ADMIN_USER_EMAILS ?? '').split(',').filter((s) => s.trim().length > 0).length,
       adminEmailsLower: (env.ADMIN_USER_EMAILS ?? '')

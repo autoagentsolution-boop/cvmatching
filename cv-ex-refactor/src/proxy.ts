@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { getToken } from 'next-auth/jwt';
 import { recordVisit } from '@/lib/analytics/visit-counter';
 import { isMaintenanceMode, maintenanceHtml } from '@/lib/maintenance/maintenance-mode';
+import { isAdminId, isAdminEmail } from '@/lib/usage/admin-auth';
 
 // Path prefixes that admins (and the maintenance toggle) need accessible
 // while the rest of the site is locked down.
@@ -9,6 +11,26 @@ const MAINTENANCE_BYPASS_PREFIXES = ['/api/whoami', '/api/health', '/maintenance
 function shouldBypassMaintenance(request: NextRequest): boolean {
   const pathname = request.nextUrl.pathname;
   return MAINTENANCE_BYPASS_PREFIXES.some((p) => pathname.startsWith(p));
+}
+
+/**
+ * Decode the NextAuth JWT from the request cookies and check admin membership.
+ * Strategy='jwt' in auth.ts means we never hit the DB — getToken decrypts the
+ * cookie in-process. AUTH_SECRET is required to decrypt; in dev without it,
+ * everyone is treated as non-admin (fail-closed for the bypass path).
+ */
+async function isAdminRequest(request: NextRequest): Promise<boolean> {
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) return false;
+  try {
+    const token = await getToken({ req: request, secret });
+    if (!token) return false;
+    const id = typeof token.id === 'string' ? token.id : null;
+    const email = typeof token.email === 'string' ? token.email : null;
+    return isAdminId(id) || isAdminEmail(email);
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -54,16 +76,20 @@ function buildCsp(nonce: string): string {
 export async function proxy(request: NextRequest) {
   // Maintenance gate — checked first so a bad render path doesn't bypass it.
   // The KV check is cached 5s per process; cost is sub-ms on the hot path.
-  // Whitelist admin diagnostic endpoints so they stay reachable for status.
+  // Bypass: whitelisted diagnostic endpoints OR an authenticated admin (so
+  // operator can verify state + flip the toggle off without poking CLI).
   if (!shouldBypassMaintenance(request) && (await isMaintenanceMode())) {
-    return new NextResponse(maintenanceHtml(), {
-      status: 503,
-      headers: {
-        'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'no-store',
-        'Retry-After': '300',
-      },
-    });
+    const isAdmin = await isAdminRequest(request);
+    if (!isAdmin) {
+      return new NextResponse(maintenanceHtml(), {
+        status: 503,
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'no-store',
+          'Retry-After': '300',
+        },
+      });
+    }
   }
 
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
