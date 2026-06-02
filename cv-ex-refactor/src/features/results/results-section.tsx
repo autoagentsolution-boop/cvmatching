@@ -12,14 +12,12 @@ import type { GenerateCvRequest } from '@/features/analyze/types';
 import { KeywordCoverageBlock } from './keyword-coverage-block';
 import { MatchScoreBlock } from './match-score-block';
 import { OptimizationPathsBlock } from './optimization-paths-block';
-import { PredictiveInterviewStub } from './predictive-interview-stub';
 import { RecommendationsBlock } from './recommendations-block';
 
 const TABS = [
   { id: 'optimization', label: 'Optimization Paths' },
   { id: 'keywords', label: 'Keyword Coverage' },
   { id: 'recommendations', label: 'Recommendations' },
-  { id: 'interview', label: 'Interview Questions' },
 ];
 
 export function ResultsSection() {
@@ -129,11 +127,6 @@ export function ResultsSection() {
           {activeTab === 'recommendations' && (
             <div className="mt-6">
               <RecommendationsBlock recommendations={result.recommendations} />
-            </div>
-          )}
-          {activeTab === 'interview' && (
-            <div className="mt-6">
-              <PredictiveInterviewStub />
             </div>
           )}
         </Tabs>

@@ -12,34 +12,26 @@ export type ActiveNav =
   | 'admin-usage'
   | 'admin-maintenance';
 
-type NavGroup = 'start' | 'outputs' | 'archive' | 'admin';
-
 interface NavItem {
   key: ActiveNav;
   label: string;
   icon: string;
   href: string;
-  group: NavGroup;
+  /** When true, only renders for admin sessions. */
+  adminOnly?: boolean;
 }
 
-const GROUP_LABELS: Record<NavGroup, string> = {
-  start: 'Start',
-  outputs: 'Outputs · cần Analyze trước',
-  archive: 'Archive',
-  admin: 'Admin',
-};
-
-const GROUP_ORDER: NavGroup[] = ['start', 'outputs', 'archive', 'admin'];
-
+// Order is the user workflow order — Analyze (start), output pages it feeds,
+// then admin-only utilities at the bottom. Sidebar renders flat (no groupings).
 const NAV_ITEMS: NavItem[] = [
-  { key: 'analyze', label: 'Analyze', icon: 'analytics', href: '/', group: 'start' },
-  { key: 'refined-cv', label: 'Refined CV', icon: 'description', href: '/refined-cv', group: 'outputs' },
-  { key: 'career-path', label: 'Career Path', icon: 'psychology', href: '/career-path', group: 'outputs' },
-  { key: 'history', label: 'History', icon: 'history', href: '/history', group: 'archive' },
-  { key: 'admin-usage', label: 'Usage', icon: 'analytics', href: '/admin/usage', group: 'admin' },
-  { key: 'admin-maintenance', label: 'Site Controls', icon: 'engineering', href: '/admin/maintenance', group: 'admin' },
+  { key: 'analyze', label: 'Analyze', icon: 'analytics', href: '/' },
+  { key: 'refined-cv', label: 'Refined CV', icon: 'description', href: '/refined-cv' },
+  { key: 'career-path', label: 'Career Path', icon: 'psychology', href: '/career-path' },
+  { key: 'history', label: 'History', icon: 'history', href: '/history' },
+  { key: 'admin-usage', label: 'Usage', icon: 'analytics', href: '/admin/usage', adminOnly: true },
+  { key: 'admin-maintenance', label: 'Site Controls', icon: 'engineering', href: '/admin/maintenance', adminOnly: true },
   // Job Fit & Study is admin-only during the v0.3 KV-seed pilot.
-  { key: 'job-fit', label: 'Job Fit & Study (test)', icon: 'work', href: '/job-fit', group: 'admin' },
+  { key: 'job-fit', label: 'Job Fit & Study (test)', icon: 'work', href: '/job-fit', adminOnly: true },
 ];
 
 function NavLink({
@@ -125,27 +117,15 @@ export function DashboardSidebar({
         <p className="font-display text-headline-md font-bold text-primary">ResumeRefine</p>
       </div>
 
-      <nav className="flex-1 space-y-3 overflow-y-auto px-3 py-2" aria-label="Primary navigation">
-        {GROUP_ORDER.map((group) => {
-          if (group === 'admin' && !isAdmin) return null;
-          const items = NAV_ITEMS.filter((i) => i.group === group);
-          if (items.length === 0) return null;
-          return (
-            <div key={group} className="space-y-1">
-              <div className="px-4 pb-1 pt-2 text-label-sm font-semibold uppercase tracking-wide text-on-surface-variant/70">
-                {GROUP_LABELS[group]}
-              </div>
-              {items.map((item) => (
-                <NavLink
-                  key={item.key}
-                  item={item}
-                  active={activeNav === item.key}
-                  onClick={onNavClick}
-                />
-              ))}
-            </div>
-          );
-        })}
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2" aria-label="Primary navigation">
+        {NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin).map((item) => (
+          <NavLink
+            key={item.key}
+            item={item}
+            active={activeNav === item.key}
+            onClick={onNavClick}
+          />
+        ))}
       </nav>
 
       {/* Pro CTA — always visible, Phase 2 upgrade affordance */}
