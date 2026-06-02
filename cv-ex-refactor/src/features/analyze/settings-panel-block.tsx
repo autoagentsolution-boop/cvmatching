@@ -28,7 +28,7 @@ export interface SettingsPanelBlockProps {
  *    subsequent requests. The plaintext key never touches localStorage or
  *    later request payloads.
  */
-export function SettingsPanelBlock({ isAuthed: _isAuthed }: SettingsPanelBlockProps) {
+export function SettingsPanelBlock({ isAuthed }: SettingsPanelBlockProps) {
   const {
     provider,
     model,
@@ -97,12 +97,18 @@ export function SettingsPanelBlock({ isAuthed: _isAuthed }: SettingsPanelBlockPr
     <div className="flex flex-col gap-5">
       <div className="rounded-xl border border-outline-variant bg-surface-container-low p-3">
         <p className="text-label-md font-bold text-on-surface">
-          {hasRegisteredKey ? 'Đang dùng key của bạn' : 'Đang dùng key chung'}
+          {hasRegisteredKey
+            ? 'Đang dùng key của bạn'
+            : isAuthed
+              ? 'Đang dùng key chung'
+              : 'Chưa cài đặt API Key'}
         </p>
         <p className="text-label-sm text-on-surface-variant">
           {hasRegisteredKey
             ? `Key đuôi …${registeredKeyTail ?? '????'} — không giới hạn quota từ hệ thống (chỉ giới hạn theo quota của key).`
-            : 'Cần đăng nhập (Google) để dùng key chung. Quota mỗi ngày: 5 phân tích · 2 viết lại CV · 3 lộ trình nghề nghiệp. Reset 00:00 giờ VN. Muốn không giới hạn, nhập key riêng bên dưới.'}
+            : isAuthed
+              ? 'Quota mỗi ngày: 5 phân tích · 2 viết lại CV · 3 lộ trình nghề nghiệp. Reset 00:00 giờ VN. Muốn không giới hạn, nhập key riêng bên dưới.'
+              : 'Hiện chưa cài đặt API Key. Vui lòng thêm key ở bên dưới.'}
         </p>
       </div>
 
