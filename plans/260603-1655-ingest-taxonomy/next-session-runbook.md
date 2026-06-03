@@ -91,6 +91,29 @@ dry-run output OK?
 - Modify the cron route in `app/api/jobs/refresh/route.ts` while
   `260602-1739-hybrid-refresh-topup` is open — file-ownership conflict.
 
+## Sideband — bot / abuse protection (queued for shared-key reopen)
+
+Discussed 2026-06-03 night: visit-counter showed 105 views / 3 unique
+IPs — diagnosed as normal admin testing (15-25 views per
+nav-heavy session × 3 testers), NOT a DDoS signal. Decided to DEFER
+hardening because while `DISABLE_SHARED_KEY=1` is on, abuse cost is
+bounded (attackers force-fall to BYOK = their own API key, their own
+spend). Hardening becomes mandatory the moment shared-key reopens.
+
+Three layers to add, cheapest first, BEFORE flipping
+`DISABLE_SHARED_KEY=0`:
+
+| Order | Layer | Where | Effort |
+|---|---|---|---|
+| 1 | Vercel Firewall rate-limit on `/api/analyze`, `/api/jobs/recommend`, `/api/generate-cv` (30 req/min per IP → block 10m) | Vercel dashboard → Firewall | 30 min, no code |
+| 2 | UA filter in `src/proxy.ts` — skip + 403 known crawlers (Googlebot, Bingbot, Censys, Shodan, Bytespider, AhrefsBot, etc.) | Middleware before `recordVisit` | 15 min, ~20 LOC |
+| 3 | Vercel BotID (`@vercel/botid`) — fingerprint headless browsers and spoofers | Gate expensive paths | 1-2h |
+
+Reasoning archived: visit counter only counts real page navigations
+(prefetch + API + assets already excluded in proxy.ts:131), so the 105
+number is the true page-nav count, not asset noise. Keep it as a public
+marketing signal ("X views since launch") until reopen.
+
 ## Reference
 
 - Plan overview: `plans/260603-1655-ingest-taxonomy/plan.md`
