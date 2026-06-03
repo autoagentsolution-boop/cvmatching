@@ -48,13 +48,17 @@ const TECH_TAXONOMY: VerticalTaxonomy = {
     {
       id: 'tech.data',
       vertical: 'tech',
-      titlesPositive: /(data (engineer|analyst|scientist|architect|engineering)|business analyst|business intelligence|bi|ba(?! sale)|dba|database (admin|engineer)|etl|spark|airflow|snowflake|bigquery|redshift|chuyên viên phân tích dữ liệu|kỹ sư dữ liệu)/iu,
+      // Short tokens (\bbi\b, \bba\b, \bdba\b) need word boundaries — bare
+      // `bi`/`ba` matched substrings of unrelated words like "specialist".
+      titlesPositive: /(data (engineer|analyst|scientist|architect|engineering)|business analyst|business intelligence|\bbi\b|\bba\b(?! sale)|\bdba\b|database (admin|engineer)|\betl\b|\bspark\b|airflow|snowflake|bigquery|redshift|chuyên viên phân tích dữ liệu|kỹ sư dữ liệu)/iu,
       sourceSlugs: { vl24h: ['phan-tich-thong-ke-du-lieu', 'it-phan-mem'] },
     },
     {
       id: 'tech.ml-ai',
       vertical: 'tech',
-      titlesPositive: /(machine learning|ml|ai|artificial intelligence|deep learning|computer vision|cv engineer|nlp|natural language|llm|generative ai|chatbot engineer|kỹ sư trí tuệ nhân tạo|kỹ sư máy học)/iu,
+      // Short tokens (\bml\b, \bai\b, \bllm\b) need word boundaries — bare
+      // `ai` matched substrings like "chAIn" in "supply chain".
+      titlesPositive: /(machine learning|\bml\b|\bai\b|artificial intelligence|deep learning|computer vision|cv engineer|\bnlp\b|natural language|\bllm\b|generative ai|chatbot engineer|kỹ sư trí tuệ nhân tạo|kỹ sư máy học)/iu,
       sourceSlugs: { vl24h: ['it-phan-mem', 'phan-tich-thong-ke-du-lieu'] },
     },
     {

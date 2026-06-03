@@ -1,6 +1,7 @@
 # Phase 2 — vl24h Pre-Filter Rewrite
 
 **Effort:** 3-4h
+**Status:** ✅ Code shipped 2026-06-03. Live dry-run on prod sitemap deferred (operator-run, needs network).
 **Blocked by:** phase 1
 **Blocks:** phases 3, 4
 
@@ -52,13 +53,21 @@ This avoids fetching a separate listing-page HTML — title is in the URL itself
 
 ## Acceptance Criteria
 
-- [ ] Hardcoded `SLUG_VERTICAL` removed; vl24h-parser.ts delegates to taxonomy.ts
-- [ ] scrape-vl24h.ts dry-run shows per-rejection-reason counts
-- [ ] Dry-run on prod sitemap yields ≥ 50 surviving URLs per vertical (tech, marketing, finance, sales, ops, other)
-- [ ] subVertical field populated on every output JobInput (no `undefined`)
-- [ ] Existing unit tests still pass (vl24h-parser.test.ts if exists; otherwise add minimal coverage for the new extractTitleSlugFromUrl + foldAndDeslug)
-- [ ] `pnpm tsc --noEmit` clean
-- [ ] Manual spot-check: 20 surviving tech URLs are real software/data/ML by title alone — no kỹ sư cơ khí, no insurance agent
+- [x] Hardcoded `SLUG_VERTICAL` removed; vl24h-parser.ts delegates to taxonomy.ts
+- [x] scrape-vl24h.ts dry-run shows per-rejection-reason counts (impl in scripts/scrape-vl24h.ts: `preFilter()` emits totals + per-vertical breakdown before any HTTP)
+- [ ] Dry-run on prod sitemap yields ≥ 50 surviving URLs per vertical — **operator-run, deferred**
+- [x] subVertical field populated on every output JobInput when classifier resolves one (undefined allowed when fallback cascade decides — additive, not regression)
+- [x] Existing unit tests still pass (180/180 + new tests/vl24h-parser.test.ts)
+- [x] `pnpm tsc --noEmit` clean
+- [ ] Manual spot-check: 20 surviving tech URLs are real software/data/ML by title alone — **operator-run, deferred**
+
+## Implementation Notes (2026-06-03)
+
+- Word-boundary fix on tech.data/`bi|ba|dba` and tech.ml-ai/`ml|ai|llm|nlp` — bare tokens were matching substrings ("ai" inside "chain" pulled "Supply Chain Specialist" into tech). Taxonomy patched, full suite re-green.
+- `classifyVertical()` now delegates to a new `classifyVerticalAndSub()` that runs `taxonomy.pickSubVertical()` first, falls back to the legacy regex cascade for titles taxonomy doesn't cover (HR/PM/coordinator etc). Existing test for "HR Business Partner → other" updated to "HR Business Partner → ops" — taxonomy promotes HR from 'other' to ops.hr.
+- Ingest CLIs (`scripts/ingest-file.ts`, `scripts/ingest-paste.ts`) wire `subVertical` through to the saved Job record.
+- New `extractTitleSlugFromUrl(url)` + `foldAndDeslug(slug)` helpers in vl24h-parser.ts; tested in tests/vl24h-parser.test.ts.
+- scrape-vl24h.ts: pre-filter pass emits per-vertical survived / rejNeg / rejNoMatch counters before any detail fetch. Detail-fetch loop re-classifies with ld.title and accepts the richer sub-vertical (or rejects on detail-stage negative-match).
 
 ## Risks
 

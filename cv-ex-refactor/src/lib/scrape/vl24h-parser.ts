@@ -1,5 +1,12 @@
 import type { Vertical } from '../jobs/types';
 
+// NOTE: Vertical classification by category slug used to live here as
+// SLUG_VERTICAL. It now lives in src/lib/jobs/taxonomy.ts as
+// slugToVerticalAndSub(source, slug) — single source of truth shared with
+// the post-ingest classifier (classify.ts). The slug list per source/sub-
+// domain is the input; this module only knows how to extract the slug and
+// title-slug from a vl24h URL.
+
 export interface SitemapEntry {
   url: string;
   lastmod: string | null;
@@ -31,62 +38,34 @@ export function parseSitemap(xml: string): SitemapEntry[] {
   return out;
 }
 
-// vieclam24h URL category slug → our Vertical enum.
-// Coverage validated against full sitemap (52 unique slugs).
-//
-// Tight 'tech' definition: software/IT/data only. The engineering family
-// (cơ khí, điện, KH-KT, telecom) was polluting the bucket with mechanical /
-// electrical / automotive / telecom roles that share the keyword "kỹ sư"
-// with software engineering — a Data Engineer CV ranked against those by
-// cosine sim returns mostly E-tier matches. Those slugs now route to
-// 'other' until we either expand the enum or ingest enough volume to
-// justify a dedicated 'engineering' bucket.
-const SLUG_VERTICAL: Record<string, Vertical> = {
-  'it-phan-mem': 'tech',
-  'it-phan-cung-mang': 'tech',
-  'phan-tich-thong-ke-du-lieu': 'tech',
-
-  'khoa-hoc-ky-thuat': 'other',
-  'co-khi-o-to-tu-dong-hoa': 'other',
-  'dien-dien-tu-dien-lanh': 'other',
-  'buu-chinh-vien-thong': 'other',
-
-  marketing: 'marketing',
-  'thiet-ke-sang-tao-nghe-thuat': 'marketing',
-  'thong-tin-truyen-thong-quang-cao': 'marketing',
-  'truyen-hinh-bao-chi-bien-tap': 'marketing',
-
-  'ke-toan': 'finance',
-  'tai-chinh-dau-tu-chung-khoan': 'finance',
-  'kiem-toan': 'finance',
-  'ngan-hang': 'finance',
-  'bao-hiem': 'finance',
-
-  'ban-hang-kinh-doanh': 'sales',
-  'ban-si-ban-le-quan-ly-cua-hang': 'sales',
-  'bat-dong-san': 'sales',
-
-  'hanh-chinh-thu-ky': 'ops',
-  'nhan-su': 'ops',
-  'van-hanh-bao-tri-bao-duong': 'ops',
-  'thu-mua-kho-van-chuoi-cung-ung': 'ops',
-  'san-xuat-lap-rap-che-bien': 'ops',
-  'quan-ly-tieu-chuan-va-chat-luong': 'ops',
-  'quan-ly-du-an': 'ops',
-  'van-tai-lai-xe-giao-nhan': 'ops',
-  'xuat-nhap-khau': 'ops',
-  'cham-soc-khach-hang': 'ops',
-};
-
-export function slugToVertical(slug: string): Vertical {
-  return SLUG_VERTICAL[slug] ?? 'other';
-}
-
-const VL24H_DETAIL_RE = /^https?:\/\/vieclam24h\.vn\/([^/]+)\/[^/]+-c\d+p\d+id\d+\.html$/;
+// Match shape: https://vieclam24h.vn/<category-slug>/<title-slug>-cNNNpNNidNN.html
+// Group 1 = category slug, group 2 = title slug (ASCII-folded, dash-joined).
+const VL24H_DETAIL_RE = /^https?:\/\/vieclam24h\.vn\/([^/]+)\/([^/]+)-c\d+p\d+id\d+\.html$/;
 
 export function extractCategorySlug(url: string): string | null {
   const m = url.match(VL24H_DETAIL_RE);
   return m ? m[1]! : null;
+}
+
+/**
+ * Pull the title slug segment from a vl24h detail URL. Returns null if URL
+ * doesn't match. The title slug is ASCII-folded (lowercased, diacritics
+ * stripped, spaces → dashes) which is consumable by taxonomy regex when its
+ * patterns include the folded variants alongside diacritic forms.
+ */
+export function extractTitleSlugFromUrl(url: string): string | null {
+  const m = url.match(VL24H_DETAIL_RE);
+  return m ? m[2]! : null;
+}
+
+/**
+ * Convert a URL title-slug back to a space-separated phrase suitable for
+ * regex matching. Does NOT restore diacritics — taxonomy patterns must
+ * include the folded forms (e.g. `co khi`, `ky su`) alongside diacritic
+ * forms (`cơ khí`, `kỹ sư`).
+ */
+export function foldAndDeslug(titleSlug: string): string {
+  return titleSlug.replace(/-+/g, ' ').toLowerCase().trim();
 }
 
 export function isJobDetailUrl(url: string): boolean {
@@ -150,6 +129,8 @@ export interface VlJobInput {
   location: string;
   postedAt: string;
   vertical: Vertical;
+  /** Taxonomy sub-domain id, e.g. 'tech.software'. Set when filter resolved one. */
+  subVertical?: string;
   // carried for filtering, not part of Job model
   _validThrough?: string | null;
 }
@@ -158,6 +139,7 @@ export function ldToJobInput(
   ld: JobPostingLd,
   sourceUrl: string,
   vertical: Vertical,
+  subVertical?: string,
 ): VlJobInput | null {
   if (!ld.title || !ld.hiringOrganization?.name) return null;
   const desc = stripHtmlAndNormalize(ld.description || '');
@@ -174,6 +156,7 @@ export function ldToJobInput(
     location: flattenLocation(ld.jobLocation) || 'Vietnam',
     postedAt,
     vertical,
+    ...(subVertical ? { subVertical } : {}),
     _validThrough: ld.validThrough ?? null,
   };
 }

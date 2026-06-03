@@ -1,7 +1,18 @@
 // Heuristic classifier for job vertical and seniority.
 // Pure function — no IO. Used at ingest time to auto-tag jobs.
 // LLM is NOT invoked here (cost + free-tier conservation).
+//
+// Vertical resolution priority (post-Phase-2):
+//   1. Finance-company allowlist (banks/insurance override ambiguous titles
+//      like "Senior Analyst" → finance).
+//   2. taxonomy.pickSubVertical(title) — taxonomy.ts is the source of truth
+//      for vertical + sub-vertical decisions.
+//   3. Legacy regex cascade (kept as fallback for titles taxonomy doesn't
+//      cover, e.g. bare "Operations Coordinator", "HR Business Partner" —
+//      maintains backward compat with classify-vertical.test.ts).
+//   4. → 'other'.
 
+import { pickSubVertical } from './taxonomy';
 import type { Seniority, Vertical } from './types';
 
 // Companies whose primary industry is finance/banking/securities.
@@ -40,26 +51,43 @@ function matchesFinanceCompany(company: string): boolean {
 }
 
 /**
- * Classify job vertical from title and company name.
- * Priority: finance company allowlist → title regex cascade.
+ * Classify job vertical from title and company name. See file header for
+ * resolution priority.
  */
 export function classifyVertical(title: string, company: string): Vertical {
-  if (matchesFinanceCompany(company)) return 'finance';
+  return classifyVerticalAndSub(title, company).vertical;
+}
 
+/**
+ * Same resolution as classifyVertical but also returns the taxonomy
+ * sub-vertical id when one was matched. Sub-vertical is undefined when the
+ * fallback cascade (or company allowlist) decided the vertical.
+ */
+export function classifyVerticalAndSub(
+  title: string,
+  company: string,
+): { vertical: Vertical; subVertical?: string } {
+  if (matchesFinanceCompany(company)) return { vertical: 'finance' };
+
+  const tax = pickSubVertical(title);
+  if (tax) return tax;
+
+  // Legacy cascade — kept so titles taxonomy doesn't recognize still land
+  // in a sensible bucket instead of falling to 'other'.
   if (/marketing|brand|content|seo|growth|campaign|digital media/i.test(title)) {
-    return 'marketing';
+    return { vertical: 'marketing' };
   }
   if (/\bsales\b|account exec|business dev|bd\b|account manager|key account/i.test(title)) {
-    return 'sales';
+    return { vertical: 'sales' };
   }
   if (/operation|coordinator|admin|supply chain|logistic|warehouse|procurement/i.test(title)) {
-    return 'ops';
+    return { vertical: 'ops' };
   }
   if (/developer|engineer|dev\b|tech|data |qa\b|qc\b|devops|sre|architect|programmer|software|backend|frontend|fullstack|full.stack|mobile|ios|android|machine learning|ml\b|ai\b|nlp/i.test(title)) {
-    return 'tech';
+    return { vertical: 'tech' };
   }
 
-  return 'other';
+  return { vertical: 'other' };
 }
 
 /**

@@ -1,6 +1,17 @@
 // Scrape vieclam24h.vn → JobInput[] JSON for `pnpm run ingest file`.
-// Strategy: read daily sitemap-index → 4 child sitemaps → bucket URLs by category slug → vertical.
-// Sample detail pages, parse Schema.org JobPosting ld+json, filter by validThrough.
+//
+// Pipeline (post-Phase-2 taxonomy rewrite):
+//   1. sitemap-index → child sitemaps → all job-detail URLs
+//   2. PRE-FILTER (cheap, no HTTP):
+//        a. URL category slug → taxonomy.slugToVerticalAndSub(); reject unknown.
+//        b. URL title-slug → taxonomy.classifyTitle() w/ candidate sub-domains;
+//           reject negative-match or no-positive-match.
+//   3. DETAIL FETCH only for surviving URLs; parse ld+json.
+//   4. RE-VERIFY title against ld.title (richer than URL slug); reject if
+//      now classified negative (rare but covers truncated URL slugs).
+//   5. validThrough + max-age filter (unchanged).
+//
+// Goal: zero detail HTML fetched for jobs the taxonomy already rejects.
 
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -11,11 +22,13 @@ import {
   parseJobPostingLd,
   ldToJobInput,
   extractCategorySlug,
-  slugToVertical,
+  extractTitleSlugFromUrl,
+  foldAndDeslug,
   isSitemapIndex,
   isJobDetailUrl,
   type VlJobInput,
 } from '../src/lib/scrape/vl24h-parser';
+import { classifyTitle, slugToVerticalAndSub } from '../src/lib/jobs/taxonomy';
 
 const SITEMAP_INDEX = 'https://vieclam24h.vn/file/sitemap/sitemap-index.xml';
 const UA =
@@ -75,15 +88,93 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 const VERTICALS: Vertical[] = ['tech', 'marketing', 'finance', 'sales', 'ops', 'other'];
 
+interface FilteredUrl {
+  url: string;
+  vertical: Vertical;
+  /** Sub-vertical id from URL-slug pre-classification; may be refined at detail. */
+  subVertical: string;
+}
+
 interface Bucket {
   vertical: Vertical;
-  urls: string[];
+  urls: FilteredUrl[];
   collected: VlJobInput[];
   attempts: number;
   failures: number;
   skippedStale: number;
   skippedExpired: number;
   skippedNoLd: number;
+  rejectedAtDetail: number;
+}
+
+interface PreFilterStats {
+  totalCandidates: number;
+  rejectedNoSlugMatch: number;
+  rejectedByTitleNeg: number;
+  rejectedByTitleNoMatch: number;
+  perVerticalSurviving: Record<Vertical, number>;
+  perVerticalRejectedNeg: Record<Vertical, number>;
+  perVerticalRejectedNoMatch: Record<Vertical, number>;
+}
+
+function newPerVertical<T>(init: T): Record<Vertical, T> {
+  return VERTICALS.reduce(
+    (acc, v) => {
+      acc[v] = init;
+      return acc;
+    },
+    {} as Record<Vertical, T>,
+  );
+}
+
+function preFilter(urls: string[]): { surviving: FilteredUrl[]; stats: PreFilterStats } {
+  const surviving: FilteredUrl[] = [];
+  const stats: PreFilterStats = {
+    totalCandidates: urls.length,
+    rejectedNoSlugMatch: 0,
+    rejectedByTitleNeg: 0,
+    rejectedByTitleNoMatch: 0,
+    perVerticalSurviving: newPerVertical(0),
+    perVerticalRejectedNeg: newPerVertical(0),
+    perVerticalRejectedNoMatch: newPerVertical(0),
+  };
+
+  for (const url of urls) {
+    const slug = extractCategorySlug(url);
+    if (!slug) {
+      stats.rejectedNoSlugMatch++;
+      continue;
+    }
+    const slugMatch = slugToVerticalAndSub('vl24h', slug);
+    if (!slugMatch) {
+      stats.rejectedNoSlugMatch++;
+      continue;
+    }
+
+    const titleSlug = extractTitleSlugFromUrl(url);
+    if (!titleSlug) {
+      stats.rejectedNoSlugMatch++;
+      continue;
+    }
+    const folded = foldAndDeslug(titleSlug);
+
+    const verdict = classifyTitle(slugMatch.vertical, folded, slugMatch.candidateSubDomains);
+    if (!verdict.accept) {
+      if (verdict.reason === 'negative-match') {
+        stats.rejectedByTitleNeg++;
+        stats.perVerticalRejectedNeg[slugMatch.vertical]++;
+      } else {
+        stats.rejectedByTitleNoMatch++;
+        stats.perVerticalRejectedNoMatch[slugMatch.vertical]++;
+      }
+      continue;
+    }
+
+    surviving.push({ url, vertical: slugMatch.vertical, subVertical: verdict.subVertical });
+    stats.perVerticalSurviving[slugMatch.vertical]++;
+  }
+
+  return { surviving, stats };
 }
 
 function nowIso(): string {
@@ -137,27 +228,49 @@ async function main(): Promise<void> {
   }
   console.log(`[scrape-vl24h] Total job-detail URLs: ${allEntries.length}`);
 
-  // Bucket by vertical (preserve sitemap order)
+  // Pre-filter BEFORE any detail fetch. KISS: cheap regex first, expensive
+  // HTTP second.
+  const { surviving, stats } = preFilter(allEntries);
+
+  console.log(`\n[scrape-vl24h] === PRE-FILTER (no HTTP) ===`);
+  console.log(`  total candidates:        ${stats.totalCandidates}`);
+  console.log(`  rejected (no slug):      ${stats.rejectedNoSlugMatch}`);
+  console.log(`  rejected (title neg):    ${stats.rejectedByTitleNeg}`);
+  console.log(`  rejected (title nomatch):${stats.rejectedByTitleNoMatch}`);
+  console.log(`  surviving:               ${surviving.length}`);
+  for (const v of VERTICALS) {
+    console.log(
+      `    ${v.padEnd(10)} survived=${String(stats.perVerticalSurviving[v]).padStart(4)} ` +
+        `rejNeg=${String(stats.perVerticalRejectedNeg[v]).padStart(4)} ` +
+        `rejNoMatch=${String(stats.perVerticalRejectedNoMatch[v]).padStart(4)}`,
+    );
+  }
+
+  // Bucket surviving URLs per vertical (preserves sitemap order)
   const buckets = {} as Record<Vertical, Bucket>;
   for (const v of VERTICALS) {
-    buckets[v] = { vertical: v, urls: [], collected: [], attempts: 0, failures: 0, skippedStale: 0, skippedExpired: 0, skippedNoLd: 0 };
+    buckets[v] = {
+      vertical: v,
+      urls: [],
+      collected: [],
+      attempts: 0,
+      failures: 0,
+      skippedStale: 0,
+      skippedExpired: 0,
+      skippedNoLd: 0,
+      rejectedAtDetail: 0,
+    };
+  }
+  for (const f of surviving) {
+    buckets[f.vertical].urls.push(f);
   }
 
-  for (const url of allEntries) {
-    const slug = extractCategorySlug(url);
-    if (!slug) continue;
-    const v = slugToVertical(slug);
-    buckets[v].urls.push(url);
-  }
-
-  console.log(`[scrape-vl24h] Bucket sizes: ${VERTICALS.map((v) => `${v}=${buckets[v].urls.length}`).join(' ')}`);
-
-  // Scrape each bucket sequentially (overall ~150 detail fetches; parallel risks ban)
+  // Detail fetch — only for filter-survivors
   for (const v of VERTICALS) {
     const bucket = buckets[v];
-    console.log(`\n[scrape-vl24h] === ${v} (pool=${bucket.urls.length}) ===`);
+    console.log(`\n[scrape-vl24h] === ${v} (filter-survived=${bucket.urls.length}) ===`);
 
-    for (const url of bucket.urls) {
+    for (const f of bucket.urls) {
       if (bucket.collected.length >= target) break;
       if (bucket.attempts >= args.maxAttemptsPerVertical) break;
 
@@ -166,10 +279,10 @@ async function main(): Promise<void> {
 
       let html: string;
       try {
-        html = await fetchText(url);
+        html = await fetchText(f.url);
       } catch (err) {
         bucket.failures++;
-        console.warn(`[scrape-vl24h]   ${v} [${bucket.attempts}] FETCH ${url.slice(-60)} → ${(err as Error).message}`);
+        console.warn(`[scrape-vl24h]   ${v} [${bucket.attempts}] FETCH ${f.url.slice(-60)} → ${(err as Error).message}`);
         continue;
       }
 
@@ -179,7 +292,22 @@ async function main(): Promise<void> {
         continue;
       }
 
-      const input = ldToJobInput(ld, url, v);
+      // Second-pass title verification on richer ld.title. URL title-slug
+      // truncates at ~60 chars and loses diacritics; ld.title is the
+      // authoritative form. Re-classify and override sub-vertical if
+      // taxonomy refines it.
+      const detailVerdict = classifyTitle(f.vertical, ld.title);
+      let subVertical = f.subVertical;
+      if (detailVerdict.accept) {
+        subVertical = detailVerdict.subVertical;
+      } else if (detailVerdict.reason === 'negative-match') {
+        bucket.rejectedAtDetail++;
+        continue;
+      }
+      // 'no-positive-match' at detail = trust the URL-slug classification
+      // (filter already accepted it once); keep going.
+
+      const input = ldToJobInput(ld, f.url, f.vertical, subVertical);
       if (!input) {
         bucket.skippedNoLd++;
         continue;
@@ -196,10 +324,17 @@ async function main(): Promise<void> {
       }
 
       bucket.collected.push(input);
-      console.log(`[scrape-vl24h]   ${v} [${bucket.collected.length}/${target}] ✓ ${input.title.slice(0, 60)} @ ${input.company.slice(0, 40)}`);
+      console.log(
+        `[scrape-vl24h]   ${v} [${bucket.collected.length}/${target}] ✓ ` +
+          `[${subVertical}] ${input.title.slice(0, 60)} @ ${input.company.slice(0, 40)}`,
+      );
     }
 
-    console.log(`[scrape-vl24h] ${v}: collected=${bucket.collected.length} attempts=${bucket.attempts} fail=${bucket.failures} noLd=${bucket.skippedNoLd} expired=${bucket.skippedExpired} stale=${bucket.skippedStale}`);
+    console.log(
+      `[scrape-vl24h] ${v}: collected=${bucket.collected.length} attempts=${bucket.attempts} ` +
+        `fail=${bucket.failures} noLd=${bucket.skippedNoLd} expired=${bucket.skippedExpired} ` +
+        `stale=${bucket.skippedStale} rejDetail=${bucket.rejectedAtDetail}`,
+    );
   }
 
   const allCollected: VlJobInput[] = [];
@@ -210,7 +345,11 @@ async function main(): Promise<void> {
   for (const v of VERTICALS) {
     const b = buckets[v];
     const oldest = b.collected.reduce((acc, j) => (acc < j.postedAt ? acc : j.postedAt), '9999');
-    console.log(`  ${v.padEnd(10)} collected=${String(b.collected.length).padStart(3)} pool=${String(b.urls.length).padStart(5)} oldest=${oldest === '9999' ? '-' : oldest}`);
+    console.log(
+      `  ${v.padEnd(10)} collected=${String(b.collected.length).padStart(3)} ` +
+        `pool=${String(b.urls.length).padStart(5)} ` +
+        `oldest=${oldest === '9999' ? '-' : oldest}`,
+    );
   }
 
   if (args.dryRun) {

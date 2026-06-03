@@ -60,10 +60,12 @@ describe('classifyVertical', () => {
     expect(classifyVertical('Marketing Specialist', 'VPBank')).toBe('finance');
   });
 
-  // other vertical
-  it('HR Business Partner → other', () => {
-    expect(classifyVertical('HR Business Partner', 'Generic Corp')).toBe('other');
+  // ops vertical — taxonomy promoted HR from 'other' (Phase 2 ingest taxonomy)
+  it('HR Business Partner → ops (taxonomy ops.hr)', () => {
+    expect(classifyVertical('HR Business Partner', 'Generic Corp')).toBe('ops');
   });
+
+  // other vertical
   it('Product Manager at unknown company → other (no matching pattern)', () => {
     // "Product Manager" does not match sales/ops/marketing/tech regexes
     expect(classifyVertical('Product Manager', 'Generic Corp')).toBe('other');

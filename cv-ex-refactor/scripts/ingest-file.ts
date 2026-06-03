@@ -5,7 +5,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import crypto from 'node:crypto';
-import { classifyVertical, classifySeniority } from '../src/lib/jobs/classify.js';
+import { classifyVerticalAndSub, classifySeniority } from '../src/lib/jobs/classify.js';
 import { embedText } from '../src/lib/jobs/embed.js';
 import { saveJob, isActiveJob } from '../src/lib/jobs/repo.js';
 import type { Job, JobInput } from '../src/lib/jobs/types.js';
@@ -74,7 +74,12 @@ export async function run(args: string[]): Promise<void> {
       continue;
     }
 
-    const vertical = entry.vertical ?? classifyVertical(entry.title ?? '', entry.company ?? '');
+    // Prefer caller-supplied vertical/subVertical (scrape pipeline knows them
+     // exactly from taxonomy pre-filter); fall back to classifier on the
+     // (title, company) pair for paste/manual inputs.
+    const classified = classifyVerticalAndSub(entry.title ?? '', entry.company ?? '');
+    const vertical = entry.vertical ?? classified.vertical;
+    const subVertical = entry.subVertical ?? classified.subVertical;
     const seniority = entry.seniority ?? classifySeniority(entry.title ?? '');
 
     console.log(`[ingest file] [${i + 1}/${total}] Embedding: ${entry.title} @ ${entry.company}`);
@@ -87,6 +92,7 @@ export async function run(args: string[]): Promise<void> {
       title: entry.title,
       company: entry.company,
       vertical,
+      ...(subVertical ? { subVertical } : {}),
       seniority,
       description: entry.description,
       sourceUrl: entry.sourceUrl,

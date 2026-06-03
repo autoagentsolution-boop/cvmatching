@@ -4,7 +4,7 @@
 import { createInterface } from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 import crypto from 'node:crypto';
-import { classifyVertical, classifySeniority } from '../src/lib/jobs/classify.js';
+import { classifyVerticalAndSub, classifySeniority } from '../src/lib/jobs/classify.js';
 import { embedText } from '../src/lib/jobs/embed.js';
 import { saveJob } from '../src/lib/jobs/repo.js';
 import type { Job } from '../src/lib/jobs/types.js';
@@ -36,14 +36,15 @@ export async function run(_args: string[]): Promise<void> {
       ? sourceRaw
       : 'other') as Job['source'];
 
-    const vertical = classifyVertical(title, company);
+    const { vertical, subVertical } = classifyVerticalAndSub(title, company);
     const seniority = classifySeniority(title);
     const id = sha256Id(sourceUrl);
 
     console.log('\n--- Classified ---');
-    console.log(`  id:         ${id}`);
-    console.log(`  vertical:   ${vertical}`);
-    console.log(`  seniority:  ${seniority}`);
+    console.log(`  id:           ${id}`);
+    console.log(`  vertical:     ${vertical}`);
+    console.log(`  subVertical:  ${subVertical ?? '(none)'}`);
+    console.log(`  seniority:    ${seniority}`);
 
     const confirm = await prompt(rl, '\nEmbed and save? [y/N]: ');
     if (confirm.toLowerCase() !== 'y') {
@@ -61,6 +62,7 @@ export async function run(_args: string[]): Promise<void> {
       title,
       company,
       vertical,
+      ...(subVertical ? { subVertical } : {}),
       seniority,
       description,
       sourceUrl,
