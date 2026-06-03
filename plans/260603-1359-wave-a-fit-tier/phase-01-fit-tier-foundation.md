@@ -1,6 +1,15 @@
 # Phase 1 — Fit Tier Foundation
 
-**Day:** Wed 2026-06-03 | **Effort:** 3-5h | **Status:** Pending
+**Day:** Wed 2026-06-03 | **Effort:** 3-5h | **Status:** Complete
+
+## Done
+
+- `src/lib/jobs/fit-tier.ts` — TierLetter, tierFromScore, semanticForTier, QUOTA, enforceQuota
+- `src/components/ui/tier-badge.tsx` + barrel export — letter chip with tooltip
+- `src/lib/llm/normalize-job-recommend.ts` — `tier` on `JobMatchOut`, dropped `>80` filter, sorts desc + `enforceQuota`, loosened `studyTopics` min 1
+- `src/lib/llm/prompt-job-recommend.ts` — 10-15 jobs across full score range, max 3 topics/job, anti-cluster instruction, **+ few-shot example block** showing expected score distribution for a 12-candidate pool (added post-Q&A 2026-06-03 to hedge LLM clustering bias)
+- sessionStorage `STORAGE_KEY` bumped `v1 → v2` to invalidate pre-tier caches (avoids Phase 2 undefined crash)
+- `npx tsc --noEmit` clean (only pre-existing `.next/dev` route-validator noise)
 
 ## Goal
 

@@ -1,15 +1,16 @@
 ---
 name: wave-a-fit-tier
 title: Wave A + Cover Letter — Fit Tier UX Overhaul
-status: in_progress
+status: completed
 created: 2026-06-03
+completed: 2026-06-03
 ship_by: 2026-06-08
 owner: vinh2000ld11@gmail.com
 blockedBy: []
 blocks: []
 related: [260603-1205-ui-polish]
 brainstorm: plans/reports/brainstorm-260603-1359-wave-a-fit-tier-features.md
-effort: 19-29h (5 days × 6h with ~5h buffer)
+effort: 19-29h (5 days × 6h with ~5h buffer) — actual ~6-8h same-day
 ---
 
 # Wave A + Cover Letter — Fit Tier UX Overhaul
@@ -18,7 +19,7 @@ effort: 19-29h (5 days × 6h with ~5h buffer)
 
 ## Status
 
-🚧 **In progress** — execute Wed 2026-06-03 → Sun 2026-06-08.
+✅ **Complete — 2026-06-03.** All 5 phases pulled forward to same day; typecheck + tests + build green. Manual E2E + Lighthouse + cost-guard live inspection pending (need running app + KV); see Phase 5 doc.
 
 ## Scope
 
@@ -33,11 +34,11 @@ Tailwind v4 + Next 16.2.6 App Router + custom atom lib + existing job-fit featur
 
 | Day | # | File | Effort | Focus |
 |-----|---|------|--------|-------|
-| Wed | 1 | [phase-01-fit-tier-foundation.md](./phase-01-fit-tier-foundation.md) | 3-5h | Tier compute lib + badge atom + normalize + prompt update |
-| Thu | 2 | [phase-02-fit-tier-ui-and-red-flags.md](./phase-02-fit-tier-ui-and-red-flags.md) | 4-6h | Badge wire into job-fit list/detail + red flags both pages |
-| Fri | 3 | [phase-03-action-column-wiring.md](./phase-03-action-column-wiring.md) | 8-12h | 4 action variants navigate via query params, /refined-cv + /career-path pre-fill |
-| Sat | 4 | [phase-04-cover-letter-endpoint.md](./phase-04-cover-letter-endpoint.md) | 4-6h | New endpoint + prompt + cost bucket + UI wire |
-| Sun | 5 | [phase-05-polish-smoke-test.md](./phase-05-polish-smoke-test.md) | 2-3h | Full E2E + cost sanity + commit hardening |
+| Wed | 1 | [phase-01-fit-tier-foundation.md](./phase-01-fit-tier-foundation.md) ✅ | 3-5h | Tier compute lib + badge atom + normalize + prompt update |
+| Thu | 2 | [phase-02-fit-tier-ui-and-red-flags.md](./phase-02-fit-tier-ui-and-red-flags.md) ✅ | 4-6h | Badge wire into job-fit list/detail + red flags both pages |
+| Fri | 3 | [phase-03-action-column-wiring.md](./phase-03-action-column-wiring.md) ✅ | 8-12h | 4 action variants navigate via query params, /refined-cv + /career-path pre-fill |
+| Sat | 4 | [phase-04-cover-letter-endpoint.md](./phase-04-cover-letter-endpoint.md) ✅ | 4-6h | New endpoint + prompt + cost bucket + UI wire |
+| Sun | 5 | [phase-05-polish-smoke-test.md](./phase-05-polish-smoke-test.md) ✅ (partial) | 2-3h | Tests + build + cross-plan + changelog DONE; live E2E + Lighthouse + KV inspection pending |
 
 ## Locked decisions (from brainstorm §2)
 

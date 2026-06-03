@@ -1,5 +1,90 @@
 # Project Changelog
 
+## Wave A — 2026-06-03 (Fit Tier UX overhaul, all phases EOD)
+
+Plan `260603-1359-wave-a-fit-tier` (5 phases, est. 19-29h) shipped in one
+session. Adds tier classification across recommend → refine → roadmap flow;
+surfaces honest red-flag warnings; introduces cover-letter endpoint (7th cost
+bucket).
+
+### Fit-tier system (Phase 1-2)
+
+- **`src/lib/jobs/fit-tier.ts`** — pure server logic: `TierLetter` (S/A/B/C/D/E),
+  `tierFromScore()` (cliffs at 95/85/75/65/55), `QUOTA = {S:1, A:3, B:2, C:2,
+  D:1, E:1}` (max 10), `enforceQuota()` (caps per tier, never cross-fills).
+- **`src/lib/llm/prompt-job-recommend.ts`** — system prompt now asks for 10-15
+  jobs across full 0-100 score range, max 3 study topics per job, anti-cluster
+  instruction ("KHÔNG dồn cụm 80-85"). Drops the legacy `>80` filter.
+  Includes a worked-example block (12-candidate fintech pool, ~11 distinct
+  scores from 35 → 96) to hedge Gemini's known clustering bias around 80-85.
+- **`src/lib/llm/normalize-job-recommend.ts`** — derives `tier` server-side from
+  `overallScore`, sorts desc, calls `enforceQuota` before return. Loosens
+  `studyTopics.min` from 3 → 1 (low-tier jobs naturally emit fewer). Adds
+  `description` to `JobMatchOut` so refine-from-job runs without re-fetch.
+- **`<TierBadge>`** atom (`src/components/ui/tier-badge.tsx`) — letter chip
+  with semantic tooltip (`title=` attribute) + per-tier color map.
+- **`<RedFlagsSection>`** (`src/features/analyze/red-flags-section.tsx`) — inline
+  section under analyze tabs when `result.redFlags.length > 0`.
+- **`<RedFlagsBanner>`** (`src/features/refined-cv/red-flags-banner.tsx`) —
+  collapsible amber banner top of /refined-cv.
+- **Job-fit list page** — groups by tier (S→E) with icon + count headings;
+  underfill footer "Chỉ N/10 jobs match. Thêm jobs ngày mai" when `<10`.
+- **SessionStorage cache** `job-fit-matches:v1 → v2` (pre-tier caches lacked
+  the new field; v2 invalidation prevents Phase 2 undefined crashes).
+
+### Action column (Phase 3)
+
+- **`<ActionButton>`** (`src/features/job-fit/action-button.tsx`) — per-tier
+  CTA: S/A → `/refined-cv?jobId&mode=apply` (primary); B → `mode=fill-gaps`;
+  C → `mode=stretch` (secondary intent); D/E → `/career-path?target&skillGaps`.
+- **`detail-actions-bar.tsx`** refactored — takes `job: JobMatchOut`, hides
+  "Mở trên source" link for tier D/E (low-fit → not pushing user to source).
+- **`GenerateCvBody.inputs.mode`** added to schema + `prompt-generate-cv.ts`
+  appends a `=== MODE ===` block with apply/fill-gaps/stretch instructions
+  (read AFTER the HARD RULES so it never overrides "DO NOT invent").
+- **`<RefinedCvModeBanner>`** (`src/features/refined-cv/refined-cv-mode-banner.tsx`)
+  — client island, reads `?jobId&mode` via `useSearchParams`, looks up job in
+  `useJobFit` store, synthesizes `analysisSummary` from `matchReasons +
+  studyTopics`, click-to-generate (no auto-fire — same cost-discipline as
+  cover letter; user explicitly confirms).
+- **`career-path-page.tsx`** — reads `?target&skillGaps`, seeds `targetRole`,
+  selects suggestion, appends gap list into `notes`. Route wrapped in
+  `<Suspense>` for `useSearchParams` compliance.
+
+### Cover Letter endpoint (Phase 4)
+
+- **`POST /api/generate-cover-letter`** — mirrors `generate-cv` exactly:
+  zod-validated body, `resolveApiKey` with action `'generate-cover-letter'`,
+  kill-switch gate (shared key only), `callLLM`, `logLlmCall`, `recordCost`
+  gated `!byok`. BYOK + admin bypass identical to other LLM routes.
+- **System prompt** — 3-paragraph structure (hook → evidence → close), 250-400
+  word target, no fabrication, no generic phrases ("passionate" / "team
+  player"), no `Dear Hiring Manager` greeting (user adds manually).
+- **Cost bucket** — 7th bucket `'generate-cover-letter'` added to
+  `lib/cost/buckets.ts`. Same $1 WARN / $3 KILL thresholds (`cost/guard.ts`).
+- **Quota** — `3/day` for logged-in users; `0` for anonymous (login-gate via
+  resolveApiKey at line 62 returns 401 before quota path).
+- **Admin usage** — `DailyGlobalRow` adds `generateCoverLetterOk/Error`;
+  `/admin/usage` daily table adds "Cover Ltr ok / err" column.
+- **`<CoverLetterBlock>`** (`src/features/refined-cv/cover-letter-block.tsx`)
+  — replaces `cover-letter-stub.tsx` (deleted); reads `?jobId` for context,
+  click-to-generate, renders `MarkdownView`, shows remaining quota.
+
+### Verification
+
+- `npx tsc --noEmit` clean across all phases.
+- `vitest`: 111 passed, 10 skipped, 0 failed (rewrote 2 normalize tests to
+  reflect new tier+quota behavior).
+- `next build`: clean, `/api/generate-cover-letter` ƒ-registered.
+- Deferred (Phase 5 noted): auto-fire-on-arrival for mode banner (cost-guard
+  headroom unproven); `/api/jobs/{id}` lookup endpoint (banner falls back to
+  store-empty hint).
+
+### Cross-plan
+
+- `260603-1205-ui-polish/plan.md` updated with "Wave A handoff" section listing
+  4 new components that need token-ification.
+
 ## v0.3.1 — 2026-06-02 evening (pilot lockdown + ops UX)
 
 Post-ship session. Real prod KV seeded with 150 vl24h jobs; multiple

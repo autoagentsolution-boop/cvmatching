@@ -1,6 +1,18 @@
 # Phase 2 — Tier Badge UI + Red Flag Surface
 
-**Day:** Thu 2026-06-04 | **Effort:** 4-6h | **Status:** Pending
+**Day:** Thu 2026-06-04 | **Effort:** 4-6h | **Status:** Complete (pulled forward to Wed)
+
+## Done
+
+- `src/features/analyze/red-flags-section.tsx` — Card section, amber left-border, renders null when empty
+- `src/features/refined-cv/red-flags-banner.tsx` — collapsible amber banner with expand/collapse, renders null when empty
+- `src/features/job-fit/job-card.tsx` — `<TierBadge>` top-left + extended score variant scale (sub-60 → error)
+- `src/features/job-fit/job-fit-detail-page.tsx` — `<TierBadge>` inline with title in PageHeader
+- `src/features/job-fit/job-fit-list-page.tsx` — `groupByTier()` renders S→E sections with icon + count; underfill footer when `< TARGET_JOBS (10)`
+- `src/features/results/results-section.tsx` — `<RedFlagsSection>` rendered after Tabs when `result.redFlags.length > 0`
+- `src/features/refined-cv/refined-cv-view.tsx` — `<RedFlagsBanner>` above the markdown card (read from `useAnalysis().result`)
+- `TierBadgeProps.reason` typed `string | undefined` to satisfy `exactOptionalPropertyTypes` callers
+- `npx tsc --noEmit` clean
 
 ## Goal
 

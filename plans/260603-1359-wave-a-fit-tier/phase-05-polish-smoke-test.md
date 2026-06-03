@@ -1,6 +1,27 @@
 # Phase 5 — Polish + Smoke Test
 
-**Day:** Sun 2026-06-08 | **Effort:** 2-3h | **Status:** Pending
+**Day:** Sun 2026-06-08 | **Effort:** 2-3h | **Status:** Partial — automated checks done, live validation pending
+
+## Done (automated)
+
+- `vitest`: 111 passed, 10 skipped, 0 failed. Rewrote 2 normalize tests (`drops entries with overallScore <= 80` → `keeps entries across the full score range`; `slices to maximum 10` → `caps each tier by QUOTA` + new mixed-quota assertion). Added explicit tier-derivation test.
+- `next build`: clean. `/api/generate-cover-letter` ƒ-registered.
+- `npx tsc --noEmit`: clean throughout all phases.
+- `docs/project-changelog.md`: Wave A section prepended above v0.3.1.
+- `260603-1205-ui-polish/plan.md`: handoff section added listing 4 new atoms needing token-ification.
+
+## Pending (live env required)
+
+These need a running app + KV access — flagging for next session:
+
+- **8-step E2E flow** (Phase 5 §E2E) — login → /analyze → red flag section → /refined-cv → red flag banner → cover letter → /jobs grouped by tier → ActionButton flows → mode banner Generate → /career-path pre-fill.
+- **Cost-guard sanity** — confirm 7 buckets show in admin/usage, alert webhook badge configured, shared-key call increments, BYOK doesn't.
+- **Mode diff** — manually compare apply/fill-gaps/stretch outputs with the same CV+JD to confirm prompt variants produce meaningfully different content; sharpen `MODE_INSTR` with negative examples if outputs look identical.
+- **Lighthouse a11y ≥ 95** across `/analyze`, `/refined-cv`, `/job-fit`.
+- **Mobile responsive** check — TierBadge readable at <375px; ActionButton text wrap.
+- **Commit + push** — user-gated per project rule.
+
+## Goal
 
 ## Goal
 

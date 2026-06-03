@@ -1,6 +1,27 @@
 # Phase 3 — Action Column Wiring
 
-**Day:** Fri 2026-06-05 | **Effort:** 8-12h | **Status:** Pending
+**Day:** Fri 2026-06-05 | **Effort:** 8-12h | **Status:** Complete (pulled forward to Wed; scoped down — see Deferred)
+
+## Done
+
+- `src/features/job-fit/action-button.tsx` — per-tier label + intent + href; S/A/B→`/refined-cv?jobId&mode=apply|fill-gaps`, C→stretch, D/E→`/career-path?target&skillGaps`
+- `src/features/job-fit/job-card.tsx` — footer shows "Chi tiết" secondary + `<ActionButton size="sm">` primary
+- `src/features/job-fit/detail-actions-bar.tsx` — refactored: takes `job: JobMatchOut`, renders per-tier ActionButton + suppresses "Mở trên source" for tier D/E (low-fit jobs)
+- `src/features/job-fit/job-fit-detail-page.tsx` — passes `match` instead of `match.jobId`
+- `src/lib/schemas/llm-request.ts` — `CvModeEnum` + `GenerateCvBody.inputs.mode` optional
+- `src/features/analyze/types.ts` — `CvMode` export + `mode?` on `GenerateCvRequest.inputs`
+- `src/lib/llm/prompt-generate-cv.ts` — `MODE_INSTR` map; user prompt appends `=== MODE ===` block with apply/fill-gaps/stretch instructions
+- `src/lib/llm/normalize-job-recommend.ts` — added `description` to `JobMatchOut` so refine-from-job can run without re-fetch
+- `src/features/refined-cv/refined-cv-mode-banner.tsx` — client island reads `?jobId&mode`, surfaces banner, synthesizes `analysisSummary` from match reasons + study topics, click-to-generate (no auto-fire)
+- `src/features/refined-cv/refined-cv-view.tsx` — mounts mode banner above redflags banner under Suspense
+- `src/features/career-path/career-path-page.tsx` — `useSearchParams` on mount: pre-fills `targetRole` + selects as suggestion + appends skill-gaps into `notes`; opens aspiration drawer
+- `src/app/(app)/career-path/page.tsx` — Suspense boundary for `useSearchParams`
+- `npx tsc --noEmit` clean
+
+## Deferred (Phase 5 polish or follow-up)
+
+- **Auto-fire generate-cv on arrival from query.** Banner currently waits for explicit click — avoids surprise spend per link. Re-evaluate once cost-guard headroom confirmed.
+- **/api/jobs/{id} lookup endpoint** — banner falls back to session-store; if store empty (deep link, expired session), shows "Hãy quay lại Job Fit" copy instead of fetching. Acceptable until users complain.
 
 ## Goal
 

@@ -65,6 +65,19 @@ Visual + UX polish pass đưa `/analyze` page và app shell từ "functional" l�
 | Preset side-effect | Apply 4 selector + toggles, KHÔNG touch sliders |
 | Tailwind v4 + Next 16.2.6 | Verified runtime; re-check nếu P1 build fails |
 
+## Wave A handoff (2026-06-03 EOD)
+
+Wave A (`260603-1359-wave-a-fit-tier`) shipped 4 new atoms / components that this polish pass should fold into the token system when it executes:
+
+| Atom | Where | What to token-ify |
+|------|-------|-------------------|
+| `<TierBadge>` (`src/components/ui/tier-badge.tsx`) | Job-fit list + detail | Tier color map currently `bg-amber-100`/`bg-emerald-100`/etc. — add semantic tokens `--color-tier-s`, `--color-tier-a`, … `--color-tier-e` + `-on-` pair |
+| `<RedFlagsSection>` (`src/features/analyze/red-flags-section.tsx`) | /analyze results | Amber left-border (`border-l-amber-500`) → `--color-warning-strong` |
+| `<RedFlagsBanner>` (`src/features/refined-cv/red-flags-banner.tsx`) | /refined-cv top | Amber surface (`bg-amber-50 text-amber-950`) → `--color-warning-container` + `-on-` pair |
+| Mode banner (`src/features/refined-cv/refined-cv-mode-banner.tsx`) | /refined-cv top | Primary left-border + label — uses existing tokens, just review spacing |
+
+All four currently use raw Tailwind palette utilities — intentional one-shot in Wave A so we ship; tokenization owned by this plan.
+
 ## Deltas D1-D8
 
 Đầy đủ trong brainstorm report §3. Tóm tắt:

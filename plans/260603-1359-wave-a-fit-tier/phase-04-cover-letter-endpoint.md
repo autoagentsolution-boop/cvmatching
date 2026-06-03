@@ -1,6 +1,22 @@
 # Phase 4 — Cover Letter Endpoint + UI
 
-**Day:** Sat 2026-06-06 | **Effort:** 4-6h | **Status:** Pending
+**Day:** Sat 2026-06-06 | **Effort:** 4-6h | **Status:** Complete (pulled forward to Wed)
+
+## Done
+
+- `src/lib/schemas/cover-letter-request.ts` — `CoverLetterBody` (cvText, jdText, jobTitle, company, language); 20K/10K caps
+- `src/lib/llm/prompt-generate-cover-letter.ts` — system prompt: 3-paragraph structure, anti-generic rules, no fabricate, no "Dear Hiring Manager" greeting
+- `src/app/api/generate-cover-letter/route.ts` — mirrors `generate-cv` exactly: zod parse, `resolveApiKey`, kill-switch gate (shared key only), `callLLM`, `logLlmCall`, `recordCost` gated `!byok`
+- `src/lib/cost/buckets.ts` — adds `'generate-cover-letter'` (7 buckets total)
+- `src/lib/quota/consume-quota.ts` — adds `'generate-cover-letter': 3` (user) + `0` (anon — anonymous blocked); `isQuotaKind` extended
+- `src/lib/quota/get-quota-status.ts` — KIND_LIST and `emptyStatus.kinds` extended
+- `src/lib/usage/track-usage.ts` — `UsageAction` union extended
+- `src/lib/usage/read-usage.ts` — `DailyGlobalRow` adds `generateCoverLetterOk/Error`; mget keys extended
+- `src/app/(app)/admin/usage/page.tsx` — daily table adds "Cover Ltr ok / err" column
+- `src/features/refined-cv/cover-letter-block.tsx` — reads `?jobId` from URL + lookup in job-fit store; click-to-generate; renders markdown; surfaces 4xx/5xx errors (per `feedback_error_surfacing_no_silent_fallback`); shows quota remaining
+- `src/features/refined-cv/refined-cv-page.tsx` — replaces `<CoverLetterStub>` with `<Suspense><CoverLetterBlock /></Suspense>`
+- Deleted `src/features/refined-cv/cover-letter-stub.tsx` (placeholder gone)
+- `npx tsc --noEmit` clean
 
 ## Goal
 
