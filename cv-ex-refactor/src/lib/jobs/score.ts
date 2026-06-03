@@ -81,15 +81,19 @@ export async function getEmbeddingsMemo(): Promise<EmbeddingsMemo> {
 
 /**
  * Return top-k job ids sorted descending by cosine similarity to query.
+ * Optional `allowedIds` restricts scoring to a subset (e.g. pre-filtered by
+ * vertical) — when omitted, every active job is scored.
  */
 export async function topKCandidates(
   query: Float32Array,
   k = 20,
+  allowedIds?: Set<string>,
 ): Promise<Array<{ id: string; score: number }>> {
   const { vecs } = await getEmbeddingsMemo();
 
   const scores: Array<{ id: string; score: number }> = [];
   for (const [id, emb] of vecs) {
+    if (allowedIds && !allowedIds.has(id)) continue;
     scores.push({ id, score: cosineSim(query, emb) });
   }
 

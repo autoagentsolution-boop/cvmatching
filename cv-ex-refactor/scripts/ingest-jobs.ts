@@ -2,7 +2,7 @@
 // Usage: pnpm run ingest <command> [args]
 // Env: loaded from .env.local via tsx --env-file flag in package.json script.
 
-const COMMANDS = ['paste', 'file', 'stats', 'expire', 'rebuild-embeddings'] as const;
+const COMMANDS = ['paste', 'file', 'stats', 'expire', 'rebuild-embeddings', 'build-vertical-index'] as const;
 type Command = (typeof COMMANDS)[number];
 
 function printHelp(): void {
@@ -15,6 +15,7 @@ Commands:
   stats                    Print active/expired counts by vertical and seniority
   expire                   Mark jobs where verifiedAt > 21 days as expired
   rebuild-embeddings       Pack all active embeddings into a versioned KV blob
+  build-vertical-index     Rebuild jobs:by-vertical KV index from active jobs (run post-ingest)
 
 Environment required (in .env.local):
   GEMINI_API_KEY           Operator's Gemini API key (NOT the shared app key)
@@ -77,6 +78,11 @@ async function main(): Promise<void> {
     }
     case 'rebuild-embeddings': {
       const { run } = await import('./ingest-rebuild-embeddings.js');
+      await run();
+      break;
+    }
+    case 'build-vertical-index': {
+      const { run } = await import('./build-vertical-index.js');
       await run();
       break;
     }

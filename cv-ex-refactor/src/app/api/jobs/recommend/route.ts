@@ -6,6 +6,8 @@ import { getCachedEmbedding, setCachedEmbedding } from '@/lib/jobs/embed-cache';
 import { embedText } from '@/lib/jobs/embed';
 import { topKCandidates, JobIndexNotReadyError } from '@/lib/jobs/score';
 import { getJobBatch } from '@/lib/jobs/repo';
+import { classifyCvVertical } from '@/lib/jobs/classify-cv-vertical';
+import { getJobIdsForVertical } from '@/lib/jobs/vertical-index';
 import { buildRecommendPrompts } from '@/lib/llm/prompt-job-recommend';
 import { normalizeRecommend } from '@/lib/llm/normalize-job-recommend';
 import { microUsdCost } from '@/lib/llm/model-prices';
@@ -172,11 +174,30 @@ export async function POST(req: NextRequest) {
     }
     stageTimings.embed = Date.now() - embedStart;
 
+    // Vertical pre-filter: classify CV → restrict candidate pool to same vertical.
+    // Fail-open: if classifier returns null OR index bucket too small (<5 jobs,
+    // not enough to rank against), fall back to full pool. Index is built/refreshed
+    // by `scripts/build-vertical-index.ts` post-ingest; absent index = no filter.
+    const MIN_VERTICAL_POOL = 5;
+    const classifyStart = Date.now();
+    const cvVertical = classifyCvVertical(body.cvText);
+    stageTimings.classify = Date.now() - classifyStart;
+
+    let allowedIds: Set<string> | undefined;
+    if (cvVertical) {
+      const verticalStart = Date.now();
+      const bucketIds = await getJobIdsForVertical(cvVertical).catch(() => null);
+      stageTimings.verticalLookup = Date.now() - verticalStart;
+      if (bucketIds && bucketIds.size >= MIN_VERTICAL_POOL) {
+        allowedIds = bucketIds;
+      }
+    }
+
     // Top-K candidates from job index
     let candidates: Array<{ id: string; score: number }>;
     const topkStart = Date.now();
     try {
-      candidates = await topKCandidates(cvEmbedding, 10);
+      candidates = await topKCandidates(cvEmbedding, 10, allowedIds);
     } catch (e) {
       if (e instanceof JobIndexNotReadyError) {
         return err('service_unavailable', 'Job index chưa sẵn sàng. Pool jobs trống — admin cần ingest trước.', 503);
