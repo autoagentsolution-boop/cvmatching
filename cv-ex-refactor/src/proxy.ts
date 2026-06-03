@@ -106,11 +106,17 @@ export async function proxy(request: NextRequest) {
   // Fire-and-forget visit counter — matcher below already excludes /api,
   // /_next, favicon and prefetch requests, so this only fires for real
   // page navigations. Failures are swallowed inside recordVisit.
+  // Light JWT decode to flag authed visits — Q3 funnel tracking. AUTH_SECRET
+  // missing in dev → treated as anonymous (fail-closed).
   const ip =
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
     request.headers.get('x-real-ip')?.trim() ??
     'unknown';
-  void recordVisit(ip);
+  const authSecret = process.env.AUTH_SECRET;
+  const isAuthed = authSecret
+    ? !!(await getToken({ req: request, secret: authSecret }).catch(() => null))
+    : false;
+  void recordVisit(ip, isAuthed);
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set(headerName, csp);

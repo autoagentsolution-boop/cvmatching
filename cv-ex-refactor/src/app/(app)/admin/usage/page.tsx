@@ -4,6 +4,7 @@ import { getJobFitStats } from '@/lib/usage/read-job-fit-stats';
 import { microUsdToString } from '@/lib/llm/model-prices';
 import { JobFitStatsSection } from './job-fit-stats-section';
 import { vnDateString } from '@/lib/quota/vn-date';
+import { readVisitStats, readDailyVisits } from '@/lib/analytics/visit-counter';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -51,7 +52,24 @@ export default async function AdminUsagePage({
 
   const snapshot = await getUsageSnapshot(month, days);
   const todayYmd = vnDateString();
-  const jobFitStats = await getJobFitStats(todayYmd);
+  const [jobFitStats, visitStats, dailyVisits] = await Promise.all([
+    getJobFitStats(todayYmd),
+    readVisitStats(),
+    readDailyVisits(days),
+  ]);
+
+  // Today's per-action submit counts — funnel terminal nodes for Q4.
+  const todayRow = snapshot.daily.find((d) => d.date === todayYmd);
+  const todayAnalyzeOk = todayRow?.analyzeOk ?? 0;
+  const todayGenCvOk = todayRow?.generateCvOk ?? 0;
+  const todayJobFitOk = todayRow?.jobRecommendOk ?? 0;
+  const todayCareerOk = (todayRow?.careerPathOk ?? 0) + (todayRow?.careerPathSuggestOk ?? 0);
+
+  // Drop-off rates against pageviews (cap at 100% for tiny denominators).
+  const pct = (numer: number): string => {
+    if (!visitStats.today) return '—';
+    return `${Math.min(100, (numer / visitStats.today) * 100).toFixed(1)}%`;
+  };
 
   const totalUsers = snapshot.users.length;
   const totalCalls = snapshot.users.reduce(
@@ -121,6 +139,67 @@ export default async function AdminUsagePage({
 
       <section>
         <h2 className="mb-3 font-display text-headline-sm font-bold text-on-surface">
+          Visit funnel — today ({todayYmd})
+        </h2>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <Stat label="Pageviews" value={fmt(visitStats.today)} />
+          <Stat label="Unique users (IP)" value={fmt(visitStats.todayUnique)} />
+          <Stat label="Signed-in pageviews" value={`${fmt(visitStats.todayAuthed)} (${pct(visitStats.todayAuthed)})`} />
+          <Stat label="Lifetime PV / unique" value={`${fmtChars(visitStats.total)} / ${fmtChars(visitStats.totalUnique)}`} />
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+          <Stat label="Analyze submits" value={`${fmt(todayAnalyzeOk)} (${pct(todayAnalyzeOk)})`} />
+          <Stat label="Refine CV submits" value={`${fmt(todayGenCvOk)} (${pct(todayGenCvOk)})`} />
+          <Stat label="Fit Job submits" value={`${fmt(todayJobFitOk)} (${pct(todayJobFitOk)})`} />
+          <Stat label="Career Path submits" value={`${fmt(todayCareerOk)} (${pct(todayCareerOk)})`} />
+        </div>
+        <p className="mt-2 text-label-sm text-on-surface-variant">
+          % bằng action / pageviews hôm nay. Pageview = mỗi page navigation (matcher proxy.ts loại
+          /api, /_next, prefetch). Unique = số IP riêng biệt trong ngày. Signed-in = pageviews có JWT
+          NextAuth hợp lệ.
+        </p>
+      </section>
+
+      <section>
+        <h2 className="mb-3 font-display text-headline-sm font-bold text-on-surface">
+          Visit history — last {days} days
+        </h2>
+        <div className="overflow-x-auto rounded-xl border border-outline-variant">
+          <table className="w-full text-label-sm">
+            <thead className="bg-surface-container-low text-on-surface-variant">
+              <tr>
+                <Th>Date</Th>
+                <Th align="right">Pageviews</Th>
+                <Th align="right">Unique IPs</Th>
+                <Th align="right">Signed-in</Th>
+                <Th align="right">Auth rate</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {dailyVisits.map((v) => (
+                <tr key={v.date} className="border-t border-outline-variant">
+                  <Td>{v.date}</Td>
+                  <Td align="right">{fmt(v.pageviews)}</Td>
+                  <Td align="right">{fmt(v.unique)}</Td>
+                  <Td align="right">{fmt(v.authed)}</Td>
+                  <Td align="right">
+                    {v.pageviews > 0
+                      ? `${((v.authed / v.pageviews) * 100).toFixed(1)}%`
+                      : '—'}
+                  </Td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-2 text-label-sm text-on-surface-variant">
+          Lịch sử 90 ngày (TTL keys). Trước 2026-06-03 không có cột Signed-in (mới track từ commit
+          add-auth-rate).
+        </p>
+      </section>
+
+      <section>
+        <h2 className="mb-3 font-display text-headline-sm font-bold text-on-surface">
           Per-user usage — {month}
         </h2>
         {snapshot.users.length === 0 ? (
@@ -172,6 +251,8 @@ export default async function AdminUsagePage({
                 <Th align="right">Analyze ok / err</Th>
                 <Th align="right">Gen CV ok / err</Th>
                 <Th align="right">Extract ok / err</Th>
+                <Th align="right">Fit Job ok / err</Th>
+                <Th align="right">Career ok / err</Th>
                 <Th align="right">Tokens</Th>
                 <Th align="right">Shared cost</Th>
               </tr>
@@ -188,6 +269,13 @@ export default async function AdminUsagePage({
                   </Td>
                   <Td align="right">
                     {fmt(d.extractMustHavesOk)} / {fmt(d.extractMustHavesError)}
+                  </Td>
+                  <Td align="right">
+                    {fmt(d.jobRecommendOk)} / {fmt(d.jobRecommendError)}
+                  </Td>
+                  <Td align="right">
+                    {fmt(d.careerPathOk + d.careerPathSuggestOk)} /{' '}
+                    {fmt(d.careerPathError + d.careerPathSuggestError)}
                   </Td>
                   <Td align="right">{fmtChars(d.tokens)}</Td>
                   <Td align="right">{microUsdToString(d.sharedCostMicroUsd)}</Td>

@@ -23,6 +23,14 @@ export interface DailyGlobalRow {
   generateCvError: number;
   extractMustHavesOk: number;
   extractMustHavesError: number;
+  // Tracked via logLlmCall → trackUsage but previously not exposed. Surface for
+  // funnel view (Q4) so admin can see drop-off across all 6 action types.
+  jobRecommendOk: number;
+  jobRecommendError: number;
+  careerPathOk: number;
+  careerPathError: number;
+  careerPathSuggestOk: number;
+  careerPathSuggestError: number;
   charVolume: number;
   tokens: number;
   sharedCalls: number;
@@ -110,6 +118,12 @@ async function readDailyRow(ymd: string): Promise<DailyGlobalRow> {
     `usage:global:${ymd}:extract-must-haves:tokens`,
     `usage:global:${ymd}:shared:calls`,
     `usage:global:${ymd}:shared:cost-muusd`,
+    `usage:global:${ymd}:job-recommend:ok`,
+    `usage:global:${ymd}:job-recommend:error`,
+    `usage:global:${ymd}:career-path:ok`,
+    `usage:global:${ymd}:career-path:error`,
+    `usage:global:${ymd}:career-path-suggest:ok`,
+    `usage:global:${ymd}:career-path-suggest:error`,
   ];
   const values = await kv.mget<(string | number | null)[]>(...keys);
   const v = values.map(num);
@@ -125,6 +139,12 @@ async function readDailyRow(ymd: string): Promise<DailyGlobalRow> {
     tokens: (v[9] ?? 0) + (v[10] ?? 0) + (v[11] ?? 0),
     sharedCalls: v[12] ?? 0,
     sharedCostMicroUsd: v[13] ?? 0,
+    jobRecommendOk: v[14] ?? 0,
+    jobRecommendError: v[15] ?? 0,
+    careerPathOk: v[16] ?? 0,
+    careerPathError: v[17] ?? 0,
+    careerPathSuggestOk: v[18] ?? 0,
+    careerPathSuggestError: v[19] ?? 0,
   };
 }
 
