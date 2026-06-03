@@ -5,6 +5,8 @@ import { buildMustHavePrompts } from '@/lib/llm/prompt-must-haves';
 import { callLLM } from '@/lib/llm/providers';
 import { safeParseJson } from '@/lib/llm/safe-parse-json';
 import { logLlmCall } from '@/lib/llm/safe-logger';
+import { checkKillSwitch, recordCost } from '@/lib/cost/guard';
+import { microUsdCost } from '@/lib/llm/model-prices';
 import { env } from '@/lib/env';
 
 export const runtime = 'nodejs';
@@ -32,6 +34,19 @@ export async function POST(req: NextRequest) {
   const resolved = await resolveApiKey(body.llm, 'extract-must-haves', { byokToken, ip });
   if (!resolved.ok) {
     return err(resolved.code, resolved.message, resolved.status);
+  }
+
+  // Auto-fires on JD paste — easier to drain than analyze button. BYOK self-bills,
+  // admins always-on for pilot testing.
+  if (!resolved.byok && !resolved.isAdmin) {
+    const killCheck = await checkKillSwitch('extract-must-haves');
+    if (!killCheck.ok) {
+      return err(
+        'service_unavailable',
+        'Trích must-haves tạm tắt do vượt ngưỡng chi phí. Dùng API key riêng (Settings → BYOK) hoặc thử lại sau.',
+        503,
+      );
+    }
   }
 
   const { system, user } = buildMustHavePrompts(body);
@@ -95,6 +110,10 @@ export async function POST(req: NextRequest) {
       promptTokens,
       completionTokens,
     });
+
+    if (!resolved.byok) {
+      await recordCost('extract-must-haves', microUsdCost(body.llm.model, promptTokens ?? 0, completionTokens ?? 0));
+    }
 
     return NextResponse.json({ mustHaves, quotaRemaining: resolved.quotaRemaining });
   } catch (e) {

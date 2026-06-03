@@ -5,6 +5,8 @@ import { microUsdToString } from '@/lib/llm/model-prices';
 import { JobFitStatsSection } from './job-fit-stats-section';
 import { vnDateString } from '@/lib/quota/vn-date';
 import { readVisitStats, readDailyVisits } from '@/lib/analytics/visit-counter';
+import { readBucketStatus, isAlertWebhookConfigured, WARN_LIMIT_MICRO_USD, KILL_LIMIT_MICRO_USD } from '@/lib/cost/guard';
+import { COST_BUCKETS } from '@/lib/cost/buckets';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -52,11 +54,15 @@ export default async function AdminUsagePage({
 
   const snapshot = await getUsageSnapshot(month, days);
   const todayYmd = vnDateString();
-  const [jobFitStats, visitStats, dailyVisits] = await Promise.all([
+  const [jobFitStats, visitStats, dailyVisits, bucketStatus] = await Promise.all([
     getJobFitStats(todayYmd),
     readVisitStats(),
     readDailyVisits(days),
+    readBucketStatus(COST_BUCKETS, todayYmd),
   ]);
+  const webhookConfigured = isAlertWebhookConfigured();
+  const totalShardSpendToday = bucketStatus.reduce((a, b) => a + b.cumulativeMicroUsd, 0);
+  const anyKilled = bucketStatus.some((b) => b.killed);
 
   // Today's per-action submit counts — funnel terminal nodes for Q4.
   const todayRow = snapshot.daily.find((d) => d.date === todayYmd);
@@ -135,6 +141,61 @@ export default async function AdminUsagePage({
         <Stat label="Shared / BYOK" value={`${fmt(totalShared)} / ${fmt(totalByok)}`} />
         <Stat label="Tokens (month)" value={fmtChars(totalTokens)} />
         <Stat label="Cost (month)" value={microUsdToString(totalCost)} />
+      </section>
+
+      <section>
+        <h2 className="mb-3 flex items-center gap-3 font-display text-headline-sm font-bold text-on-surface">
+          Cost kill-switch — today ({todayYmd})
+          {!webhookConfigured && (
+            <span className="rounded-md bg-error/15 px-2 py-0.5 text-label-sm text-error">
+              ⚠ ALERT_WEBHOOK_URL not configured — alerts silent
+            </span>
+          )}
+          {anyKilled && (
+            <span className="rounded-md bg-error/15 px-2 py-0.5 text-label-sm text-error">
+              🛑 One or more buckets killed
+            </span>
+          )}
+        </h2>
+        <p className="mb-2 text-label-sm text-on-surface-variant">
+          Per-bucket daily spend (shared-key only — BYOK excluded). WARN at{' '}
+          {microUsdToString(WARN_LIMIT_MICRO_USD)}, KILL at{' '}
+          {microUsdToString(KILL_LIMIT_MICRO_USD)}. Total today:{' '}
+          <strong>{microUsdToString(totalShardSpendToday)}</strong> ({COST_BUCKETS.length} buckets × $3 cap = $
+          {COST_BUCKETS.length * 3}/day ceiling).
+        </p>
+        <div className="overflow-x-auto rounded-xl border border-outline-variant">
+          <table className="w-full text-label-sm">
+            <thead className="bg-surface-container-low text-on-surface-variant">
+              <tr>
+                <Th>Bucket</Th>
+                <Th align="right">Today spend</Th>
+                <Th align="right">% of KILL</Th>
+                <Th align="right">Status</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {bucketStatus.map((b) => {
+                const pctKill = (b.cumulativeMicroUsd / KILL_LIMIT_MICRO_USD) * 100;
+                const status = b.killed
+                  ? '🛑 KILLED'
+                  : b.cumulativeMicroUsd >= WARN_LIMIT_MICRO_USD
+                    ? '⚠ WARN'
+                    : 'ok';
+                return (
+                  <tr key={b.bucket} className="border-t border-outline-variant">
+                    <Td>
+                      <code>{b.bucket}</code>
+                    </Td>
+                    <Td align="right">{microUsdToString(b.cumulativeMicroUsd)}</Td>
+                    <Td align="right">{pctKill.toFixed(1)}%</Td>
+                    <Td align="right">{status}</Td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section>

@@ -6,7 +6,8 @@ import { callLLM } from '@/lib/llm/providers';
 import { safeParseJson } from '@/lib/llm/safe-parse-json';
 import { normalizeAnalysis } from '@/lib/llm/normalize-analysis';
 import { logLlmCall } from '@/lib/llm/safe-logger';
-import { checkKillSwitch } from '@/lib/cost/guard';
+import { checkKillSwitch, recordCost } from '@/lib/cost/guard';
+import { microUsdCost } from '@/lib/llm/model-prices';
 import { env } from '@/lib/env';
 
 export const runtime = 'nodejs';
@@ -110,6 +111,10 @@ export async function POST(req: NextRequest) {
       promptTokens,
       completionTokens,
     });
+
+    if (!resolved.byok) {
+      await recordCost('analyze', microUsdCost(body.llm.model, promptTokens ?? 0, completionTokens ?? 0));
+    }
 
     return NextResponse.json({
       ...result,

@@ -1,8 +1,18 @@
-export type CostBucket = 'job-recommend' | 'analyze' | 'career-path' | 'generate-cv';
+// Cost buckets correspond 1:1 to LLM-touching endpoints. Each has its own
+// daily cumulative + kill-switch flag in KV. Caps come from guard.ts.
+export type CostBucket =
+  | 'job-recommend'
+  | 'analyze'
+  | 'career-path'
+  | 'career-path-suggest'
+  | 'generate-cv'
+  | 'extract-must-haves';
 
 export const COST_BUCKETS: readonly CostBucket[] = [
   'job-recommend',
   'analyze',
   'career-path',
+  'career-path-suggest',
   'generate-cv',
+  'extract-must-haves',
 ] as const;

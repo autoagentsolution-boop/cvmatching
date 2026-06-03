@@ -6,6 +6,8 @@ import { callLLM } from '@/lib/llm/providers';
 import { safeParseJson } from '@/lib/llm/safe-parse-json';
 import { normalizeSuggestPaths } from '@/lib/llm/normalize-suggest-paths';
 import { logLlmCall } from '@/lib/llm/safe-logger';
+import { checkKillSwitch, recordCost } from '@/lib/cost/guard';
+import { microUsdCost } from '@/lib/llm/model-prices';
 import { enforceIpRateLimit, rateLimitedResponse } from '@/lib/quota/enforce-ip-rate-limit';
 
 export const runtime = 'nodejs';
@@ -43,6 +45,19 @@ export async function POST(req: NextRequest) {
   const resolved = await resolveApiKey(body.llm, 'career-path-suggest', { byokToken, ip });
   if (!resolved.ok) {
     return err(resolved.code, resolved.message, resolved.status);
+  }
+
+  // Auto-fires on page load — highest drain risk. BYOK self-bills,
+  // admins always-on for pilot testing.
+  if (!resolved.byok && !resolved.isAdmin) {
+    const killCheck = await checkKillSwitch('career-path-suggest');
+    if (!killCheck.ok) {
+      return err(
+        'service_unavailable',
+        'Gợi ý hướng phát triển tạm tắt do vượt ngưỡng chi phí. Dùng API key riêng (Settings → BYOK) hoặc thử lại sau.',
+        503,
+      );
+    }
   }
 
   const { system, user } = buildSuggestPathsPrompts(body);
@@ -111,6 +126,10 @@ export async function POST(req: NextRequest) {
       promptTokens,
       completionTokens,
     });
+
+    if (!resolved.byok) {
+      await recordCost('career-path-suggest', microUsdCost(body.llm.model, promptTokens ?? 0, completionTokens ?? 0));
+    }
 
     return NextResponse.json({ suggestions });
   } catch (e) {

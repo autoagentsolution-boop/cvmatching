@@ -4,7 +4,8 @@ import { resolveApiKey } from '@/lib/llm/resolve-api-key';
 import { buildGenerateCvPrompts } from '@/lib/llm/prompt-generate-cv';
 import { callLLM } from '@/lib/llm/providers';
 import { logLlmCall } from '@/lib/llm/safe-logger';
-import { checkKillSwitch } from '@/lib/cost/guard';
+import { checkKillSwitch, recordCost } from '@/lib/cost/guard';
+import { microUsdCost } from '@/lib/llm/model-prices';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -94,6 +95,10 @@ export async function POST(req: NextRequest) {
       promptTokens,
       completionTokens,
     });
+
+    if (!resolved.byok) {
+      await recordCost('generate-cv', microUsdCost(body.llm.model, promptTokens ?? 0, completionTokens ?? 0));
+    }
 
     return NextResponse.json({ markdown, quotaRemaining: resolved.quotaRemaining });
   } catch (e) {

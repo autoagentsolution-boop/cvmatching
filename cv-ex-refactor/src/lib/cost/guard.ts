@@ -15,6 +15,37 @@ function killSwitchKey(bucket: CostBucket): string {
   return `kill-switch:${bucket}`;
 }
 
+/** Read current day's cumulative cost (µUSD) + kill flag for each bucket. */
+export async function readBucketStatus(
+  buckets: readonly CostBucket[],
+  ymd?: string,
+): Promise<Array<{ bucket: CostBucket; cumulativeMicroUsd: number; killed: boolean }>> {
+  if (!kvAvailable) {
+    return buckets.map((b) => ({ bucket: b, cumulativeMicroUsd: 0, killed: false }));
+  }
+  const day = ymd ?? vnDateString();
+  const costKeys = buckets.map((b) => costKey(b, day));
+  const killKeys = buckets.map((b) => killSwitchKey(b));
+  try {
+    const [costs, kills] = await Promise.all([
+      kv.mget<(string | number | null)[]>(...costKeys),
+      kv.mget<(string | number | null)[]>(...killKeys),
+    ]);
+    return buckets.map((b, i) => ({
+      bucket: b,
+      cumulativeMicroUsd: Number(costs[i] ?? 0),
+      killed: String(kills[i] ?? '') === '1',
+    }));
+  } catch {
+    return buckets.map((b) => ({ bucket: b, cumulativeMicroUsd: 0, killed: false }));
+  }
+}
+
+/** Whether alert webhook is configured. Returned to admin UI for safety badge. */
+export function isAlertWebhookConfigured(): boolean {
+  return Boolean(env.ALERT_WEBHOOK_URL);
+}
+
 function alertSentKey(kind: 'cost-warn' | 'cost-kill', bucket: CostBucket, ymd: string): string {
   return `alert:sent:${ymd}:${kind}:${bucket}`;
 }

@@ -313,7 +313,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await recordCost('job-recommend', microUsdCost(llmConfig.model, promptTokens ?? 0, completionTokens ?? 0));
+    if (!resolved.byok) {
+      await recordCost('job-recommend', microUsdCost(llmConfig.model, promptTokens ?? 0, completionTokens ?? 0));
+    }
 
     await logLlmCall({
       endpoint: 'job-recommend', provider: llmConfig.provider, model: llmConfig.model,
