@@ -38,6 +38,9 @@ export async function callRecommendLlm(
     user,
     expectJson: true,
     maxOutputTokens: MAX_OUTPUT_TOKENS,
+    // Recommend is structured scoring — Gemini's thinking phase adds 30-50s
+    // for zero quality gain. Disable.
+    disableThinking: true,
     ...(signal ? { signal } : {}),
   });
 

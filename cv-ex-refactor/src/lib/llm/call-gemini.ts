@@ -9,6 +9,13 @@ export interface GeminiCallOpts {
   maxOutputTokens?: number;
   /** External abort signal — caller-controlled deadline. */
   signal?: AbortSignal;
+  /**
+   * Disable Gemini 2.5 thinking mode for this call. Default thinking budget
+   * can add 10-30s latency before generation — usually unnecessary for
+   * structured-JSON tasks (scoring, extraction, rewriting). Leave thinking
+   * ON for open-ended reasoning tasks like roadmap design.
+   */
+  disableThinking?: boolean;
 }
 
 export interface LlmCallResult {
@@ -37,6 +44,10 @@ export async function callGemini(opts: GeminiCallOpts): Promise<LlmCallResult> {
         // to avoid silent truncation.
         maxOutputTokens: opts.maxOutputTokens ?? 16384,
         ...(opts.expectJson ? { responseMimeType: 'application/json' } : {}),
+        // thinkingBudget: 0 disables the 2.5-series thinking phase entirely.
+        // For structured-JSON tasks (scoring, extraction) it cuts wall-clock
+        // by 30-50s. Omit the field to keep Gemini's default behavior.
+        ...(opts.disableThinking ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
       },
     }),
     ...(opts.signal ? { signal: opts.signal } : {}),

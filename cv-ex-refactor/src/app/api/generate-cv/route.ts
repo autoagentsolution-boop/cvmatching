@@ -62,6 +62,8 @@ export async function POST(req: NextRequest) {
       system,
       user,
       expectJson: false,
+      // Markdown rewrite — no thinking phase needed; cuts ~30s.
+      disableThinking: true,
     });
     const markdown = stripCodeFences(raw);
     if (markdown.length < 50) {

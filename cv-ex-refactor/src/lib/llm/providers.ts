@@ -13,6 +13,11 @@ export interface CallLlmOpts {
   maxOutputTokens?: number;
   /** External abort signal — caller-controlled deadline. */
   signal?: AbortSignal;
+  /**
+   * Gemini-only: skip the 2.5-series thinking phase. No-op for other providers.
+   * Set true for structured-JSON tasks (scoring, extraction, rewriting).
+   */
+  disableThinking?: boolean;
 }
 
 export type { LlmCallResult };
@@ -24,6 +29,7 @@ export async function callLLM({
   expectJson,
   maxOutputTokens,
   signal,
+  disableThinking,
 }: CallLlmOpts): Promise<LlmCallResult> {
   if (config.provider === 'gemini') {
     return callGemini({
@@ -35,6 +41,7 @@ export async function callLLM({
       expectJson,
       ...(maxOutputTokens ? { maxOutputTokens } : {}),
       ...(signal ? { signal } : {}),
+      ...(disableThinking ? { disableThinking: true } : {}),
     });
   }
 
