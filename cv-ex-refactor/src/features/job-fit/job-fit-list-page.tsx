@@ -1,7 +1,6 @@
 'use client';
 
 import { MdWork, MdRefresh } from 'react-icons/md';
-import { DashboardLayout } from '@/components/layouts';
 import { Button, Card, PageHeader, LoadingState, ErrorState } from '@/components/ui';
 import { useJobFit, isCacheValid } from './job-fit-store';
 import { JobCard } from './job-card';
@@ -64,7 +63,7 @@ export function JobFitListPage() {
     hasCv && !cacheValid && status !== 'loading' && status !== 'error';
 
   return (
-    <DashboardLayout activeNav="job-fit" topnavTitle="Job Fit & Study">
+    <>
       <PageHeader
         title={
           <>
@@ -179,6 +178,6 @@ export function JobFitListPage() {
           {...(hasCv ? { retry: handleFetch } : {})}
         />
       )}
-    </DashboardLayout>
+    </>
   );
 }

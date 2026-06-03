@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { MdArrowForward, MdAutoAwesome, MdEditDocument, MdInsights, MdRocketLaunch } from 'react-icons/md';
-import { DashboardLayout } from '@/components/layouts';
 import { Card } from '@/components/ui';
 
 const PILLARS = [
@@ -28,8 +27,9 @@ const PILLARS = [
 
 export function DashboardPage() {
   return (
-    <DashboardLayout activeNav="dashboard" topnavTitle="ResumeRefine">
-      {/* Hero */}
+    <>
+      {/* Hero — rendered inside the AppShell's DashboardLayout main area;
+          do NOT wrap with another DashboardLayout (causes double sidebar). */}
       <section
         aria-label="Tôn chỉ ứng dụng"
         className="relative overflow-hidden rounded-3xl border border-outline-variant bg-gradient-to-br from-tertiary-container via-surface-container-low to-surface px-8 py-14 sm:px-12 sm:py-20"
@@ -50,11 +50,11 @@ export function DashboardPage() {
             AI + bạn = interview
           </span>
 
-          <p className="max-w-2xl text-title-md font-medium leading-relaxed text-on-surface-variant sm:text-headline-sm">
+          <p className="max-w-2xl text-title-md font-medium leading-relaxed text-on-surface sm:text-headline-sm">
             AI giúp bạn{' '}
-            <span className="font-semibold text-on-surface">chọn đúng job</span>,{' '}
-            <span className="font-semibold text-on-surface">sửa đúng CV</span>,{' '}
-            <span className="font-semibold text-on-surface">biết gap thật</span>,
+            <span className="font-bold text-on-tertiary-container">chọn đúng job</span>,{' '}
+            <span className="font-bold text-on-tertiary-container">sửa đúng CV</span>,{' '}
+            <span className="font-bold text-on-tertiary-container">biết gap thật</span>,
             và tăng xác suất được gọi phỏng vấn.
           </p>
 
@@ -112,6 +112,6 @@ export function DashboardPage() {
           <MdArrowForward size={18} aria-hidden="true" />
         </Link>
       </section>
-    </DashboardLayout>
+    </>
   );
 }

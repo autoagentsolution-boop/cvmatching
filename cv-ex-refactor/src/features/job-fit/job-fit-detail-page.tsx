@@ -1,6 +1,5 @@
 'use client';
 
-import { DashboardLayout } from '@/components/layouts';
 import { PageHeader, TierBadge } from '@/components/ui';
 import { useJobFit } from './job-fit-store';
 import { JobScoreBlock } from './job-score-block';
@@ -24,16 +23,11 @@ export function JobFitDetailPage({ jobId }: JobFitDetailPageProps) {
   const match = jobs.find((j) => j.jobId === jobId) ?? null;
 
   if (!match) {
-    return (
-      <DashboardLayout activeNav="job-fit" topnavTitle="Job Fit & Study">
-        <EmptyStateBackToList />
-      </DashboardLayout>
-    );
+    return <EmptyStateBackToList />;
   }
 
   return (
-    <DashboardLayout activeNav="job-fit" topnavTitle={match.title}>
-      <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6">
         <PageHeader
           title={
             <span className="inline-flex items-center gap-3">
@@ -62,8 +56,7 @@ export function JobFitDetailPage({ jobId }: JobFitDetailPageProps) {
           job={match}
           {...(match.sourceUrl ? { source: extractSource(match.sourceUrl) } : {})}
         />
-      </div>
-    </DashboardLayout>
+    </div>
   );
 }
 

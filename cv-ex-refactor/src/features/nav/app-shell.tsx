@@ -24,7 +24,8 @@ function deriveActiveNav(pathname: string): ActiveNav {
   if (pathname.startsWith('/job-fit')) return 'job-fit';
   if (pathname.startsWith('/admin/maintenance')) return 'admin-maintenance';
   if (pathname.startsWith('/admin/usage')) return 'admin-usage';
-  return 'analyze';
+  if (pathname.startsWith('/analyze')) return 'analyze';
+  return 'dashboard';
 }
 
 export function AppShell({ session, isAdmin, loginEnabled, children }: AppShellProps) {
