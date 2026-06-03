@@ -13,6 +13,7 @@ import { KeywordCoverageBlock } from './keyword-coverage-block';
 import { MatchScoreBlock } from './match-score-block';
 import { OptimizationPathsBlock } from './optimization-paths-block';
 import { RecommendationsBlock } from './recommendations-block';
+import { RedFlagsSection } from '@/features/analyze/red-flags-section';
 
 const TABS = [
   { id: 'optimization', label: 'Optimization Paths' },
@@ -130,6 +131,12 @@ export function ResultsSection() {
             </div>
           )}
         </Tabs>
+
+        {result.redFlags?.length > 0 && (
+          <div className="mt-6">
+            <RedFlagsSection redFlags={result.redFlags} />
+          </div>
+        )}
       </Layout>
     </section>
   );
