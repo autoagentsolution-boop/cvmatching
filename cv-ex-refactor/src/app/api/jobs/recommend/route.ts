@@ -184,14 +184,17 @@ export async function POST(req: NextRequest) {
     stageTimings.classify = Date.now() - classifyStart;
 
     let allowedIds: Set<string> | undefined;
+    let verticalBucketSize: number | null = null;
     if (cvVertical) {
       const verticalStart = Date.now();
       const bucketIds = await getJobIdsForVertical(cvVertical).catch(() => null);
       stageTimings.verticalLookup = Date.now() - verticalStart;
+      verticalBucketSize = bucketIds?.size ?? 0;
       if (bucketIds && bucketIds.size >= MIN_VERTICAL_POOL) {
         allowedIds = bucketIds;
       }
     }
+    const verticalApplied = Boolean(allowedIds);
 
     // Top-K candidates from job index.
     // 2026-06-03: reduced 10 → 6 after Wave A bumped output volume (10-15 jobs
@@ -333,6 +336,17 @@ export async function POST(req: NextRequest) {
       expiresAt: new Date(Date.now() + 6 * 3600 * 1000).toISOString(),
       quotaRemaining: resolved.quotaRemaining,
       timings: stageTimings,
+      // Pool diagnostics — surface decision path so the operator can tell
+      // from devtools whether the vertical filter is active or the request
+      // fell back to scoring against the full pool. If verticalApplied is
+      // false and verticalBucketSize is 0, run `pnpm run ingest
+      // build-vertical-index` to populate the sidecar index.
+      pool: {
+        cvVertical,
+        verticalApplied,
+        verticalBucketSize,
+        candidatesScored: candidates.length,
+      },
     });
   } catch (e) {
     if (isAbortLike(e) || deadlineController.signal.aborted) {

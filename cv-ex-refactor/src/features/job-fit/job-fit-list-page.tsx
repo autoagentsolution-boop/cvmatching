@@ -13,7 +13,8 @@ const TIER_GROUP_ORDER: readonly TierLetter[] = ['S', 'A', 'B', 'C', 'D', 'E'] a
 const TIER_HEADING_ICON: Record<TierLetter, string> = {
   S: '🚀', A: '⭐', B: '✅', C: '🎯', D: '⚠️', E: '🛑',
 };
-const TARGET_JOBS = 10;
+// Matches topK in /api/jobs/recommend (route.ts). Bump together if changed.
+const TARGET_JOBS = 6;
 
 function groupByTier(jobs: JobMatchOut[]): Array<[TierLetter, JobMatchOut[]]> {
   const map: Record<TierLetter, JobMatchOut[]> = { S: [], A: [], B: [], C: [], D: [], E: [] };
