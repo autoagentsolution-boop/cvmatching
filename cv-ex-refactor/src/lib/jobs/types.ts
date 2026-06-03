@@ -10,6 +10,12 @@ export interface Job {
   title: string;
   company: string;
   vertical: Vertical;
+  /**
+   * Free-text sub-vertical id from taxonomy.ts, e.g. 'tech.software', 'tech.data',
+   * 'finance.accounting', 'sales.field-b2b'. Optional — existing pre-taxonomy
+   * jobs have undefined; new ingests carry it through from the filter step.
+   */
+  subVertical?: string;
   seniority: Seniority;
   tier?: Tier;
   description: string;
@@ -26,6 +32,7 @@ export interface Job {
 export type JobInput = Omit<Job, 'id' | 'embedding' | 'verifiedAt' | 'vertical' | 'seniority'> & {
   vertical?: Vertical;
   seniority?: Seniority;
+  subVertical?: string;
 };
 
 export interface StudyTopic {
