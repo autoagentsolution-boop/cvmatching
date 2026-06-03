@@ -17,7 +17,7 @@ export function EmptyStateNeedCv() {
       description="Job Fit cần một Refined CV để match với job pool. Bắt đầu ở trang Analyze (paste CV + JD → nhận điểm + Refined CV → AI gợi ý job phù hợp)."
       action={
         <Button asChild variant="primary">
-          <Link href="/">Bắt đầu ở Analyze</Link>
+          <Link href="/analyze">Bắt đầu ở Analyze</Link>
         </Button>
       }
     />

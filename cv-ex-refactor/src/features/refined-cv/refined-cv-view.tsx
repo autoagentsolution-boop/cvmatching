@@ -45,7 +45,7 @@ export function RefinedCvView() {
           description="Refined CV là CV được rewrite cho một JD cụ thể. Hãy chạy Analyze (paste CV + JD) trước, rồi bấm Generate refined CV trên trang kết quả."
           action={
             <Button asChild variant="primary">
-              <Link href="/">Bắt đầu ở Analyze</Link>
+              <Link href="/analyze">Bắt đầu ở Analyze</Link>
             </Button>
           }
         />

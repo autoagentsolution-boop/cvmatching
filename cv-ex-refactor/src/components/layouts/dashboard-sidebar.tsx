@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 
 export type ActiveNav =
+  | 'dashboard'
   | 'analyze'
   | 'refined-cv'
   | 'history'
@@ -24,7 +25,8 @@ interface NavItem {
 // Order is the user workflow order — Analyze (start), output pages it feeds,
 // then admin-only utilities at the bottom. Sidebar renders flat (no groupings).
 const NAV_ITEMS: NavItem[] = [
-  { key: 'analyze', label: 'Analyze', icon: 'analytics', href: '/' },
+  { key: 'dashboard', label: 'Dashboard', icon: 'home', href: '/' },
+  { key: 'analyze', label: 'Analyze', icon: 'analytics', href: '/analyze' },
   { key: 'refined-cv', label: 'Refined CV', icon: 'description', href: '/refined-cv' },
   { key: 'career-path', label: 'Career Path', icon: 'psychology', href: '/career-path' },
   { key: 'history', label: 'History', icon: 'history', href: '/history' },

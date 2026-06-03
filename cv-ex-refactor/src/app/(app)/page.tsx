@@ -1,5 +1,5 @@
-import { AnalyzePage } from '@/features/analyze/analyze-page';
+import { DashboardPage } from '@/features/dashboard/dashboard-page';
 
 export default function Page() {
-  return <AnalyzePage />;
+  return <DashboardPage />;
 }

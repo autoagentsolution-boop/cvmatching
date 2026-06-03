@@ -121,7 +121,7 @@ export function CareerPathPage() {
           description="Career Path đề xuất hướng nghề nghiệp dài hạn dựa trên CV của bạn. Hãy bắt đầu ở Analyze (paste CV) — kết quả sẽ dùng để gợi ý 3-5 path khả thi + roadmap."
           action={
             <Button asChild variant="primary">
-              <Link href="/">Bắt đầu ở Analyze</Link>
+              <Link href="/analyze">Bắt đầu ở Analyze</Link>
             </Button>
           }
         />
