@@ -193,11 +193,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Top-K candidates from job index
+    // Top-K candidates from job index.
+    // 2026-06-03: reduced 10 → 6 after Wave A bumped output volume (10-15 jobs
+    // requested w/ full dimensionScores + studyTopics blew past 60s ceiling).
+    // 6 candidates → ~3-4K output tokens → p95 ~20-30s LLM, comfortable margin.
     let candidates: Array<{ id: string; score: number }>;
     const topkStart = Date.now();
     try {
-      candidates = await topKCandidates(cvEmbedding, 10, allowedIds);
+      candidates = await topKCandidates(cvEmbedding, 6, allowedIds);
     } catch (e) {
       if (e instanceof JobIndexNotReadyError) {
         return err('service_unavailable', 'Job index chưa sẵn sàng. Pool jobs trống — admin cần ingest trước.', 503);
@@ -307,7 +310,7 @@ export async function POST(req: NextRequest) {
       });
       return err(
         'no_matches',
-        'Không có job nào khớp đủ cao (>80 điểm). Thử cập nhật CV với nhiều chi tiết kỹ năng/kinh nghiệm hơn, hoặc đợi pool jobs cập nhật.',
+        'LLM không trả về match hợp lệ — có thể do JSON malformed hoặc tất cả job IDs đều không khớp pool candidates. Thử lại sau ít phút.',
         502,
         { stage: 'normalize', elapsedMs: stageElapsed() },
       );

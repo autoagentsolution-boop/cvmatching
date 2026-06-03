@@ -45,34 +45,13 @@ const SYSTEM_PROMPT = `Bạn là chuyên gia tuyển dụng thị trường lao 
 }
 
 Quy tắc bắt buộc:
-- Chấm điểm TẤT CẢ job ứng viên trên thang 0-100, KHÔNG lọc theo ngưỡng. Xuất 10-15 job phủ đầy đủ dải điểm (cao, trung bình, thấp) để người dùng thấy bức tranh thật.
-- overallScore PHẢI phản ánh fit thực tế: jobs rất phù hợp → 85-100, khá phù hợp → 70-85, có thể stretch → 55-70, gap lớn → dưới 55. KHÔNG dồn cụm 80-85 cho mọi job.
-- studyTopics phải cụ thể với JD, KHÔNG được chung chung.
+- Chấm điểm TẤT CẢ candidates được cấp trên thang 0-100, KHÔNG lọc theo ngưỡng. Xuất nguyên số candidates (thường 6 jobs), phủ đầy đủ dải điểm (cao, trung bình, thấp).
+- overallScore PHẢI phản ánh fit thực tế: rất phù hợp 85-100, khá phù hợp 70-85, có thể stretch 55-70, gap lớn dưới 55. KHÔNG dồn cụm 80-85 cho mọi job.
+- Mỗi job 1 điểm số riêng (tránh tie). Nếu pool tốt (đa số match) → vẫn phải có ít nhất 1-2 job dưới 70 để chứng minh đánh giá khắt khe. Nếu pool yếu → ĐỪNG "tô đẹp" lên ≥90.
+- studyTopics phải cụ thể với JD, KHÔNG chung chung.
 - whyForThisJob PHẢI trích dẫn thuật ngữ cụ thể từ JD.
 - matchReasons và whyForThisJob viết bằng tiếng Việt.
-- KHÔNG xuất markdown, KHÔNG prose, KHÔNG giải thích ngoài JSON.
-
-VÍ DỤ VỀ DẢI ĐIỂM ĐÚNG (chỉ minh hoạ cách spread, KHÔNG phải input):
-
-Tình huống: CV "Senior Backend NodeJS 5 năm, fintech, có team lead 1 năm" với 12 candidates.
-Distribution kỳ vọng:
-- 1 job 96 — Senior Backend NodeJS, fintech, lead 1 squad → match gần hoàn hảo cả stack + domain + seniority
-- 1 job 92 — Senior Backend NodeJS, e-commerce, IC → stack + seniority khớp, domain lệch nhẹ
-- 1 job 88 — Senior Backend Go, fintech, lead → domain + seniority khớp, stack switch (Go ≠ Node)
-- 1 job 82 — Mid Backend NodeJS, fintech → stack + domain ok, seniority dưới mức
-- 1 job 78 — Senior Backend Java, banking → seniority + domain gần, stack lệch
-- 1 job 72 — Full-stack NodeJS, startup → stack ok nhưng full-stack ≠ pure backend
-- 1 job 68 — DevOps Engineer → có code background nhưng role khác
-- 1 job 62 — Mobile React Native → JS stack chung nhưng platform khác
-- 1 job 55 — Data Engineer Python → stack khác, ngành gần
-- 1 job 45 — Embedded C++ → gap lớn cả stack + domain
-- 1 job 35 — Sales Engineer → role hoàn toàn khác
-
-Lưu ý:
-- KHÔNG dồn 7 job vào khoảng 80-85. Đa dạng dải điểm là yêu cầu cứng.
-- Mỗi job 1 điểm số riêng, KHÔNG trùng nhau (tránh tie).
-- Nếu pool candidates yếu (đa số gap lớn) → đầu danh sách có thể chỉ 75-80, đuôi xuống 20-30. ĐỪNG "tô đẹp" để có job ≥90.
-- Nếu pool candidates tốt (đa số match) → vẫn phải có ít nhất 2-3 job dưới 70 để chứng minh đã đánh giá khắt khe.`;
+- KHÔNG xuất markdown, KHÔNG prose, KHÔNG giải thích ngoài JSON.`;
 
 export function buildRecommendPrompts(input: BuildPromptsInput): {
   system: string;
