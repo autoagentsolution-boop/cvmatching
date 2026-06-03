@@ -131,6 +131,74 @@ Routing:
 Backward compat: existing bookmarks of `/` land on Dashboard and one
 click reaches Analyze. `sessionStorage` keys/serialization unchanged.
 
+### Dashboard hero polish (commit `e2f7f4f`)
+
+User reported the "Còn lại / vẫn là khả năng của bạn." hero on `/`
+overflowed: diacritics on row 2 (`ạ`, `ả`, `ă`) plus the 6px underline
+crashed into row 3. Root cause: `sm:text-[5.5rem]` (88px) at
+`leading-[0.95]` set the rendered line height (~84px) below the cap
+height + descender + underline-offset budget. Fix: scale 36→48→60px
+across `text-[2.25rem] sm:text-[3rem] lg:text-[3.75rem]`, leading-[1.15]
+(comfortable above cap height for Vietnamese diacritic stack), underline
+decoration-[3px] underline-offset-[6px] (modern, doesn't intrude). Hero
+still dominant, balanced, no overflow.
+
+### Ingest taxonomy Phase 2 — vl24h pre-filter rewrite (commit `3bcb2ab`)
+
+Phase 2 of 5 of the `260603-1655-ingest-taxonomy` plan. Implements the
+"filter at URL slug + URL title-slug BEFORE detail HTTP" architectural
+rule (memory `feedback-filter-before-scrape`).
+
+Pipeline changes in `scripts/scrape-vl24h.ts`:
+- Pre-filter pass over the sitemap output drops URLs at two cheap gates
+  before ANY detail fetch: (1) category slug must appear in some
+  sub-domain's `taxonomy.sourceSlugs.vl24h`; (2) URL title-slug
+  (extracted from the `/<cat>/<title-slug>-cNNN…html` shape, folded
+  dash→space, lowercased) must pass the candidate sub-domain's positive
+  regex without hitting the vertical-wide negative.
+- Pre-filter logs total survivors and per-vertical counters
+  (`survived`, `rejNeg`, `rejNoMatch`) BEFORE the detail loop so an
+  aborted run still shows the rejection breakdown.
+- Detail-fetch loop re-classifies on the canonical `ld.title` (richer
+  than the URL slug which truncates at ~60 chars). Accepts the refined
+  sub-vertical or rejects on detail-stage negative-match
+  (`rejectedAtDetail` counter).
+
+Supporting code changes:
+- `src/lib/scrape/vl24h-parser.ts` — dropped the hardcoded
+  `SLUG_VERTICAL` map (taxonomy.ts is now the single source). Added
+  `extractTitleSlugFromUrl(url)` + `foldAndDeslug(slug)`. `ldToJobInput`
+  signature gains an optional `subVertical: string` arg and emits it on
+  the returned `VlJobInput`.
+- `src/lib/jobs/classify.ts` — new `classifyVerticalAndSub(title,
+  company)` runs `taxonomy.pickSubVertical()` first, falls back to the
+  legacy regex cascade for titles taxonomy doesn't cover (HR/PM/
+  coordinator etc). `classifyVertical()` kept as a wrapper that returns
+  just the vertical, preserving the 19 existing call-sites.
+- `scripts/ingest-file.ts` + `scripts/ingest-paste.ts` — wire
+  `subVertical` from the classifier (or from `entry.subVertical` when
+  the scrape pipeline already resolved it) through to the saved Job.
+- `src/lib/jobs/taxonomy.ts` — word-boundary fix on the bare short
+  tokens in `tech.data` (`bi|ba|dba`) and `tech.ml-ai` (`ml|ai|llm|nlp`).
+  Bare `ai` was matching the `ai` inside `chAIn`, which classified
+  "Supply Chain Specialist" as tech.ml-ai. Now `\bai\b` etc.
+- `classify-vertical.test.ts` updated: "HR Business Partner" → ops.hr
+  (taxonomy promoted HR from `other` to `ops.hr`; semantically correct).
+- `tests/vl24h-parser.test.ts` (new) — covers the URL extractors +
+  fold helper with positive / negative / malformed cases.
+
+Verification: `tsc --noEmit` clean. `vitest run` full suite 180 / 180
+passed, 10 skipped (unchanged).
+
+Live verification deferred to next session — needs network: dry-run on
+prod sitemap (`pnpm tsx scripts/scrape-vl24h.ts --dry-run --limit 50
+--max-age-days 3`) + 20-URL spot-check per vertical against acceptance
+target (≥50 surviving / vertical, zero false-positives in tech).
+
+Phase 3 (multi-board topcv+vnw integration, stretch), Phase 4 (wipe
+prod KV + re-ingest, DESTRUCTIVE — needs explicit operator go-ahead),
+and Phase 5 (cron taxonomy top-up integration) remain deferred.
+
 ## Wave A — 2026-06-03 (Fit Tier UX overhaul, all phases EOD)
 
 Plan `260603-1359-wave-a-fit-tier` (5 phases, est. 19-29h) shipped in one
