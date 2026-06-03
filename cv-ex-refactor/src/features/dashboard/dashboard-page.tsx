@@ -58,9 +58,9 @@ export function DashboardPage() {
             và tăng xác suất được gọi phỏng vấn.
           </p>
 
-          <h1 className="font-display text-display-lg font-extrabold leading-[0.95] text-on-surface sm:text-[5.5rem]">
+          <h1 className="font-display text-[2.25rem] font-extrabold leading-[1.15] text-on-surface sm:text-[3rem] lg:text-[3.75rem]">
             Còn lại{' '}
-            <span className="block text-on-tertiary-container underline decoration-on-tertiary-container/40 decoration-[6px] underline-offset-[10px]">
+            <span className="block text-on-tertiary-container underline decoration-on-tertiary-container/40 decoration-[3px] underline-offset-[6px]">
               vẫn là khả năng của bạn.
             </span>
           </h1>
