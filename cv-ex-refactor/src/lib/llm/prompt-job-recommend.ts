@@ -39,13 +39,13 @@ const SYSTEM_PROMPT = `Bạn là chuyên gia tuyển dụng thị trường lao 
           "whyForThisJob": string (1-2 câu tiếng Việt, trích dẫn cụ thể từ JD),
           "estimatedHours": string (ví dụ: "4-8h")
         }
-      ] (5-10 topic mỗi job)
+      ] (3-5 topic mỗi job — chọn topic ưu tiên cao nhất)
     }
   ]
 }
 
 Quy tắc bắt buộc:
-- Chỉ xuất những job có overallScore > 80; tổng cộng 5-10 job.
+- Chỉ xuất những job có overallScore > 80; tổng cộng 3-5 job (chọn fit nhất).
 - studyTopics phải cụ thể với JD, KHÔNG được chung chung.
 - whyForThisJob PHẢI trích dẫn thuật ngữ cụ thể từ JD.
 - matchReasons và whyForThisJob viết bằng tiếng Việt.
