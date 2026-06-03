@@ -17,6 +17,9 @@ export type { CardProps } from './card';
 export { Badge } from './badge';
 export type { BadgeProps } from './badge';
 
+export { TierBadge } from './tier-badge';
+export type { TierBadgeProps } from './tier-badge';
+
 export { Tabs, TabsList, TabsTrigger, TabsContent } from './tabs';
 export type { TabsProps, TabsListProps, TabsTriggerProps, TabsContentProps, TabItem } from './tabs';
 

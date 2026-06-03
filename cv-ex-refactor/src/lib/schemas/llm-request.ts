@@ -15,6 +15,7 @@ export const RoleFamilyEnum = z.enum([
 ]);
 export const ToneEnum = z.enum(['concise', 'impact', 'recruiter', 'executive']);
 export const LengthEnum = z.enum(['short', 'medium', 'long']);
+export const CvModeEnum = z.enum(['apply', 'fill-gaps', 'stretch']);
 
 export const LlmConfig = z
   .object({
@@ -73,6 +74,8 @@ export const GenerateCvBody = z.object({
     tone: ToneEnum,
     length: LengthEnum,
     extraInstructions: z.string().max(500).optional(),
+    // Wave A: per-tier refine variant. Defaults to 'apply' (original behavior).
+    mode: CvModeEnum.optional(),
   }),
   analysisSummary: z.string().min(10).max(4_000),
 });

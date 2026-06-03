@@ -2,7 +2,7 @@
 
 /**
  * Job Fit zustand store — sessionStorage backed (mirrors career-path-store pattern).
- * Key: 'job-fit-matches:v1'
+ * Key: 'job-fit-matches:v2' (v1→v2: JobMatchOut gained `tier` field in Wave A)
  *
  * Lifecycle:
  *  idle     → generate() called → loading → success | error
@@ -34,7 +34,7 @@ interface JobFitState {
   clear: () => void;
 }
 
-const STORAGE_KEY = 'job-fit-matches:v1';
+const STORAGE_KEY = 'job-fit-matches:v2';
 
 /** Cheap hash — first 16 chars of cvText is enough to detect CV change mid-session. */
 export function cvTextHash(cvText: string): string {

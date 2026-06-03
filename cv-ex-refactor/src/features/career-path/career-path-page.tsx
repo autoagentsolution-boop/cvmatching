@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { MdRoute } from 'react-icons/md';
 import { Button, EmptyState, ErrorState, LoadingState, PageHeader, Card } from '@/components/ui';
 import { FormPageLayout } from '@/components/layouts';
@@ -36,6 +37,30 @@ export function CareerPathPage() {
     selectSuggestion,
   } = useCareerPath();
   const [showAspiration, setShowAspiration] = useState(false);
+  const params = useSearchParams();
+
+  // Wave A pre-fill: /career-path?target=<role>&skillGaps=topic1|topic2|...
+  // Runs once on mount; opens aspiration drawer so user sees the seeded values.
+  useEffect(() => {
+    const target = params.get('target');
+    const skillGaps = params.get('skillGaps');
+    if (target && target.trim()) {
+      setField('targetRole', target.trim().slice(0, 160));
+      selectSuggestion(target.trim().slice(0, 160));
+      setShowAspiration(true);
+    }
+    if (skillGaps && skillGaps.trim()) {
+      const gapList = skillGaps.split('|').map((s) => s.trim()).filter(Boolean).slice(0, 5);
+      if (gapList.length > 0) {
+        const noteLine = `Skill gaps đã xác định từ Job Fit: ${gapList.join(', ')}.`;
+        const current = useCareerPath.getState().notes;
+        if (!current.includes(noteLine)) {
+          setField('notes', current ? `${current}\n${noteLine}` : noteLine);
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const hasCv = cvText.trim().length >= 50;
   const currentCacheKey = hasCv ? cvCacheKey(cvText) : null;

@@ -7,7 +7,7 @@
 export type { Job, StudyTopic, Seniority, Vertical, Tier } from '@/lib/jobs/types';
 export type { JobMatchOut, StudyTopicOut } from '@/lib/llm/normalize-job-recommend';
 
-/** SessionStorage cache shape. Key: 'job-fit-matches:v1' */
+/** SessionStorage cache shape. Key: 'job-fit-matches:v2' */
 export interface JobFitCache {
   cvHash: string;        // first 16 chars of sha-256 — detects CV change
   jobs: import('@/lib/llm/normalize-job-recommend').JobMatchOut[];

@@ -57,24 +57,48 @@ describe('normalizeRecommend', () => {
     expect(result[0]!.sourceUrl).toBe(`https://example.com/job/${jobId}`);
   });
 
-  it('drops entries with overallScore <= 80', () => {
+  it('keeps entries across the full score range (Wave A: no overallScore filter)', () => {
     const map = new Map([
-      ['id-pass', makeJob('id-pass')],
-      ['id-fail-80', makeJob('id-fail-80')],
-      ['id-fail-50', makeJob('id-fail-50')],
+      ['id-hi', makeJob('id-hi')],
+      ['id-mid', makeJob('id-mid')],
+      ['id-lo', makeJob('id-lo')],
     ]);
     const raw = {
       jobs: [
-        makeRawMatch('id-pass', 85),
-        makeRawMatch('id-fail-80', 80),
-        makeRawMatch('id-fail-50', 50),
+        makeRawMatch('id-hi', 85),
+        makeRawMatch('id-mid', 70),
+        makeRawMatch('id-lo', 40),
       ],
     };
 
     const result = normalizeRecommend(raw, map);
 
-    expect(result).toHaveLength(1);
-    expect(result[0]!.jobId).toBe('id-pass');
+    // No score-based dropping; all three pass since tiers/quotas have room.
+    expect(result.map((r) => r.jobId).sort()).toEqual(['id-hi', 'id-lo', 'id-mid']);
+  });
+
+  it('derives tier from overallScore', () => {
+    const ids = ['s', 'a', 'b', 'c', 'd', 'e'];
+    const map = new Map(ids.map((id) => [id, makeJob(id)]));
+    const raw = {
+      jobs: [
+        makeRawMatch('s', 96),
+        makeRawMatch('a', 88),
+        makeRawMatch('b', 78),
+        makeRawMatch('c', 68),
+        makeRawMatch('d', 58),
+        makeRawMatch('e', 40),
+      ],
+    };
+
+    const result = normalizeRecommend(raw, map);
+    const byId = new Map(result.map((r) => [r.jobId, r.tier]));
+    expect(byId.get('s')).toBe('S');
+    expect(byId.get('a')).toBe('A');
+    expect(byId.get('b')).toBe('B');
+    expect(byId.get('c')).toBe('C');
+    expect(byId.get('d')).toBe('D');
+    expect(byId.get('e')).toBe('E');
   });
 
   it('drops entries whose jobId is not in jobsById (hallucinated id)', () => {
@@ -145,13 +169,40 @@ describe('normalizeRecommend', () => {
     expect(result.map((r) => r.jobId)).toEqual(['b', 'c', 'a']);
   });
 
-  it('slices to maximum 10 results', () => {
+  it('caps each tier by QUOTA — 15 jobs at score 90 (tier A) capped to QUOTA.A = 3', () => {
     const ids = Array.from({ length: 15 }, (_, i) => `job-${i}`);
     const map = new Map(ids.map((id) => [id, makeJob(id)]));
     const raw = { jobs: ids.map((id) => makeRawMatch(id, 90)) };
 
     const result = normalizeRecommend(raw, map);
-    expect(result).toHaveLength(10);
+    expect(result).toHaveLength(3);
+    expect(result.every((r) => r.tier === 'A')).toBe(true);
+  });
+
+  it('respects per-tier quota across mixed scores (total ≤ 10)', () => {
+    // QUOTA: S=1 A=3 B=2 C=2 D=1 E=1 → max 10 total
+    const ids = Array.from({ length: 30 }, (_, i) => `job-${i}`);
+    const map = new Map(ids.map((id) => [id, makeJob(id)]));
+    const raw = {
+      jobs: [
+        // 3 in S (96+), expect 1 kept
+        ...[96, 97, 98].map((s, i) => makeRawMatch(`job-${i}`, s)),
+        // 5 in A (85-94), expect 3 kept
+        ...[86, 87, 88, 89, 90].map((s, i) => makeRawMatch(`job-${i + 3}`, s)),
+        // 4 in B (75-84), expect 2 kept
+        ...[75, 78, 80, 82].map((s, i) => makeRawMatch(`job-${i + 8}`, s)),
+        // 2 in E (0-54), expect 1 kept
+        ...[20, 30].map((s, i) => makeRawMatch(`job-${i + 12}`, s)),
+      ],
+    };
+
+    const result = normalizeRecommend(raw, map);
+    // 1 + 3 + 2 + 1 = 7 expected
+    expect(result).toHaveLength(7);
+    expect(result.filter((r) => r.tier === 'S')).toHaveLength(1);
+    expect(result.filter((r) => r.tier === 'A')).toHaveLength(3);
+    expect(result.filter((r) => r.tier === 'B')).toHaveLength(2);
+    expect(result.filter((r) => r.tier === 'E')).toHaveLength(1);
   });
 
   it('returns empty array when raw is null', () => {

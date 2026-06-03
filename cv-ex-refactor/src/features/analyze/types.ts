@@ -170,6 +170,9 @@ export interface AnalyzeRequest {
   inputs: AnalyzeRequestInputs;
 }
 
+/** Per-tier refine variant — Wave A. */
+export type CvMode = 'apply' | 'fill-gaps' | 'stretch';
+
 /** Payload for /api/generate-cv — mirrors generateMatchedCV() in HTML (lines 788-872) */
 export interface GenerateCvRequest {
   llm: AnalyzeRequestLLM;
@@ -184,6 +187,8 @@ export interface GenerateCvRequest {
     length: 'short' | 'medium' | 'long';
     /** HTML cvExtra — free-form extra instructions */
     extraInstructions?: string;
+    /** Wave A per-tier mode. Omit → server defaults to 'apply'. */
+    mode?: CvMode;
   };
   analysisSummary: string;
 }

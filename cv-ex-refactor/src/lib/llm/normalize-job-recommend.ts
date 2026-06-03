@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { Job } from '@/lib/jobs/types';
+import { tierFromScore, enforceQuota, type TierLetter } from '@/lib/jobs/fit-tier';
 
 // ── Raw LLM output schema ──────────────────────────────────────────────────
 
@@ -28,7 +29,8 @@ const RawMatchSchema = z.object({
   overallScore: z.number().min(0).max(100),
   dimensionScores: DimensionScoresSchema,
   matchReasons: z.array(z.string()).min(1).max(8),
-  studyTopics: z.array(StudyTopicSchema).min(3).max(12),
+  // Allow 1-3 topics: Wave A tightens prompt to "max 3"; low-tier jobs may emit 1-2.
+  studyTopics: z.array(StudyTopicSchema).min(1).max(5),
 });
 
 const RawResponseSchema = z.object({
@@ -51,7 +53,10 @@ export interface JobMatchOut {
   company: string;
   location: string;
   sourceUrl: string;
+  /** Full JD text — included so /refined-cv refine can run without re-fetching the job. */
+  description: string;
   overallScore: number;
+  tier: TierLetter;
   dimensionScores: z.infer<typeof DimensionScoresSchema>;
   matchReasons: string[];
   studyTopics: StudyTopicOut[];
@@ -65,9 +70,9 @@ export interface JobMatchOut {
  * Drops:
  *  - entries that fail zod parse (invalid shape / missing dimensionScores)
  *  - entries whose jobId is not in jobsById (hallucinated id)
- *  - entries with overallScore <= 80
  *
- * Returns up to 10 matches sorted descending by overallScore.
+ * Server-derives tier from overallScore — any LLM-emitted tier is ignored.
+ * Sorts desc by overallScore, then applies per-tier quota (max 10 total).
  */
 export function normalizeRecommend(
   raw: unknown,
@@ -96,8 +101,6 @@ function normalizeItems(
 
     const match = itemParsed.data;
 
-    if (match.overallScore <= 80) continue;
-
     const job = jobsById.get(match.jobId);
     if (!job) continue; // LLM hallucinated a jobId not in our candidate set
 
@@ -107,7 +110,9 @@ function normalizeItems(
       company: job.company,
       location: job.location,
       sourceUrl: job.sourceUrl,
+      description: job.description,
       overallScore: match.overallScore,
+      tier: tierFromScore(match.overallScore),
       dimensionScores: match.dimensionScores,
       matchReasons: match.matchReasons,
       studyTopics: match.studyTopics,
@@ -115,5 +120,5 @@ function normalizeItems(
   }
 
   results.sort((a, b) => b.overallScore - a.overallScore);
-  return results.slice(0, 10);
+  return enforceQuota(results);
 }

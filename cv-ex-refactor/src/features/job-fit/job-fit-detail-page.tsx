@@ -1,7 +1,7 @@
 'use client';
 
 import { DashboardLayout } from '@/components/layouts';
-import { PageHeader } from '@/components/ui';
+import { PageHeader, TierBadge } from '@/components/ui';
 import { useJobFit } from './job-fit-store';
 import { JobScoreBlock } from './job-score-block';
 import { MatchReasonsBlock } from './match-reasons-block';
@@ -35,7 +35,12 @@ export function JobFitDetailPage({ jobId }: JobFitDetailPageProps) {
     <DashboardLayout activeNav="job-fit" topnavTitle={match.title}>
       <div className="flex flex-col gap-6">
         <PageHeader
-          title={match.title}
+          title={
+            <span className="inline-flex items-center gap-3">
+              <TierBadge tier={match.tier} reason={match.matchReasons[0]} size="md" />
+              {match.title}
+            </span>
+          }
           subtitle={`${match.company}${match.location ? ` · ${match.location}` : ''}`}
           breadcrumb={
             <span>
@@ -54,7 +59,7 @@ export function JobFitDetailPage({ jobId }: JobFitDetailPageProps) {
         <MatchReasonsBlock reasons={match.matchReasons} />
         <StudyTopicsBlock jobId={match.jobId} topics={match.studyTopics} />
         <DetailActionsBar
-          jobId={match.jobId}
+          job={match}
           {...(match.sourceUrl ? { source: extractSource(match.sourceUrl) } : {})}
         />
       </div>

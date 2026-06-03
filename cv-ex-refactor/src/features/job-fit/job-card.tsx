@@ -2,13 +2,15 @@
 
 import Link from 'next/link';
 import { MdLocationOn, MdOpenInNew } from 'react-icons/md';
-import { Badge, Card } from '@/components/ui';
+import { Badge, Card, TierBadge } from '@/components/ui';
 import { TopicChip } from './topic-chip';
+import { ActionButton } from './action-button';
 import type { JobMatchOut } from '@/lib/llm/normalize-job-recommend';
 
-function scoreVariant(score: number): 'success' | 'warning' | 'error' {
+function scoreVariant(score: number): 'success' | 'warning' | 'error' | 'neutral' {
   if (score >= 90) return 'success';
-  if (score >= 80) return 'warning';
+  if (score >= 75) return 'warning';
+  if (score >= 60) return 'neutral';
   return 'error';
 }
 
@@ -29,11 +31,14 @@ export function JobCard({ match }: JobCardProps) {
     <Card variant="default" padding="md" className="flex flex-col gap-4">
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <h2 className="font-display text-headline-sm font-bold text-on-surface leading-tight">
-            {match.title}
-          </h2>
-          <p className="text-body-md text-on-surface-variant">{match.company}</p>
+        <div className="flex min-w-0 items-start gap-3">
+          <TierBadge tier={match.tier} reason={match.matchReasons[0]} size="md" />
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <h2 className="font-display text-headline-sm font-bold text-on-surface leading-tight">
+              {match.title}
+            </h2>
+            <p className="text-body-md text-on-surface-variant">{match.company}</p>
+          </div>
         </div>
         <Badge variant={scoreVariant(match.overallScore)} size="md">
           {match.overallScore}%
@@ -72,8 +77,8 @@ export function JobCard({ match }: JobCardProps) {
         </div>
       )}
 
-      {/* Footer CTA */}
-      <div className="flex items-center justify-end border-t border-outline-variant/30 pt-3">
+      {/* Footer — per-tier primary action + chi tiết secondary */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-outline-variant/30 pt-3">
         <Link
           href={`/job-fit/${match.jobId}`}
           className={[
@@ -83,9 +88,10 @@ export function JobCard({ match }: JobCardProps) {
           ].join(' ')}
           aria-label={`Xem chi tiết job ${match.title} tại ${match.company}`}
         >
-          Xem chi tiết
+          Chi tiết
           <MdOpenInNew size={16} aria-hidden="true" />
         </Link>
+        <ActionButton tier={match.tier} job={match} size="sm" />
       </div>
     </Card>
   );

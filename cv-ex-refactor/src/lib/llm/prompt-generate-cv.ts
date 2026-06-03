@@ -13,6 +13,19 @@ const LENGTH_INSTR: Record<GenerateCvBodyT['inputs']['length'], string> = {
   long: 'Target 2 pages.',
 };
 
+type CvMode = NonNullable<GenerateCvBodyT['inputs']['mode']>;
+
+// Mode addenda — injected as a dedicated block in the user prompt so the LLM
+// reads it last and can see how it interacts with the HARD RULES above.
+const MODE_INSTR: Record<CvMode, string> = {
+  apply:
+    'MODE: APPLY — Candidate is a strong fit. Polish for impact: lead with the most JD-aligned wins, sharpen verbs and metrics, tighten any vague bullets. Surface every real proof point that matches a JD requirement.',
+  'fill-gaps':
+    'MODE: FILL GAPS — Candidate has the core fit but a few JD requirements lack visible evidence in the CV. Surface real experience that addresses each gap (rephrase, expand, pull from profile). DO NOT fabricate. If a gap is genuinely not in the candidate\'s background, add a "## Gaps To Address Before Interview" section listing each remaining gap with a concrete prep suggestion — do NOT pretend the gap is closed.',
+  stretch:
+    'MODE: STRETCH — Candidate is below the role bar; this is a reach application. Highlight transferable skills and learning trajectory. Frame past work as evidence of capability to grow into the role. Be honest about the gap in the "## Changes Made" section: mention what is NOT yet at the level the JD requires and what the candidate would need to demonstrate in interview to close it. Tone should be confident but never inflate seniority.',
+};
+
 export interface BuiltCvPrompts {
   system: string;
   user: string;
@@ -30,6 +43,7 @@ export function buildGenerateCvPrompts(body: GenerateCvBodyT): BuiltCvPrompts {
   const system =
     'You are an expert CV writer. You NEVER invent skills, tools, or experience. You may only rephrase or surface what is already in the candidate\'s text. Output clean Markdown only.';
 
+  const mode: CvMode = inputs.mode ?? 'apply';
   const user = `Rewrite the candidate's CV to better match the Job Description, while staying 100% truthful.
 
 === JOB DESCRIPTION ===
@@ -59,6 +73,9 @@ ${inputs.extraInstructions ? `- Extra instructions: ${inputs.extraInstructions}`
 6. End with "## Changes Made" — list:
    - what you emphasized or rephrased to match the JD (cite the JD signal)
    - what you intentionally did NOT add (gaps that remain real risks for interview)
+
+=== MODE ===
+${MODE_INSTR[mode]}
 
 Output ONLY Markdown. No preamble, no code fences.`;
 
