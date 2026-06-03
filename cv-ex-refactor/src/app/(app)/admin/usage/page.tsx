@@ -237,7 +237,7 @@ export default async function AdminUsagePage({
               </tr>
             </thead>
             <tbody>
-              {dailyVisits.map((v) => (
+              {[...dailyVisits].reverse().map((v) => (
                 <tr key={v.date} className="border-t border-outline-variant">
                   <Td>{v.date}</Td>
                   <Td align="right">{fmt(v.pageviews)}</Td>
@@ -320,7 +320,7 @@ export default async function AdminUsagePage({
               </tr>
             </thead>
             <tbody>
-              {snapshot.daily.map((d) => (
+              {[...snapshot.daily].reverse().map((d) => (
                 <tr key={d.date} className="border-t border-outline-variant">
                   <Td>{d.date}</Td>
                   <Td align="right">
