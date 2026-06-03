@@ -18,6 +18,8 @@ interface AnalysisState {
   mustHavesError: string | null;
   result: AnalysisResult | null;
   matchedCv: string | null;
+  /** Refine meta (Changes Made + Gaps) — separate from matchedCv so downloads/sends never include it. */
+  refineNotes: string | null;
   isAnalyzing: boolean;
   isGeneratingCv: boolean;
   error: string | null;
@@ -57,6 +59,7 @@ const initial: Omit<AnalysisState, 'setField' | 'reset'> = {
   mustHavesError: null,
   result: null,
   matchedCv: null,
+  refineNotes: null,
   isAnalyzing: false,
   isGeneratingCv: false,
   error: null,
@@ -90,6 +93,7 @@ export const useAnalysis = create<AnalysisState>()(
         mustHaves: s.mustHaves,
         result: s.result,
         matchedCv: s.matchedCv,
+        refineNotes: s.refineNotes,
       }),
     },
   ),

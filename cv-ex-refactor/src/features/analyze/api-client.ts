@@ -35,7 +35,14 @@ export async function callAnalyze(payload: AnalyzeRequest): Promise<AnalysisResu
  * Mirrors generateMatchedCV() in cv_fit_scoring_app.html (tone/length/extraInstructions fields).
  * Returns 404 until Phase 06 ships.
  */
-export async function callGenerateCv(payload: GenerateCvRequest): Promise<string> {
+export interface GenerateCvResult {
+  /** The CV markdown — safe to download / send to recruiter as-is. */
+  markdown: string;
+  /** Refine notes (Changes Made + Gaps) — for candidate's review only. Null when LLM emits none. */
+  refineNotes: string | null;
+}
+
+export async function callGenerateCv(payload: GenerateCvRequest): Promise<GenerateCvResult> {
   const res = await fetch('/api/generate-cv', {
     method: 'POST',
     headers: JSON_HEADERS,
@@ -45,8 +52,8 @@ export async function callGenerateCv(payload: GenerateCvRequest): Promise<string
   if (!res.ok) {
     throw new Error(buildErrorMessage(await parseErrorBody(res), 'Tạo CV thất bại'));
   }
-  const data = (await res.json()) as { markdown: string };
-  return data.markdown;
+  const data = (await res.json()) as { markdown: string; refineNotes?: string | null };
+  return { markdown: data.markdown, refineNotes: data.refineNotes ?? null };
 }
 
 /**

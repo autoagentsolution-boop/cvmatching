@@ -21,6 +21,29 @@ function stripCodeFences(md: string): string {
     .trim();
 }
 
+// Split the model output at the <!--REFINE-NOTES--> separator (preferred) or
+// at the first '## Changes Made' / '## Gaps To Address' heading as a fallback
+// for outputs from the legacy prompt or models that miss the explicit marker.
+// Returns { cv, notes } — `notes` is null when the model produced no meta block.
+function splitCvAndNotes(md: string): { cv: string; notes: string | null } {
+  const markerIdx = md.indexOf('<!--REFINE-NOTES-->');
+  if (markerIdx >= 0) {
+    return {
+      cv: md.slice(0, markerIdx).trim(),
+      notes: md.slice(markerIdx + '<!--REFINE-NOTES-->'.length).trim() || null,
+    };
+  }
+  // Fallback: heading-based split. Match the first occurrence of either heading.
+  const headingMatch = md.match(/^##\s+(Changes Made|Gaps To Address[^\n]*)$/im);
+  if (headingMatch && headingMatch.index !== undefined) {
+    return {
+      cv: md.slice(0, headingMatch.index).trim(),
+      notes: md.slice(headingMatch.index).trim() || null,
+    };
+  }
+  return { cv: md, notes: null };
+}
+
 export async function POST(req: NextRequest) {
   const json = await req.json().catch(() => null);
   const parsed = GenerateCvBody.safeParse(json);
@@ -65,7 +88,8 @@ export async function POST(req: NextRequest) {
       // Markdown rewrite — no thinking phase needed; cuts ~30s.
       disableThinking: true,
     });
-    const markdown = stripCodeFences(raw);
+    const stripped = stripCodeFences(raw);
+    const { cv: markdown, notes: refineNotes } = splitCvAndNotes(stripped);
     if (markdown.length < 50) {
       await logLlmCall({
         endpoint: 'generate-cv',
@@ -102,7 +126,7 @@ export async function POST(req: NextRequest) {
       await recordCost('generate-cv', microUsdCost(body.llm.model, promptTokens ?? 0, completionTokens ?? 0));
     }
 
-    return NextResponse.json({ markdown, quotaRemaining: resolved.quotaRemaining });
+    return NextResponse.json({ markdown, refineNotes, quotaRemaining: resolved.quotaRemaining });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     await logLlmCall({

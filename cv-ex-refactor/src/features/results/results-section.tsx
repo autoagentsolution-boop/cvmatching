@@ -64,8 +64,9 @@ export function ResultsSection() {
     };
 
     try {
-      const markdown = await callGenerateCv(payload);
+      const { markdown, refineNotes } = await callGenerateCv(payload);
       setField('matchedCv', markdown);
+      setField('refineNotes', refineNotes);
     } catch (err) {
       setGenError(err instanceof Error ? err.message : 'Failed to generate CV.');
     } finally {

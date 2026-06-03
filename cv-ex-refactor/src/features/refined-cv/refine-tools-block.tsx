@@ -61,8 +61,9 @@ export function RefineToolsBlock() {
     };
 
     try {
-      const markdown = await callGenerateCv(payload);
+      const { markdown, refineNotes } = await callGenerateCv(payload);
       setField('matchedCv', markdown);
+      setField('refineNotes', refineNotes);
     } catch (err) {
       setLocalError(err instanceof Error ? err.message : 'Regeneration failed.');
     } finally {

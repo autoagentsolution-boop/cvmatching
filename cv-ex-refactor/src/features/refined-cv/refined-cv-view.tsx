@@ -8,7 +8,7 @@ import { RedFlagsBanner } from './red-flags-banner';
 import { RefinedCvModeBanner } from './refined-cv-mode-banner';
 
 export function RefinedCvView() {
-  const { matchedCv, isGeneratingCv, error, result } = useAnalysis();
+  const { matchedCv, refineNotes, isGeneratingCv, error, result } = useAnalysis();
 
   // Mode banner reads URL params + job-fit store; render whenever query is present
   // so the user can kick off Wave A refine flow even before matchedCv exists.
@@ -60,6 +60,19 @@ export function RefinedCvView() {
       <Card padding="lg">
         <MarkdownView markdown={matchedCv} variant="document" />
       </Card>
+      {refineNotes && (
+        <Card padding="lg" className="border-l-4 border-l-primary bg-surface-container-low">
+          <header className="mb-2 flex items-center gap-2">
+            <span className="text-label-sm font-bold uppercase tracking-wide text-primary">
+              Refine notes
+            </span>
+            <span className="text-label-sm text-on-surface-variant">
+              · Chỉ cho bạn — KHÔNG nằm trong CV gửi recruiter
+            </span>
+          </header>
+          <MarkdownView markdown={refineNotes} variant="document" />
+        </Card>
+      )}
     </div>
   );
 }

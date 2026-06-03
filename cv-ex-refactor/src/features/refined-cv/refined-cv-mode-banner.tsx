@@ -111,8 +111,9 @@ export function RefinedCvModeBanner() {
       analysisSummary: synthesizedSummary,
     };
     try {
-      const markdown = await callGenerateCv(payload);
+      const { markdown, refineNotes } = await callGenerateCv(payload);
       setField('matchedCv', markdown);
+      setField('refineNotes', refineNotes);
     } catch (e) {
       setLocalError(e instanceof Error ? e.message : 'Refine thất bại.');
     } finally {
