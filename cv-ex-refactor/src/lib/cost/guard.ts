@@ -59,19 +59,38 @@ async function fireWebhook(
   ymd: string,
 ): Promise<void> {
   const label = severity === 'critical' ? 'KILL' : 'WARN';
-  const payload = {
-    type: 'cv-ex-cost-guard',
-    severity,
-    date: ymd,
-    bucket,
-    cumulative: microUsdToString(cumulative),
-    limit: microUsdToString(limitMicroUsd),
-    text: `:${severity === 'critical' ? 'rotating_light' : 'warning'}: [${label}] Cost bucket *${bucket}* hit ${microUsdToString(cumulative)} (limit ${microUsdToString(limitMicroUsd)})`,
-  };
+  const emoji = severity === 'critical' ? '🛑' : '⚠️';
+  const text =
+    `${emoji} [${label}] Cost bucket *${bucket}* hit ${microUsdToString(cumulative)} ` +
+    `(limit ${microUsdToString(limitMicroUsd)}) — ${ymd}`;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5_000);
   try {
+    // CallMeBot WhatsApp adapter — admin's personal number via free service.
+    // URL shape: https://api.callmebot.com/whatsapp.php?phone=+xxx&apikey=yyy
+    // We append `&text=ENCODED` and switch to GET. Rate-limit ~1 msg/min, fine
+    // for cost alerts (one per bucket per day, 12 total worst case).
+    if (/api\.callmebot\.com\/whatsapp/.test(url)) {
+      const sep = url.includes('?') ? '&' : '?';
+      const fullUrl = `${url}${sep}text=${encodeURIComponent(text)}`;
+      const res = await fetch(fullUrl, { method: 'GET', signal: controller.signal });
+      if (!res.ok) {
+        console.warn('[cost-guard] callmebot_non_2xx', { status: res.status, bucket, severity });
+      }
+      return;
+    }
+
+    // Default: Slack/Discord/Zapier-style JSON POST.
+    const payload = {
+      type: 'cv-ex-cost-guard',
+      severity,
+      date: ymd,
+      bucket,
+      cumulative: microUsdToString(cumulative),
+      limit: microUsdToString(limitMicroUsd),
+      text,
+    };
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
