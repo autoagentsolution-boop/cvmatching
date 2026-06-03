@@ -6,6 +6,7 @@ export type CostBucket =
   | 'career-path'
   | 'career-path-suggest'
   | 'generate-cv'
+  | 'generate-cover-letter'
   | 'extract-must-haves';
 
 export const COST_BUCKETS: readonly CostBucket[] = [
@@ -14,5 +15,6 @@ export const COST_BUCKETS: readonly CostBucket[] = [
   'career-path',
   'career-path-suggest',
   'generate-cv',
+  'generate-cover-letter',
   'extract-must-haves',
 ] as const;

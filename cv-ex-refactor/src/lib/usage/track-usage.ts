@@ -5,6 +5,7 @@ import { maybeFireAlerts } from './alert-webhook';
 export type UsageAction =
   | 'analyze'
   | 'generate-cv'
+  | 'generate-cover-letter'
   | 'extract-must-haves'
   | 'career-path'
   | 'career-path-suggest'

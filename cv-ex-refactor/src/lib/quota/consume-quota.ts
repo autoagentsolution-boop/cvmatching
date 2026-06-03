@@ -4,15 +4,18 @@ import { vnDateString, secondsUntilVnMidnight } from './vn-date';
 export const QUOTA_LIMITS = {
   analyze: 5,
   'generate-cv': 2,
+  'generate-cover-letter': 3,
   'career-path': 3,
   'job-recommend': 12,
 } as const;
 
 // Anonymous (no login) pilot users share a stricter daily limit per IP, so a
 // single shared-key visitor cannot drain the budget. Adjust as needed.
+// Cover letter explicitly 0 → anonymous blocked; pilot decision per brainstorm §2.
 export const ANON_QUOTA_LIMITS = {
   analyze: 3,
   'generate-cv': 1,
+  'generate-cover-letter': 0,
   'career-path': 2,
   'job-recommend': 5,
 } as const;
@@ -39,6 +42,7 @@ function isQuotaKind(action: QuotaAction): action is QuotaKind {
   return (
     action === 'analyze' ||
     action === 'generate-cv' ||
+    action === 'generate-cover-letter' ||
     action === 'career-path' ||
     action === 'job-recommend'
   );

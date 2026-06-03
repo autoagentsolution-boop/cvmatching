@@ -24,13 +24,15 @@ export interface DailyGlobalRow {
   extractMustHavesOk: number;
   extractMustHavesError: number;
   // Tracked via logLlmCall → trackUsage but previously not exposed. Surface for
-  // funnel view (Q4) so admin can see drop-off across all 6 action types.
+  // funnel view (Q4) so admin can see drop-off across all action types.
   jobRecommendOk: number;
   jobRecommendError: number;
   careerPathOk: number;
   careerPathError: number;
   careerPathSuggestOk: number;
   careerPathSuggestError: number;
+  generateCoverLetterOk: number;
+  generateCoverLetterError: number;
   charVolume: number;
   tokens: number;
   sharedCalls: number;
@@ -124,6 +126,8 @@ async function readDailyRow(ymd: string): Promise<DailyGlobalRow> {
     `usage:global:${ymd}:career-path:error`,
     `usage:global:${ymd}:career-path-suggest:ok`,
     `usage:global:${ymd}:career-path-suggest:error`,
+    `usage:global:${ymd}:generate-cover-letter:ok`,
+    `usage:global:${ymd}:generate-cover-letter:error`,
   ];
   const values = await kv.mget<(string | number | null)[]>(...keys);
   const v = values.map(num);
@@ -145,6 +149,8 @@ async function readDailyRow(ymd: string): Promise<DailyGlobalRow> {
     careerPathError: v[17] ?? 0,
     careerPathSuggestOk: v[18] ?? 0,
     careerPathSuggestError: v[19] ?? 0,
+    generateCoverLetterOk: v[20] ?? 0,
+    generateCoverLetterError: v[21] ?? 0,
   };
 }
 

@@ -311,6 +311,7 @@ export default async function AdminUsagePage({
                 <Th>Date</Th>
                 <Th align="right">Analyze ok / err</Th>
                 <Th align="right">Gen CV ok / err</Th>
+                <Th align="right">Cover Ltr ok / err</Th>
                 <Th align="right">Extract ok / err</Th>
                 <Th align="right">Fit Job ok / err</Th>
                 <Th align="right">Career ok / err</Th>
@@ -327,6 +328,9 @@ export default async function AdminUsagePage({
                   </Td>
                   <Td align="right">
                     {fmt(d.generateCvOk)} / {fmt(d.generateCvError)}
+                  </Td>
+                  <Td align="right">
+                    {fmt(d.generateCoverLetterOk)} / {fmt(d.generateCoverLetterError)}
                   </Td>
                   <Td align="right">
                     {fmt(d.extractMustHavesOk)} / {fmt(d.extractMustHavesError)}

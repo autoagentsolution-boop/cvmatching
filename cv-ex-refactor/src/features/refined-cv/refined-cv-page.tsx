@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { DetailPanelLayout } from '@/components/layouts';
 import { PageHeader } from '@/components/ui';
 import { getSession } from '@/lib/get-session';
@@ -7,7 +8,7 @@ import { KeyEnhancementsBlock } from './key-enhancements-block';
 import { RefineToolsBlock } from './refine-tools-block';
 import { RefinedCvView } from './refined-cv-view';
 import { MatchScoreBlockAside } from './match-score-block-aside';
-import { CoverLetterStub } from './cover-letter-stub';
+import { CoverLetterBlock } from './cover-letter-block';
 import { JobFitCtaSection } from './job-fit-cta-section';
 
 /**
@@ -35,7 +36,9 @@ export async function RefinedCvPage() {
           <MatchScoreBlockAside />
           <KeyEnhancementsBlock />
           <RefineToolsBlock />
-          <CoverLetterStub />
+          <Suspense fallback={null}>
+            <CoverLetterBlock />
+          </Suspense>
         </div>
       }
       asideWidth="md"
