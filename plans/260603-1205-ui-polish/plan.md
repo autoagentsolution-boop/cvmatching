@@ -7,6 +7,7 @@ owner: vinh2000ld11@gmail.com
 blockedBy: [260602-1739-hybrid-refresh-topup]
 blocks: []
 absorbs: [260527-1117-phase-1-1-polish-queue#B, 260527-1117-phase-1-1-polish-queue#C]
+related: [260603-1359-wave-a-fit-tier]
 brainstorm: plans/reports/brainstorm-260603-1205-ui-polish.md
 mockup: UIEnhance/UIUXSpace.png, UIEnhance/2026-05-27_14-02.png, UIEnhance/RequirementLoad.png
 baseline: plans/reports/passD-analyze-with-jd.png
