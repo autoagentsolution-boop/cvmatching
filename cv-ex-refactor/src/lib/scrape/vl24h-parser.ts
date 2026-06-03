@@ -33,14 +33,23 @@ export function parseSitemap(xml: string): SitemapEntry[] {
 
 // vieclam24h URL category slug → our Vertical enum.
 // Coverage validated against full sitemap (52 unique slugs).
+//
+// Tight 'tech' definition: software/IT/data only. The engineering family
+// (cơ khí, điện, KH-KT, telecom) was polluting the bucket with mechanical /
+// electrical / automotive / telecom roles that share the keyword "kỹ sư"
+// with software engineering — a Data Engineer CV ranked against those by
+// cosine sim returns mostly E-tier matches. Those slugs now route to
+// 'other' until we either expand the enum or ingest enough volume to
+// justify a dedicated 'engineering' bucket.
 const SLUG_VERTICAL: Record<string, Vertical> = {
   'it-phan-mem': 'tech',
   'it-phan-cung-mang': 'tech',
-  'khoa-hoc-ky-thuat': 'tech',
-  'co-khi-o-to-tu-dong-hoa': 'tech',
-  'dien-dien-tu-dien-lanh': 'tech',
   'phan-tich-thong-ke-du-lieu': 'tech',
-  'buu-chinh-vien-thong': 'tech',
+
+  'khoa-hoc-ky-thuat': 'other',
+  'co-khi-o-to-tu-dong-hoa': 'other',
+  'dien-dien-tu-dien-lanh': 'other',
+  'buu-chinh-vien-thong': 'other',
 
   marketing: 'marketing',
   'thiet-ke-sang-tao-nghe-thuat': 'marketing',

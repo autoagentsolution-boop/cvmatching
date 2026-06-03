@@ -178,7 +178,10 @@ export async function POST(req: NextRequest) {
     // Fail-open: if classifier returns null OR index bucket too small (<5 jobs,
     // not enough to rank against), fall back to full pool. Index is built/refreshed
     // by `scripts/build-vertical-index.ts` post-ingest; absent index = no filter.
-    const MIN_VERTICAL_POOL = 5;
+    // Lowered 5 → 3 after the vl24h slug remap (2026-06-03): the tighter
+    // 'tech' bucket has fewer jobs but they're all software/IT — better
+    // to score against 3 relevant candidates than 25 mostly-irrelevant ones.
+    const MIN_VERTICAL_POOL = 3;
     const classifyStart = Date.now();
     const cvVertical = classifyCvVertical(body.cvText);
     stageTimings.classify = Date.now() - classifyStart;
