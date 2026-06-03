@@ -81,6 +81,37 @@ async function fireWebhook(
       return;
     }
 
+    // Pushover adapter — paid ($5 one-time/platform), 99.95% SLA, instant push.
+    // URL shape: https://api.pushover.net/1/messages.json?token=APP_TOKEN&user=USER_KEY
+    // Critical severity → priority=1 to bypass Do Not Disturb on iOS/Android.
+    if (/api\.pushover\.net/.test(url)) {
+      const parsed = new URL(url);
+      const token = parsed.searchParams.get('token');
+      const user = parsed.searchParams.get('user');
+      if (!token || !user) {
+        console.warn('[cost-guard] pushover_url_missing_creds', { bucket, severity });
+        return;
+      }
+      const cleanUrl = `${parsed.origin}${parsed.pathname}`;
+      const body = {
+        token,
+        user,
+        title: `[${label}] ${bucket}`,
+        message: text,
+        priority: severity === 'critical' ? 1 : 0,
+      };
+      const res = await fetch(cleanUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        console.warn('[cost-guard] pushover_non_2xx', { status: res.status, bucket, severity });
+      }
+      return;
+    }
+
     // Default: Slack/Discord/Zapier-style JSON POST.
     const payload = {
       type: 'cv-ex-cost-guard',
