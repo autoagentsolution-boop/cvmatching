@@ -3,6 +3,7 @@
 **Created:** 2026-06-02 17:39
 **Status:** 📋 Planned — deferred from 260602-1652 session (scope too large to bundle)
 **Predecessor:** 150 real vl24h jobs ingested + recommend endpoint live (post-fix)
+**Blocks:** `260603-1205-ui-polish` (UI polish queued after this completes)
 
 ---
 
