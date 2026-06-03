@@ -5,7 +5,8 @@
 //   pnpm run kill-switch off <bucket>
 //   pnpm run kill-switch on  --all
 //
-// Buckets: job-recommend | analyze | career-path | generate-cv
+// Buckets: see COST_BUCKETS in src/lib/cost/buckets.ts (job-recommend, analyze,
+//   career-path, career-path-suggest, generate-cv, extract-must-haves).
 // When on, shared-key callers get 503 service_unavailable. BYOK callers are
 // never blocked.
 //
