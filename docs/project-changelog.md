@@ -1,5 +1,136 @@
 # Project Changelog
 
+## Post-Wave-A hardening — 2026-06-03 evening
+
+Wave A shipped in the afternoon (entry below); the evening session added
+latency fixes, a refine-notes split that prevented meta leakage into
+downloaded CVs, the foundation for the multi-vertical ingest taxonomy
+(Phase 1 of 5), and a Dashboard landing page with the project tagline.
+
+### Recommend latency: 504 → ~15-20s (commits `1027f5d`, `79c283b`, `6807047`, `8e2a710`)
+
+After Wave A bumped the recommend output to 10-15 jobs with full
+dimensionScores + study topics + the new few-shot prompt, `/api/jobs/recommend`
+hit the 60s Vercel maxDuration. Vercel logs showed `generateContent: 54.23s`
+on Gemini 2.5 Flash. Root cause was the 2.5-series default thinking budget,
+not output size. Fixes layered in order:
+
+- topK `10 → 6` in route.ts; dropped 16K → 24K retry path in
+  `llm-call-with-retry.ts`; cut the 11-job worked-example block from the
+  recommend prompt to shed ~500 input tokens.
+- Added `disableThinking` opt threading through `callGemini → providers →
+  callLLM`. Set `thinkingConfig.thinkingBudget: 0` for `job-recommend`,
+  `generate-cv`, `generate-cover-letter`. Left thinking ON for
+  `career-path` (genuinely open-ended roadmap reasoning) and `analyze`.
+- Surfaced a `pool: { cvVertical, verticalApplied, verticalBucketSize,
+  candidatesScored }` block in the recommend response so devtools shows
+  which path the request took. Dropped UI underfill threshold 10 → 6 to
+  match topK so the footer doesn't permanently scream "underfilled".
+- vl24h slug map tightened: `khoa-hoc-ky-thuat`, `co-khi-o-to-tu-dong-hoa`,
+  `dien-dien-tu-dien-lanh`, `buu-chinh-vien-thong` moved tech → other.
+  Re-classified the 150 live prod jobs via REST + rebuilt vertical-index.
+  Tech bucket 25 → 9 (still narrow; Phase 2-4 of the new plan fix the
+  underlying pool composition).
+
+### Refine notes split (commit `68fb45c`)
+
+User reported that `## Changes Made` and `## Gaps To Address Before Interview`
+sections were appearing INSIDE the rendered refined CV and inside the
+downloaded `.md` file — meaning the candidate could ship internal meta
+to recruiters as part of the CV.
+
+Fix end-to-end:
+
+- `prompt-generate-cv.ts` restructures OUTPUT FORMAT — model emits the CV,
+  then a literal `<!--REFINE-NOTES-->` line, then meta as `### Changes
+  Made` + `### Gaps To Address Before Interview`. Mode addenda (fill-gaps,
+  stretch) now point the LLM at the notes block, not the CV body.
+- `app/api/generate-cv/route.ts:splitCvAndNotes()` splits at the marker
+  first; falls back to the first `## Changes Made` / `## Gaps To Address`
+  h2 for legacy outputs. Response now `{markdown, refineNotes, quotaRemaining}`.
+- `callGenerateCv` api-client returns `{markdown, refineNotes}`. Three
+  call sites (results-section, refine-tools-block, refined-cv-mode-banner)
+  store both into `analysis-store` (which gains `refineNotes: string | null`).
+- `refined-cv-view.tsx` renders the CV in its existing Card, then refine
+  notes as a separate primary-bordered Card labelled "Refine notes · Chỉ
+  cho bạn — KHÔNG nằm trong CV gửi recruiter".
+- `download-actions.tsx` untouched — it only reads `matchedCv`, which is
+  now CV-only after the split, so `.md` downloads are clean.
+
+### Admin usage row ordering (commit `5023348`)
+
+Visit history and Daily volume tables on `/admin/usage` rendered
+oldest-first because the underlying arrays are built that way for
+cumulative math. Wrapped each `.map` in `[...arr].reverse().map(...)` so
+today's row sits at the top. Totals (which use the original array order
+via `.reduce`) unaffected.
+
+### Ingest taxonomy Phase 1 (commits `8e2a710`, `da3578c`)
+
+User flagged the architectural rule: "filter BEFORE scrape, never broad-
+scrape-then-reclassify; cover all 6 verticals; bilingual VN + EN; research-
+driven." Memory `feedback-filter-before-scrape` captures the rule.
+
+Five sibling researcher agents produced taxonomy md files for tech,
+marketing, finance, sales, ops, other (each 450-825 lines covering
+sub-domains, bilingual title patterns, confirming keywords, source slug
+maps, and negative-filter rules). A planner synthesised the master plan
++ 5 phase files at `plans/260603-1655-ingest-taxonomy/`.
+
+Code shipped this evening (Phase 1 of 5):
+
+- `src/lib/jobs/taxonomy.ts` (~330 lines) — single source of truth.
+  `TAXONOMY` constant: 6 verticals × 47 sub-domains. Each sub-domain
+  carries (id, vertical, titlesPositive regex, sourceSlugs per board).
+  Each vertical carries a titlesNegative regex evaluated BEFORE the
+  positive list. Exposes `classifyTitle(vertical, title)`,
+  `pickSubVertical(title)`, `slugToVerticalAndSub(source, slug)`.
+- `src/lib/jobs/types.ts` — `subVertical?: string` added to `Job` and
+  `JobInput`. Optional so 150 live prod records read fine with the new
+  shape; new ingests carry it from the filter step.
+- `tests/taxonomy.test.ts` — 56 assertions: slug coverage per vertical,
+  30 positive-title fixtures (Senior Backend Nodejs, Data Engineer, ML
+  Engineer, DBA, Kế Toán Tổng Hợp, Môi Giới BĐS, Bác Sĩ, Kỹ Sư Cơ Khí, …),
+  12 negative rejections, 4 cross-vertical routing checks (Sales Engineer
+  → sales not tech, Insurance Sales → sales not finance, Kỹ Sư Cơ Khí →
+  other not tech, clean Data Engineer → tech.data).
+
+Regex gotcha solved during test bring-up: Node V24's `\b` doesn't fire
+on Vietnamese diacritic boundaries even with the `u` flag. Stripped all
+`\b` from the taxonomy regexes and rely on substring matching within
+parenthesised alternations — false-positive risk on short keywords kept
+under control by alternation context.
+
+Phases 2-5 (vl24h pre-filter rewrite → multi-board topcv+vnw → re-ingest
+→ weekly cron + relax freshness ≤7d) deferred to next session. Total
+remaining effort ≈ 12-17h.
+
+### Dashboard landing page (commit `4daec0a`)
+
+`/` (root) used to render the Analyze form directly. Now serves a
+Dashboard with the project tagline as the first-impression hero:
+
+> AI giúp bạn **chọn đúng job**, **sửa đúng CV**, **biết gap thật**, và
+> tăng xác suất được gọi phỏng vấn. Còn lại **vẫn là khả năng của bạn**.
+
+Hero uses a gradient + radial-blob background, the four action verbs
+highlighted in the tertiary-container token, the closing phrase set
+apart in bold with a 4px underline so the personal-accountability
+message lands. Primary CTA is a large "Start Analyze →" button routing
+to /analyze. Below the hero: a 4-card grid pairing each verb with a
+one-line explanation of the feature that delivers it (tier system,
+refine mode, red flags split, cover letter + roadmap). Secondary CTA
+at the bottom.
+
+Routing:
+- `/(app)/page.tsx` renders `<DashboardPage />`
+- new `/(app)/analyze/page.tsx` renders `<AnalyzePage />`
+- sidebar gains a top "Dashboard" item; "Analyze" now points `/analyze`
+- empty-state CTAs in career-path, job-fit, refined-cv updated `/` → `/analyze`
+
+Backward compat: existing bookmarks of `/` land on Dashboard and one
+click reaches Analyze. `sessionStorage` keys/serialization unchanged.
+
 ## Wave A — 2026-06-03 (Fit Tier UX overhaul, all phases EOD)
 
 Plan `260603-1359-wave-a-fit-tier` (5 phases, est. 19-29h) shipped in one
