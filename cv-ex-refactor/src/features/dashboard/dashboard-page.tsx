@@ -50,21 +50,20 @@ export function DashboardPage() {
             AI + bạn = interview
           </span>
 
-          <h1 className="font-display text-display-md font-extrabold leading-[1.1] text-on-surface sm:text-display-lg">
+          <p className="max-w-2xl text-title-md font-medium leading-relaxed text-on-surface-variant sm:text-headline-sm">
             AI giúp bạn{' '}
-            <span className="text-on-tertiary-container">chọn đúng job</span>,{' '}
-            <span className="text-on-tertiary-container">sửa đúng CV</span>,{' '}
-            <span className="text-on-tertiary-container">biết gap thật</span>,
+            <span className="font-semibold text-on-surface">chọn đúng job</span>,{' '}
+            <span className="font-semibold text-on-surface">sửa đúng CV</span>,{' '}
+            <span className="font-semibold text-on-surface">biết gap thật</span>,
             và tăng xác suất được gọi phỏng vấn.
-          </h1>
-
-          <p className="text-headline-sm font-medium text-on-surface-variant">
-            Còn lại{' '}
-            <span className="font-extrabold text-on-surface underline decoration-on-tertiary-container decoration-4 underline-offset-4">
-              vẫn là khả năng của bạn
-            </span>
-            .
           </p>
+
+          <h1 className="font-display text-display-lg font-extrabold leading-[0.95] text-on-surface sm:text-[5.5rem]">
+            Còn lại{' '}
+            <span className="block text-on-tertiary-container underline decoration-on-tertiary-container/40 decoration-[6px] underline-offset-[10px]">
+              vẫn là khả năng của bạn.
+            </span>
+          </h1>
 
           <div className="flex flex-wrap items-center gap-4 pt-4">
             <Link
