@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AnalyzeBody } from '@/lib/schemas/llm-request';
+import { AnalyzeBody, AnalyzeV3Body } from '@/lib/schemas/llm-request';
 import { resolveApiKey } from '@/lib/llm/resolve-api-key';
 import { buildAnalyzePrompts } from '@/lib/llm/prompt-analyze';
 import { callLLM } from '@/lib/llm/providers';
@@ -8,6 +8,8 @@ import { normalizeAnalysis } from '@/lib/llm/normalize-analysis';
 import { logLlmCall } from '@/lib/llm/safe-logger';
 import { checkKillSwitch, recordCost } from '@/lib/cost/guard';
 import { microUsdCost } from '@/lib/llm/model-prices';
+import { handleAnalyzeV3 } from '@/lib/analyze/handle-v3';
+import { isV3Shape } from '@/lib/analyze/dispatch';
 import { env } from '@/lib/env';
 
 export const runtime = 'nodejs';
@@ -19,6 +21,25 @@ function err(code: string, message: string, status: number) {
 
 export async function POST(req: NextRequest) {
   const json = await req.json().catch(() => null);
+
+  const byokToken = req.cookies.get('byok-token')?.value;
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    ?? req.headers.get('x-real-ip')?.trim()
+    ?? 'unknown';
+
+  // v0.4 dispatcher: route by body shape. v3 (CV-solo) coexists with v2
+  // (CV-vs-JD) during the pivot; Phase 7 removes v2.
+  if (isV3Shape(json)) {
+    const parsed = AnalyzeV3Body.safeParse(json);
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      const path = issue?.path?.join('.') ?? '';
+      const msg = issue?.message ?? 'Body không hợp lệ.';
+      return err('invalid_input', path ? `${path}: ${msg}` : msg, 400);
+    }
+    return handleAnalyzeV3(parsed.data, { ...(byokToken ? { byokToken } : {}), ip });
+  }
+
   const parsed = AnalyzeBody.safeParse(json);
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
@@ -28,10 +49,6 @@ export async function POST(req: NextRequest) {
   }
 
   const body = parsed.data;
-  const byokToken = req.cookies.get('byok-token')?.value;
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-    ?? req.headers.get('x-real-ip')?.trim()
-    ?? 'unknown';
   const resolved = await resolveApiKey(body.llm, 'analyze', { byokToken, ip });
   if (!resolved.ok) {
     return err(resolved.code, resolved.message, resolved.status);

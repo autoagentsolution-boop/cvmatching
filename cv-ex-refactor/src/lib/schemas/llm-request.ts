@@ -64,6 +64,24 @@ export const AnalyzeBody = z.object({
   inputs: AnalyzeInputs,
 });
 
+// v0.4 CV-Solo analyze contract. Coexists with v2 AnalyzeBody during transition
+// (route discriminates by presence of inputs.jdText). Drops JD/targetRole/
+// strictness/mustHaves/weights — none meaningful without a JD. Adds optional
+// `role` so the client can submit a user-confirmed role after the role-infer
+// modal (Phase 3 UI). When `role` is absent, the route runs the role-infer
+// step itself.
+export const AnalyzeV3Inputs = z.object({
+  cvText: z.string().min(100).max(MAX_TEXT),
+  profileText: z.string().max(10_000).optional(),
+  language: LanguageEnum.default('auto'),
+  role: z.string().min(2).max(120).optional(),
+});
+
+export const AnalyzeV3Body = z.object({
+  llm: LlmConfig,
+  inputs: AnalyzeV3Inputs,
+});
+
 export const GenerateCvBody = z.object({
   llm: LlmConfig,
   inputs: z.object({
@@ -132,6 +150,8 @@ export const SuggestPathsBody = z.object({
 });
 
 export type AnalyzeBodyT = z.infer<typeof AnalyzeBody>;
+export type AnalyzeV3BodyT = z.infer<typeof AnalyzeV3Body>;
+export type AnalyzeV3InputsT = z.infer<typeof AnalyzeV3Inputs>;
 export type GenerateCvBodyT = z.infer<typeof GenerateCvBody>;
 export type ExtractMustHavesBodyT = z.infer<typeof ExtractMustHavesBody>;
 export type CareerPathBodyT = z.infer<typeof CareerPathBody>;
