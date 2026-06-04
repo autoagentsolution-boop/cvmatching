@@ -91,13 +91,14 @@ export function CareerPathPage() {
     }
   }
 
-  // v0.4: removed the auto-fetch useEffect. It burned a /career-path/suggest
-  // quota slot on every cache-miss visit — surprising users who only wanted
-  // to skim the page or fill the aspiration form manually. User must now
-  // click "Đề xuất hướng phát triển" to consume the slot. Matches the
-  // explicit-fetch pattern in job-fit-list-page (commit 0fbcc83 rationale).
-  const showSuggestPrompt =
-    hasCv && !cacheValid && !isSuggesting && !suggestError && suggestions.length === 0;
+  // v0.4: no auto-fetch — explicit user action (commit 0a7c408 rationale).
+  // Suggest is offered as a small inline link inside the unified Start Card
+  // below; the primary CTA stays "Generate roadmap" (works without target —
+  // existing API accepts "auto" and infers from CV) so user always has one
+  // clear next step regardless of whether they've picked a suggestion or
+  // arrived prefilled from /job-fit.
+  const showSuggestLink =
+    !selectedSuggestion && suggestions.length === 0 && !isSuggesting && !suggestError;
 
   return (
     <FormPageLayout
@@ -127,39 +128,6 @@ export function CareerPathPage() {
         />
       ) : (
         <>
-          {showSuggestPrompt && (
-            <Card padding="lg" className="flex flex-col items-start gap-4">
-              <div className="flex flex-col gap-1">
-                <span className="text-label-md font-bold uppercase tracking-wide text-primary">
-                  Đề xuất hướng phát triển
-                </span>
-                <p className="text-body-md text-on-surface-variant">
-                  AI sẽ đọc CV và đề xuất 3-5 hướng phát triển khả thi. Mỗi lần đề xuất tốn 1 lượt quota.
-                  {' '}Nếu bạn đã biết hướng đi, có thể bỏ qua bước này và tự nhập aspiration bên dưới.
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <Button
-                  variant="primary"
-                  size="md"
-                  onClick={fetchSuggestions}
-                  leadingIcon={<MdAutoAwesome size={18} aria-hidden="true" />}
-                  aria-label="AI đề xuất 3-5 hướng phát triển từ CV"
-                >
-                  Đề xuất hướng phát triển →
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="md"
-                  onClick={() => setShowAspiration(true)}
-                  aria-label="Bỏ qua đề xuất, tự nhập aspiration"
-                >
-                  Tự nhập aspiration
-                </Button>
-              </div>
-            </Card>
-          )}
-
           {(suggestions.length > 0 || isSuggesting || suggestError) && (
             <PathSuggestionsBlock
               suggestions={suggestions}
@@ -171,29 +139,54 @@ export function CareerPathPage() {
             />
           )}
 
+          {/*
+            Unified Start Card — single primary CTA + small text-link secondary
+            options. Replaces the two competing-CTA layout (Suggest Card +
+            "Sẵn sàng dựng lộ trình" Card) that confused users with 4 buttons.
+            Header copy adapts to state; CareerPathActions label already
+            adapts (Generate / Build roadmap → target / Regenerate).
+          */}
           <Card padding="lg" className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
               <span className="text-label-md font-bold uppercase tracking-wide text-primary">
-                {result ? 'Lộ trình hiện tại' : 'Sẵn sàng dựng lộ trình'}
+                {result
+                  ? 'Lộ trình hiện tại'
+                  : selectedSuggestion
+                    ? `Tạo lộ trình cho "${selectedSuggestion}"`
+                    : 'Tạo lộ trình sự nghiệp'}
               </span>
               <p className="text-body-md text-on-surface-variant">
-                {selectedSuggestion
-                  ? `Sẽ dựng roadmap cho hướng "${selectedSuggestion}". Click Generate.`
-                  : result
-                    ? 'Bạn có thể chọn hướng khác ở trên hoặc tinh chỉnh aspiration và Regenerate.'
-                    : 'Chọn một hướng phía trên, hoặc click Generate để AI tự đề xuất lộ trình tự nhiên từ CV.'}
+                {result
+                  ? 'Bạn có thể tinh chỉnh aspiration hoặc chọn hướng khác phía trên rồi Regenerate.'
+                  : selectedSuggestion
+                    ? 'Đã chọn hướng. Bấm Generate để dựng roadmap chi tiết.'
+                    : 'AI sẽ dựng roadmap tự nhiên từ CV của bạn. Hoặc xem các tùy chọn bên dưới để chọn hướng / tự nhập aspiration trước.'}
               </p>
             </div>
 
-            <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col items-start gap-3">
               <CareerPathActions />
-              <Button
-                variant="secondary"
-                size="md"
-                onClick={() => setShowAspiration((v) => !v)}
-              >
-                {showAspiration ? 'Ẩn tuỳ chỉnh' : 'Tuỳ chỉnh aspiration'}
-              </Button>
+
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-label-sm">
+                {showSuggestLink && (
+                  <button
+                    type="button"
+                    onClick={fetchSuggestions}
+                    aria-label="AI đề xuất 3-5 hướng phát triển từ CV (tốn 1 quota)"
+                    className="inline-flex items-center gap-1 text-on-tertiary-container underline-offset-2 hover:underline focus-visible:outline-none focus-visible:underline"
+                  >
+                    <MdAutoAwesome size={14} aria-hidden="true" />
+                    AI đề xuất 3-5 hướng trước (1 quota)
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowAspiration((v) => !v)}
+                  className="text-on-tertiary-container underline-offset-2 hover:underline focus-visible:outline-none focus-visible:underline"
+                >
+                  {showAspiration ? 'Ẩn tuỳ chỉnh aspiration' : 'Tuỳ chỉnh aspiration thủ công'}
+                </button>
+              </div>
             </div>
           </Card>
 
