@@ -26,6 +26,13 @@ export interface Job {
   verifiedAt: string;
   // base64-encoded Float32Array(768) — Gemini gemini-embedding-001, L2-normalized
   embedding: string;
+  /**
+   * v0.4 placeholder for ingest-extracted hard requirements. Optional + may
+   * be undefined on all live jobs until the ingest pipeline learns to
+   * populate it. The Job Fit detail UI conditionally renders only when
+   * non-empty (no fake empty-state clutter while ingest catches up).
+   */
+  mustHaves?: string[];
 }
 
 // Input shape from seed JSON / CLI paste — fields filled at ingest time are omitted.

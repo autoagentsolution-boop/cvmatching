@@ -60,6 +60,12 @@ export interface JobMatchOut {
   dimensionScores: z.infer<typeof DimensionScoresSchema>;
   matchReasons: string[];
   studyTopics: StudyTopicOut[];
+  /**
+   * v0.4 hard-gate requirements parsed at ingest. Undefined on legacy jobs;
+   * Job Fit detail UI conditionally renders. Ingest enhancement is tracked
+   * separately — see [[project_v04_pivot_cv_solo_analyze]] follow-ups.
+   */
+  mustHaves?: string[];
 }
 
 // ── Normalizer ─────────────────────────────────────────────────────────────
@@ -116,6 +122,7 @@ function normalizeItems(
       dimensionScores: match.dimensionScores,
       matchReasons: match.matchReasons,
       studyTopics: match.studyTopics,
+      ...(job.mustHaves && job.mustHaves.length > 0 ? { mustHaves: job.mustHaves } : {}),
     });
   }
 

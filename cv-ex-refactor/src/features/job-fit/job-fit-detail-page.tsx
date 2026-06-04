@@ -7,6 +7,7 @@ import { MatchReasonsBlock } from './match-reasons-block';
 import { StudyTopicsBlock } from './study-topics-block';
 import { DetailActionsBar } from './detail-actions-bar';
 import { EmptyStateBackToList } from './empty-state-back-to-list';
+import { MustHaveBlock } from './must-have-block';
 
 interface JobFitDetailPageProps {
   jobId: string;
@@ -49,6 +50,7 @@ export function JobFitDetailPage({ jobId }: JobFitDetailPageProps) {
           }
         />
 
+        <MustHaveBlock mustHaves={match.mustHaves} />
         <JobScoreBlock match={match} />
         <MatchReasonsBlock reasons={match.matchReasons} />
         <StudyTopicsBlock jobId={match.jobId} topics={match.studyTopics} />
