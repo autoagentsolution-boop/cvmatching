@@ -8,28 +8,53 @@ ResumeRefine is a Next.js application deployed on Vercel with Upstash KV backend
 
 ## Core subsystems
 
-### 1. CV Analysis & Rewrite (v0.1–v0.3)
+### 1. CV Analysis (v0.1 → v0.4 CV-Solo, shipped 2026-06-04)
 
-**Scope:** Analyze CV against JD; generate optimized resume narrative.
+**Scope (v0.4):** Analyze CV intrinsically for the user-claimed role. No JD required. LLM infers role from CV header/summary; confirm modal when low confidence; 9-dim scoring against industry baselines for the role.
 
-**Data flow:**
+**Data flow (v0.4):**
 ```
-User CV + JD (client paste)
-  → POST /api/analyze (Gemini text-embedding-004 embed)
-  → CV cached 6h (HMAC key, no PII stored)
-  → LLM batch: 9-dim score + match reasons
-  → Frontend renders slider UI (user can drag to recompute)
-  → POST /api/cv/rewrite (career narrative generation)
-  → sessionStorage (no persistence)
+User CV (client paste)
+  → POST /api/analyze { llm, inputs: { cvText, language, role?, profileText? } }
+  → Dispatcher: absent inputs.jdText → handleAnalyzeV3
+  → Stage 1: inferRoleFromCv (Gemini, cheap, max 400 tokens)
+       confidence ≥ 0.75 → use canonical role, proceed
+       confidence <  0.75 → return { needsRoleConfirm: true, candidates }
+                            → UI opens RoleConfirmModal → user picks
+                            → 2nd POST with { cvText, role: <chosen> }
+                            → server skips role-infer, scores directly
+  → Stage 2: buildAnalyzeV3Prompts(cvText, role, language, profileText?)
+             callLLM → safeParseJson → normalizeAnalysis
+  → Response: AnalysisResult + { schemaVersion: 'v3', inferredRole?, targetRole, quotaRemaining }
+  → Client store hydrates weights from result.metrics
+  → sessionStorage `cv-ex-analysis-v2` (NOT persisted: modal state, isAnalyzing)
 ```
 
-**Key files:**
-- `src/lib/llm/analyze-prompt.ts` — analysis schema + scoring dimensions
-- `src/lib/quota/gate.ts` — per-bucket rate limiting
-- `src/app/api/analyze/route.ts` — main endpoint
-- `src/features/analysis/hooks/use-analysis.ts` — Zustand store + sessionStorage persist
+**v2 backward-compat path:** dispatcher routes bodies WITH `inputs.jdText` to the legacy CV-vs-JD flow (`buildAnalyzePrompts` + must-have hard gate). Kept for rollback safety; scheduled for hard-delete after v0.4 preview smoke.
 
-**Privacy:** CV text stays client-side; only embedding vectors + scores sent to KV. BYOK vault option available (Settings).
+**Cost recording:** both LLM calls (role-infer + score) recorded under the `analyze` cost bucket. Role-infer cost is ~10% of scoring cost; net per-analyze cost is ~10% higher than v2.
+
+**Quota:** unchanged at 5/day for shared-key users; BYOK exempt; admin bypass.
+
+**Key files (v0.4):**
+- `src/lib/llm/prompt-analyze-v3.ts` — CV-solo prompt builder
+- `src/lib/llm/role-infer-prompt.ts` + `role-infer.ts` — stage 1 prompt + orchestrator + threshold helpers
+- `src/lib/analyze/dispatch.ts` — pure v2-vs-v3 body discriminator
+- `src/lib/analyze/handle-v3.ts` — v3 request handler (extracted from route.ts for test isolation)
+- `src/app/api/analyze/route.ts` — thin dispatcher
+- `src/features/analyze/analyze-page.tsx` — CV-only single column
+- `src/features/analyze/role-confirm-modal.tsx` — low-confidence modal
+- `src/features/analyze/inferred-role-banner.tsx` — role chip + inline override
+- `src/features/analyze/cache-migration.ts` + `re-analyze-banner.tsx` — v1→v2 migration
+- `src/features/analyze/analysis-store.ts` — Zustand store (persist key `cv-ex-analysis-v2`)
+
+**Scoring UX mechanics (unchanged across v0.3 → v0.4):** sliders are LLM-scored output, user-editable; overallScore recomputes client-side; recommendations/gaps/strengths/keywordCoverage/redFlags/suggestedSummaryLine frozen from one LLM call. Only the SEMANTIC of each per-dim score changed in v0.4 (CV-vs-JD → CV-intrinsic for role). See [[feedback_scoring_ux_model]].
+
+**Privacy:** CV text stays in sessionStorage (not localStorage — clears on tab close). No PII to KV in v3 path. BYOK vault option available (Settings).
+
+**v0.4 must-have requirements:** removed from `/analyze`. Plumbed on Job Fit detail page via `MustHaveBlock` — conditionally renders only when `Job.mustHaves[]` is populated. All live jobs currently lack the field; ingest enhancement is the unblocker.
+
+**v0.4 cover letter entry:** added `CoverLetterShortcut` on Job Fit detail → navigates to `/refined-cv?jobId=X&intent=cover-letter#cover-letter`. Existing `CoverLetterBlock` auto-scrolls into view on mount. Server route unchanged (still `/api/generate-cover-letter` accepting `{cvText, jdText: job.description, jobTitle, company, language}`).
 
 ---
 
@@ -345,7 +370,9 @@ See `docs/deployment.md` §15 for per-phase rollback targets.
 
 | Endpoint | Model | Max output | Typical | Notes |
 |---|---|---|---|---|
-| `/api/analyze` | Gemini Flash | 2048 | 400 | 9-dim scores + match reasons |
+| `/api/analyze` (role-infer) | Gemini Flash | 400 | 150 | v0.4 stage 1 — canonical+conf+alternates |
+| `/api/analyze` (score v3) | Gemini Flash | 2048 | 500 | v0.4 stage 2 — 9-dim CV-intrinsic + frozen artifacts |
+| `/api/analyze` (v2 legacy) | Gemini Flash | 2048 | 400 | CV-vs-JD, kept until v0.4 hard-cutover |
 | `/api/cv/rewrite` | Gemini Flash | 4096 | 800 | Career narrative |
 | `/api/career-path/suggest` | Gemini Flash | 4096 | 1500 | 3-5 trajectory options |
 | `/api/career-path` | Gemini Flash | 24576 | 8000 | Full roadmap (milestones, gaps, alt paths) |

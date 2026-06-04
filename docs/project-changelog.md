@@ -1,5 +1,41 @@
 # Project Changelog
 
+## v0.4.0 — CV-Solo Analyze pivot — 2026-06-04
+
+Single-session ship across 8 commits (`ea2c6e1` → `4950932` + docs sync). Plan: `plans/260604-1356-v04-cv-solo-analyze-pivot/`. Full deviations + follow-ups documented in [[project_v04_pivot_cv_solo_analyze]] memory.
+
+### Pivot summary
+
+- `/analyze` no longer requires JD input — CV-only paste
+- LLM infers target role from CV (`role-infer.ts` + `role-infer-prompt.ts`); confidence ≥ 0.75 → score immediately; below → return `needsRoleConfirm` + candidates, UI opens modal so user picks/types
+- 9-dim scoring rescoped from "CV-vs-JD match" → "CV-intrinsic per-dim quality for claimed role" (mechanics identical: sliders editable, overallScore recomputes client-side, frozen artifacts)
+- Must-have requirements: removed from `/analyze`; plumbed on Job Fit detail via conditional-render `MustHaveBlock` (waits silently for ingest to populate `Job.mustHaves[]`)
+- Cover Letter: new shortcut CTA on Job Fit detail → `/refined-cv?jobId=X&intent=cover-letter` → existing `CoverLetterBlock` auto-scrolls into view
+- Cache: `cv-ex-analysis-v1` → `cv-ex-analysis-v2` with `ReAnalyzeBanner` on `/analyze` (user-driven re-analyze; never auto-burn quota per decision #4)
+- Quota unchanged: 5/day analyze, 3/day cover letter
+- v2 code path retained for rollback safety; dispatcher in `route.ts` routes by body shape
+
+### API contract changes
+
+- `POST /api/analyze` now accepts both shapes; v3 = `{ llm, inputs: { cvText, language, role?, profileText? } }` (no `jdText`)
+- New 502 error code `role_infer_parse_failed` / `role_infer_invalid_shape` / `role_infer_provider_error` surface per [[feedback_error_surfacing_no_silent_fallback]]
+- New response field: `schemaVersion: 'v3'`, `inferredRole?: {canonical, confidence}`, `targetRole: string`
+- `needsRoleConfirm` response shape: `{ schemaVersion: 'v3', needsRoleConfirm: true, candidates: [...], quotaRemaining }`
+
+### Tests
+
+74 new unit tests across phases (role-infer 24, dispatcher 7, v3 client 4, v3 prompt 13, must-have-block 3, cache-migration 13, +10 existing tweaks). Suite: 254 passed / 10 skipped. tsc clean throughout.
+
+### Follow-ups (next sessions)
+
+1. Preview env smoke of v0.4 paths (≤15 min)
+2. Hard-delete v2 code post-smoke (prompt-analyze.ts, jd-input-block.tsx, must-haves-block.tsx, AnalyzeInputs schema fields, dispatcher v2 branch)
+3. Ingest enhancement to populate `Job.mustHaves[]` so the Job Fit detail block lights up
+4. 20-CV role-infer accuracy benchmark — tune `ROLE_INFER_CONFIDENCE_THRESHOLD` env if needed
+5. Pilot reopen runbook (unblocked now that pivot shipped per decision #6)
+
+---
+
 ## Post-Wave-A hardening — 2026-06-03 evening
 
 Wave A shipped in the afternoon (entry below); the evening session added

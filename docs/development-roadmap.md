@@ -111,15 +111,42 @@ Living document tracking feature phases, milestones, and completion status. Upda
 
 ---
 
-## v0.4 (future)
+## v0.4 — CV-Solo Analyze pivot (✓ Shipped 2026-06-04)
 
-**Scope:** Authentication, persistent job history, interactive quiz (re-evaluation).
+**Scope:** Drop JD requirement from /analyze. LLM infers role from CV; 9-dim scoring rescoped to CV-intrinsic for the claimed role. Must-haves relocate to Job Fit detail. Cover Letter CTA added on Job Fit detail.
+
+**Phases shipped:**
+- 1: prompt-analyze-v3.ts CV-solo prompt + 13 unit tests
+- 2: 2-stage API route (role-infer → score) + dispatcher + role-infer module
+- 3: UI restructure — strip JD/must-haves/role/strictness, role-confirm modal, inferred-role banner
+- 4: Must-have block plumbed on Job Fit detail (conditional render until ingest backfills)
+- 5: Cover Letter shortcut CTA on Job Fit detail
+- 6: Cache version bump v1→v2 + ReAnalyzeBanner
+- 7: Memory + docs sync (this entry)
+
+**Status:** ✓ Shipped to main 2026-06-04 (`ea2c6e1` → `4950932`)
+
+**v2 code retained:** prompt-analyze.ts, jd-input-block.tsx, must-haves-block.tsx + AnalyzeInputs schema kept alongside for rollback safety. Hard-delete scheduled after preview env smoke.
+
+**Activation funnel target:** ≥15% lift in `/analyze` completion rate vs v0.3.1 baseline (measured over 2 weeks post-deploy).
+
+**Follow-ups:**
+- Ingest enhancement to populate `Job.mustHaves[]` (lights up the conditional block)
+- 20-CV role-infer accuracy benchmark (≥85% top-1 at conf ≥ 0.75); tune `ROLE_INFER_CONFIDENCE_THRESHOLD` env if needed
+
+---
+
+## v0.5 (future)
+
+**Scope:** Authentication maturity, persistent history, auto-pipeline (daily-score + email digest).
 
 **Planned features:**
-- Google OAuth sign-in (UI currently hidden, auth service ready)
+- Google OAuth sign-in mainstreamed (UI currently hidden, auth service ready)
 - Persistent job application history + saved notes per job
+- Onboarding step for desired role + criteria (location, salary band, vertical)
+- Daily cron scoring fresh jobs against user CV + desired role
+- "Quick win" email digest (3-5/week, Resend integration, opt-in, unsubscribe)
 - LLM-generated quiz per study topic (if signal strong from dislike feedback)
-- Job alert email digest
 - Custom topic CRUD (admin power-users)
 
 ---
