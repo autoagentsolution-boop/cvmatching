@@ -1,0 +1,189 @@
+---
+name: company-profile-reviews
+title: Company Profile + Reviews on Job Fit Detail
+status: pending
+created: 2026-06-04
+owner: vinh2000ld11@gmail.com
+blockedBy: []
+blocks: []
+related: [260603-1655-ingest-taxonomy, 260602-1739-hybrid-refresh-topup, project_post_pilot_db_migration]
+effort: 14-22h (Phase A 6-9h, Phase B 5-8h, Phase C deferred post-pilot)
+---
+
+# Company Profile + Reviews on Job Fit Detail
+
+## Status
+
+Pending — brainstorm + 4 locked decisions in `reports/brainstorm-260604-1218-company-profile-reviews.md`. Phase files (01-07) to be fleshed out next; Phase 08 deferred to post-pilot Postgres migration plan.
+
+## Problem
+
+Job Fit detail page (`src/features/job-fit/job-fit-detail-page.tsx`) shows match scores + study topics, but candidate has zero signal about the company beyond the bare `company: string` on the Job record. Before clicking Apply, user needs: company facts (size, industry, location, website), public sentiment summary, and external rating proof. Manual googling per job kills funnel — must surface in-app.
+
+## Scope
+
+**IN**
+- New first-class `Company` entity (separate from Job, lookup by `companyId`)
+- Tier 1: scrape company section from job source page (ITviec, TopCV, VNW, VL24H), 90d TTL auto-refetch
+- Tier 2: lazy LLM grounded enrichment (Gemini + web search) on first detail open per company per 30 days
+- External ratings inline (Glassdoor + Google score + review count), 7d cache, admin manual refresh
+- LLM name-resolution dedup: ≥0.95 auto-merge, 0.7-0.95 admin queue, <0.7 create new
+- Company card on Job Fit detail page (progressive render: instant facts → async enrichment → ratings)
+- Admin tooling: dedup queue, manual refetch endpoints
+
+**OUT**
+- Own UGC reviews (deferred to Phase 08, post-pilot)
+- Glassdoor/Indeed full review scraping (link out + score only, no review body)
+- Company logo CDN pipeline (use source URL directly at pilot scale)
+- Vertical enum changes (Company has its own `industry` field, independent of Job.vertical)
+- Postgres migration (Phase 08, post-pilot)
+
+## Stack
+
+Pilot KV (Upstash) namespace conventions matching existing job pattern:
+- `co:{slug}` → Company JSON
+- `co-alias:{normalized-name}` → slug (resolver index)
+- `co-ratings:{slug}` → ExternalRatings JSON (7d TTL)
+- `co-enrich-calls:{YYYY-MM}` → counter (abuse guard, mirrors usage tracking)
+
+Re-use existing infra: `src/lib/scrape/fetch-html.ts`, `extract-readability.ts`, `detect-antibot.ts`. New scrape modules per source under `src/lib/scrape/companies/`. Gemini grounded-search via existing LLM client. UI cards in `src/features/job-fit/`.
+
+Post-pilot mapping (Phase 08) — KV → Postgres 1:1:
+- `companies`, `company_aliases`, `company_enrichments`, `company_external_ratings`, `company_dedup_queue` tables
+
+## Architectural Decisions
+
+1. **Company is first-class entity, not Job field.** Multiple jobs share one company; enrichment cost amortizes per-company not per-job. Decoupling keeps Job shape stable.
+2. **Job carries optional `companyId` plus existing `company: string`** for backward compat — no KV migration needed for 150 live jobs.
+3. **Three-tier data, three storage cadences.** Tier 1 scrape (90d TTL) at-ingest; Tier 2 LLM enrichment (30d TTL) lazy per-detail-open; Tier 3 external ratings (7d TTL) lazy per-detail-open. Different freshness needs, different cost profiles, isolated cache buckets.
+4. **Lazy enrichment over batch.** Only fire LLM enrichment when a user actually opens a job detail — prevents paying $$ for companies nobody clicks. Cache key per-company means second viewer pays $0.
+5. **Conservative LLM dedup (≥0.95 auto).** False-merge cost > false-split cost — merging FPT Software with FPT Telecom incorrectly poisons two companies' enrichment. Admin queue absorbs 0.7-0.95 grey zone.
+6. **Insufficient-source guard.** If LLM grounded search returns <2 sources for a `cons` claim, render only `summary` + `pros`. Hard rule, not config — defamation mitigation per security review.
+7. **Citations mandatory + neutral phrasing.** Every enrichment claim attributed ("Theo X, …"), citation chips rendered inline. Disclaimer text fixed: "Tổng hợp từ nguồn công khai, không phản ánh quan điểm của [platform]".
+
+## Data Flow
+
+```
+Ingest path (Tier 1):
+  scrape job detail → JobPosting parse
+                    ↓
+  extract company name + normalize (lowercase, strip "Cty/Co.,Ltd/JSC/TNHH")
+                    ↓
+  alias lookup co-alias:{normalized}
+   ┌─ hit  → reuse existing slug, attach companyId to Job, done
+   └─ miss → LLM dedup search (top-3 candidates by name similarity)
+              ┌─ best ≥ 0.95 → auto-merge, update co-alias index
+              ├─ 0.7 ≤ best < 0.95 → push to dedup queue, attach companyId of best (provisional)
+              └─ best < 0.7 → mint new slug, scrape company section page, save co:{slug}
+                                ↓
+                              schedule expiresAt = now + 90d
+
+User detail-open path (Tier 2 + Tier 3, lazy):
+  GET /api/companies/[slug]
+   ↓
+  load co:{slug} (Tier 1, always present)
+   ↓
+  parallel:
+    ├─ if co.enrichment expired/missing → Gemini grounded search → cache 30d
+    └─ if co-ratings:{slug} expired/missing → Glassdoor + Google scrape → cache 7d
+   ↓
+  return merged Company shape to client
+   ↓
+  UI: render Tier 1 instant, swap in Tier 2 + Tier 3 when ready (Suspense pattern)
+```
+
+Failure modes:
+- LLM ground <2 sources → cache `{ enrichment: { summary, pros, cons: [], insufficientSources: true } }` 7d TTL
+- Glassdoor/Google rate-limit → cache `{ ratings: null, retryAfter: 7d }`
+- Scrape company page fail at ingest → mint stub `co:{slug}` with name only, mark `tier1Pending: true`, retry on next ingest run
+- All errors surface per [[feedback_error_surfacing_no_silent_fallback]] — only 404 silent
+
+## Phases
+
+| # | File | Effort | Focus |
+|---|------|--------|-------|
+| 1 | phase-01-company-entity.md | 2-3h | `lib/companies/types.ts`, KV namespace, alias resolver, normalize util, unit tests |
+| 2 | phase-02-ingest-tier1-scrape.md | 2-3h | Per-source company-page scrapers, hook into ingest pipeline, 90d TTL refetch, stub-on-fail |
+| 3 | phase-03-external-ratings.md | 2-3h | Glassdoor + Google scrape, 7d cache, admin refetch endpoint, ToS-safe link-out UI contract |
+| 4 | phase-04-ui-company-card.md | 2-3h | Company card on Job Fit detail (right rail desktop / collapsible mobile), Tier 1 + ratings instant render |
+| 5 | phase-05-llm-enrichment.md | 2-3h | `/api/companies/[slug]` endpoint, Gemini grounded search, citation extraction, 30d cache, insufficient-source guard |
+| 6 | phase-06-ui-enrichment-async.md | 1-2h | Lazy fetch enrichment on detail open, Suspense + skeleton, citation chips, disclaimer text |
+| 7 | phase-07-admin-tooling.md | 2-3h | Admin dedup queue UI, manual merge/split actions, refetch endpoints (company / ratings / enrichment) |
+| 8 | phase-08-postgres-ugc-deferred.md | post-pilot | Migration to Postgres (companies + aliases + enrichments + ratings + dedup_queue tables); UGC reviews schema; moderation framework. Blocked on auth maturity + ≥1K users per [[project_post_pilot_db_migration]] |
+
+**Sequencing:** Phase 1 blocks all. Phase 2 + Phase 3 parallel after 1 (different scrape targets, different KV keys). Phase 4 needs 1 + 2 + 3. Phase 5 needs 1. Phase 6 needs 4 + 5. Phase 7 needs 1-6 in place to have data to admin over. Phase 8 deferred.
+
+## Hard Constraints
+
+- [[feedback_filter_before_scrape]] — company-page scrape only triggers for companies surviving job-level filter; never broad-crawl company directories
+- [[feedback_error_surfacing_no_silent_fallback]] — `/api/companies/[slug]` must surface 4xx/5xx; only 404 may silently fall back to "Chưa có thông tin"
+- [[feedback_secrets_never_generated_in_chat]] — admin endpoints behind existing admin auth + DISABLE_SHARED_KEY flag, no per-feature key minting
+- Defamation guard: LLM `cons` rendering blocked unless ≥2 grounded citations per item
+- PII guard: enrichment may name public roles (CEO, founder); must not name non-public employees
+
+## Top Risks
+
+| # | Risk | Likelihood | Impact | Mitigation |
+|---|------|------------|--------|------------|
+| 1 | LLM hallucinates negative claim that surfaces as `cons` → defamation exposure | Medium | High | Phase 5 insufficient-source guard (≥2 citations or hide); Phase 6 neutral phrasing template ("Theo X, …"); disclaimer text always rendered |
+| 2 | Name-resolution false-merge (FPT Software + FPT Telecom collapsed) → enrichment polluted across companies | Medium | High | Conservative threshold 0.95; Phase 7 admin queue for 0.7-0.95 grey zone; rollback path = split via admin tool |
+| 3 | Glassdoor anti-bot blocks rating scrape → Tier 3 always empty | High | Low | Phase 3 designs for graceful empty state; Google ratings as fallback; failure cached 7d to avoid hammer |
+| 4 | LLM enrichment cost spikes (cache bust bug or abuse) | Low | Medium | `co-enrich-calls:{YYYY-MM}` counter + Pushover alert at 2× baseline; lazy-only firing (no batch) caps blast radius |
+| 5 | Admin dedup queue grows unbounded (every new source = 0.7-0.95 candidates) | Medium | Medium | Phase 7 batches similar candidates; Phase 8 Postgres migration unblocks better similarity index |
+| 6 | Company-page scrape per source breaks when site redesigns | Medium | Low | Per-source isolated module under `src/lib/scrape/companies/`; failure stubs Job's company without blocking ingest |
+
+## Test Matrix
+
+| Layer | Tested in | Method |
+|-------|-----------|--------|
+| Name normalize + alias resolve | Phase 1 | Vitest unit with 30+ VN company name variants ("FPT", "Cty FPT", "FPT Software JSC", …) |
+| LLM dedup threshold behavior | Phase 1 | Mock LLM judge with known similarity scores; assert auto-merge / queue / mint branches |
+| Per-source company scrape | Phase 2 | Fixture HTML per source (ITviec, TopCV, VNW, VL24H); assert extracted fields |
+| External rating scrape robustness | Phase 3 | Fixture HTML + simulated 429/503; assert cache-on-fail behavior |
+| Company card render states | Phase 4 + 6 | RTL: Tier 1 only / Tier 1 + Tier 2 / Tier 1 + Tier 3 / all-empty states |
+| Enrichment endpoint cost guard | Phase 5 | Synthetic test: 10 concurrent opens for same company → 1 LLM call only (cache hit) |
+| Admin dedup actions | Phase 7 | E2E: enqueue → merge → verify both aliases now point to one slug |
+
+## Rollback Plan
+
+- **Phase 1**: delete `lib/companies/` + KV keys (`KV.del 'co:*' 'co-alias:*'`); Job records untouched (companyId optional)
+- **Phase 2**: revert ingest hook; existing scrape paths unchanged; orphan `co:*` entries harmless
+- **Phase 3**: revert ratings scrape module + admin endpoint; UI degrades to "Đang cập nhật" placeholder
+- **Phase 4**: revert detail-page UI change; data still accrues in KV for later re-enable
+- **Phase 5**: revert `/api/companies/[slug]` enrichment branch; endpoint returns Tier 1 only
+- **Phase 6**: revert async UI; card shows Tier 1 + ratings (already proven in Phase 4)
+- **Phase 7**: revert admin UI; dedup queue grows untouched until re-enabled
+- **Phase 8**: deferred — separate plan, separate rollback
+
+## File Ownership
+
+- Phase 1: `src/lib/companies/types.ts`, `src/lib/companies/normalize.ts`, `src/lib/companies/alias-resolver.ts`, `src/lib/companies/kv-client.ts`, tests
+- Phase 2: `src/lib/scrape/companies/{itviec,topcv,vnw,vl24h}-company.ts` (new), ingest hook in `scripts/ingest-jobs.ts`
+- Phase 3: `src/lib/scrape/external-ratings/{glassdoor,google}.ts` (new), `src/app/api/admin/companies/[slug]/refetch-ratings/route.ts`
+- Phase 4: `src/features/job-fit/company-card.tsx` (new), edit `job-fit-detail-page.tsx`
+- Phase 5: `src/app/api/companies/[slug]/route.ts` (new), `src/lib/companies/enrichment.ts` (new)
+- Phase 6: `src/features/job-fit/company-card-enrichment.tsx` (new), edit `company-card.tsx` for Suspense boundary
+- Phase 7: `src/app/(app)/admin/companies/page.tsx` (new), `src/app/api/admin/companies/dedup-queue/route.ts` (new)
+
+## Success Metrics
+
+- ≥90% of currently-active jobs (150+) have `companyId` attached within 2 days post-deploy
+- Company card render p95 ≤ 200ms (Tier 1 instant) on Job Fit detail
+- LLM enrichment p95 ≤ 8s on first open; cache-hit p95 ≤ 50ms
+- LLM enrichment monthly cost ≤ $20 ceiling at current job pool size
+- Admin dedup queue ≤ 20 pending items at any time (Phase 7 throughput target)
+- Zero defamation-classified content in 50-card manual audit (Phase 6 acceptance)
+- Click-through on Apply CTA does not drop ≥5% vs pre-feature baseline (no harm metric)
+
+## Cross-Plan Coordination
+
+- **[[project_post_pilot_db_migration]]**: Phase 8 of this plan is the company-domain slice of that migration. Add companies + aliases + enrichments + ratings + dedup_queue tables to its schema scope.
+- **`260603-1655-ingest-taxonomy`**: Phase 2 of this plan hooks into the per-source scrape modules taxonomy creates. Coordinate: that plan owns scrape orchestration; this plan owns company-page extraction inside each source module.
+- **Pilot reopen runbook** (docs/deployment.md §17): runs in parallel today per user directive. No file conflicts — different code paths (auth flag vs feature code).
+
+## Open Questions (carry to user)
+
+1. **Phase 8 trigger condition**: lock as "pilot exit OR ≥1K users OR ≥500 unique companies in KV" — which threshold actually fires migration? Default: whichever hits first.
+2. **Logo handling at pilot scale**: Tier 1 stores source URL (e.g. ITviec's CDN). If source returns 403 to our domain, fallback strategy = scrape + self-host (S3/Blob) or just hide logo? Default: hide, defer self-host to Phase 8.
+3. **Sister-company policy**: when admin merges "FPT Software" + "FPT Telecom" review queue → keep as separate companies (current default) or model as parent-child? Default: separate (simpler), revisit if conglomerates dominate the data.
+4. **Cron-driven Tier 1 refresh vs lazy**: current plan = check 90d expiry at-detail-open. Alternative = nightly cron pre-refreshes top-N most-viewed companies. Default: lazy until Phase 7 data shows clear pareto.
