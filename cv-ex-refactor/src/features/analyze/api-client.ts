@@ -6,6 +6,37 @@ import type {
   GenerateCvRequest,
   Language,
 } from './types';
+import type { RoleCandidate } from './analysis-store';
+
+/** v0.4 needsRoleConfirm response from /api/analyze when role-infer confidence is low. */
+export interface NeedsRoleConfirmResponse {
+  schemaVersion: 'v3';
+  needsRoleConfirm: true;
+  candidates: RoleCandidate[];
+  quotaRemaining?: number | null;
+}
+
+/** Full v3 analyze success — extends AnalysisResult with role-infer metadata + schemaVersion. */
+export interface AnalyzeV3SuccessResponse extends AnalysisResult {
+  schemaVersion: 'v3';
+  inferredRole?: RoleCandidate;
+  targetRole: string;
+  quotaRemaining?: number | null;
+}
+
+export type AnalyzeV3Response = NeedsRoleConfirmResponse | AnalyzeV3SuccessResponse;
+
+export function isNeedsRoleConfirm(x: AnalyzeV3Response): x is NeedsRoleConfirmResponse {
+  return (x as NeedsRoleConfirmResponse).needsRoleConfirm === true;
+}
+
+export interface CallAnalyzeV3Args {
+  cvText: string;
+  llm: AnalyzeRequestLLM;
+  language: Language;
+  role?: string;
+  profileText?: string;
+}
 
 /**
  * POST /api/analyze — returns AnalysisResult.
@@ -28,6 +59,34 @@ export async function callAnalyze(payload: AnalyzeRequest): Promise<AnalysisResu
     throw new Error(buildErrorMessage(await parseErrorBody(res), 'Phân tích thất bại'));
   }
   return res.json() as Promise<AnalysisResult>;
+}
+
+/**
+ * POST /api/analyze (v0.4 CV-solo). Body omits jdText → server routes to v3
+ * handler. Returns either a full result OR { needsRoleConfirm } when the
+ * role-infer step couldn't confidently pick a target role. Caller uses
+ * isNeedsRoleConfirm() to discriminate.
+ */
+export async function callAnalyzeV3(args: CallAnalyzeV3Args): Promise<AnalyzeV3Response> {
+  const { cvText, llm, language, role, profileText } = args;
+  const res = await fetch('/api/analyze', {
+    method: 'POST',
+    headers: JSON_HEADERS,
+    body: JSON.stringify({
+      llm,
+      inputs: {
+        cvText,
+        language,
+        ...(role ? { role } : {}),
+        ...(profileText ? { profileText } : {}),
+      },
+    }),
+    credentials: 'same-origin',
+  });
+  if (!res.ok) {
+    throw new Error(buildErrorMessage(await parseErrorBody(res), 'Phân tích thất bại'));
+  }
+  return res.json() as Promise<AnalyzeV3Response>;
 }
 
 /**

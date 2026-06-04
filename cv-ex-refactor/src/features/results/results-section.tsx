@@ -14,6 +14,9 @@ import { MatchScoreBlock } from './match-score-block';
 import { OptimizationPathsBlock } from './optimization-paths-block';
 import { RecommendationsBlock } from './recommendations-block';
 import { RedFlagsSection } from '@/features/analyze/red-flags-section';
+import { InferredRoleBanner } from '@/features/analyze/inferred-role-banner';
+import { callAnalyzeV3, isNeedsRoleConfirm } from '@/features/analyze/api-client';
+import { hydrateWeightsFromResult } from '@/lib/scoring/recompute-overall';
 
 const TABS = [
   { id: 'optimization', label: 'Optimization Paths' },
@@ -22,7 +25,10 @@ const TABS = [
 ];
 
 export function ResultsSection() {
-  const { result, weights, matchedCv, isAnalyzing, isGeneratingCv, error, setField } = useAnalysis();
+  const {
+    result, weights, matchedCv, isAnalyzing, isGeneratingCv, error,
+    jdText, targetRoleConfirmed, inferredRole, setField,
+  } = useAnalysis();
   const { provider, model, temperature, baseUrl } = useSettings();
   const [activeTab, setActiveTab] = useState('optimization');
   const [genError, setGenError] = useState<string | null>(null);
@@ -38,6 +44,42 @@ export function ResultsSection() {
   if (!result) return null;
 
   const displayed = recomputeOverall(weights);
+  // v0.4 Cover Letter generation lives on Job Fit detail (Phase 5) — this
+  // page's "Generate refined CV" still uses /api/generate-cv which requires
+  // jdText. When user is on the CV-solo v3 path (no jdText), hide the CTA so
+  // they don't hit a confusing 400. Phase 5 reroutes the affordance entirely.
+  const canGenerateRefinedCv = jdText.trim().length > 0;
+
+  async function handleOverrideRole(newRole: string) {
+    setField('isAnalyzing', true);
+    setField('error', null);
+    try {
+      const llm = {
+        provider, model, temperature,
+        ...(baseUrl ? { baseUrl } : {}),
+      };
+      const cvText = useAnalysis.getState().cvText.trim();
+      const language = useAnalysis.getState().language;
+      const profileText = useAnalysis.getState().profileText.trim();
+      const response = await callAnalyzeV3({
+        cvText, llm, language, role: newRole,
+        ...(profileText ? { profileText } : {}),
+      });
+      if (isNeedsRoleConfirm(response)) {
+        setField('awaitingRoleConfirm', true);
+        setField('roleCandidates', response.candidates);
+        return;
+      }
+      setField('result', response);
+      setField('targetRoleConfirmed', response.targetRole);
+      if (response.inferredRole) setField('inferredRole', response.inferredRole);
+      setField('weights', hydrateWeightsFromResult(response));
+    } catch (err) {
+      setField('error', err instanceof Error ? err.message : 'Phân tích lại thất bại.');
+    } finally {
+      setField('isAnalyzing', false);
+    }
+  }
 
   async function handleGenerateCv() {
     if (!result) return;
@@ -78,11 +120,11 @@ export function ResultsSection() {
     <Button variant="primary" size="sm" asChild>
       <Link href="/refined-cv">Open refined CV</Link>
     </Button>
-  ) : (
+  ) : canGenerateRefinedCv ? (
     <Button variant="primary" size="sm" loading={isGeneratingCv} onClick={handleGenerateCv}>
       {isGeneratingCv ? 'Generating…' : 'Generate refined CV'}
     </Button>
-  );
+  ) : null;
 
   return (
     <section className="mt-10 border-t border-outline-variant pt-10">
@@ -106,6 +148,19 @@ export function ResultsSection() {
         }
         asideWidth="md"
       >
+        {targetRoleConfirmed && (
+          <div className="mb-6">
+            <InferredRoleBanner
+              role={targetRoleConfirmed}
+              {...(inferredRole?.confidence !== undefined
+                ? { confidence: inferredRole.confidence }
+                : {})}
+              onOverride={handleOverrideRole}
+              busy={isAnalyzing}
+            />
+          </div>
+        )}
+
         {genError && (
           <ErrorState
             title="CV generation failed"

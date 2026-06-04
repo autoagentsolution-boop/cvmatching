@@ -4,6 +4,12 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { AnalysisResult, Language, RoleFamily, Strictness, Weights } from './types';
 
+/** v0.4 candidate role surfaced via /api/analyze when role-infer confidence is low. */
+export interface RoleCandidate {
+  canonical: string;
+  confidence: number;
+}
+
 interface AnalysisState {
   jdText: string;
   jdUrl: string;
@@ -23,6 +29,15 @@ interface AnalysisState {
   isAnalyzing: boolean;
   isGeneratingCv: boolean;
   error: string | null;
+  // ---- v0.4 CV-solo additions ----
+  /** Role the server actually scored against (LLM-inferred or user-confirmed). */
+  targetRoleConfirmed: string | null;
+  /** Role-infer metadata for the inferred-role banner ({canonical, confidence}). */
+  inferredRole: RoleCandidate | null;
+  /** Whether the API returned needsRoleConfirm and the modal should open. */
+  awaitingRoleConfirm: boolean;
+  /** Candidates to render in the role-confirm modal. */
+  roleCandidates: RoleCandidate[];
   setField: <K extends keyof Omit<AnalysisState, 'setField' | 'reset'>>(
     k: K,
     v: AnalysisState[K],
@@ -63,6 +78,10 @@ const initial: Omit<AnalysisState, 'setField' | 'reset'> = {
   isAnalyzing: false,
   isGeneratingCv: false,
   error: null,
+  targetRoleConfirmed: null,
+  inferredRole: null,
+  awaitingRoleConfirm: false,
+  roleCandidates: [],
 };
 
 // Persisted to sessionStorage (not localStorage) on purpose:
@@ -94,6 +113,11 @@ export const useAnalysis = create<AnalysisState>()(
         result: s.result,
         matchedCv: s.matchedCv,
         refineNotes: s.refineNotes,
+        targetRoleConfirmed: s.targetRoleConfirmed,
+        inferredRole: s.inferredRole,
+        // awaitingRoleConfirm + roleCandidates are transient (modal state) —
+        // never restored across reloads to avoid surprising the user with a
+        // half-completed modal on F5.
       }),
     },
   ),

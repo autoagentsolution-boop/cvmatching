@@ -3,86 +3,103 @@
 import { Button, ErrorState } from '@/components/ui';
 import { useAnalysis } from './analysis-store';
 import { useSettings } from './settings-store';
-import { callAnalyze } from './api-client';
+import { callAnalyzeV3, isNeedsRoleConfirm } from './api-client';
+import { RoleConfirmModal } from './role-confirm-modal';
 import { hydrateWeightsFromResult } from '@/lib/scoring/recompute-overall';
-import type { AnalyzeRequest } from './types';
+import type { AnalyzeRequestLLM } from './types';
+
+const MIN_CV_LEN = 100;
 
 export function AnalyzeActions() {
   const {
-    jdText,
-    jdUrl,
     cvText,
     profileText,
-    targetRole,
-    strictness,
     language,
-    mustHaves,
     isAnalyzing,
     error,
+    awaitingRoleConfirm,
+    roleCandidates,
     setField,
   } = useAnalysis();
 
   const { provider, model, temperature, baseUrl } = useSettings();
 
-  const hasJd = jdText.trim().length > 0;
-  const hasCv = cvText.trim().length > 0;
-  const canAnalyze = hasJd && hasCv && !isAnalyzing;
+  const trimmedCv = cvText.trim();
+  const hasCv = trimmedCv.length >= MIN_CV_LEN;
+  const canAnalyze = hasCv && !isAnalyzing;
 
   const disabledHint = isAnalyzing
     ? null
-    : !hasJd && !hasCv
-      ? 'Paste a JD and your CV to enable analysis.'
-      : !hasJd
-        ? 'Paste a Job Description to start.'
-        : !hasCv
-          ? 'Paste or upload your CV to start.'
-          : null;
+    : !cvText.trim()
+      ? 'Dán hoặc tải CV của bạn để bắt đầu.'
+      : !hasCv
+        ? `CV cần ít nhất ${MIN_CV_LEN} ký tự để phân tích.`
+        : null;
 
-  async function handleAnalyze() {
+  async function runAnalyze(role?: string) {
     setField('error', null);
     setField('isAnalyzing', true);
     setField('result', null);
+    if (!role) {
+      // Fresh analyze — clear any prior role-confirm state from a previous run.
+      setField('targetRoleConfirmed', null);
+      setField('inferredRole', null);
+    }
 
-    const llm: AnalyzeRequest['llm'] = {
+    const llm: AnalyzeRequestLLM = {
       provider,
       model,
       temperature,
       ...(baseUrl ? { baseUrl } : {}),
     };
 
-    const payload: AnalyzeRequest = {
-      llm,
-      inputs: {
-        jdText,
-        ...(jdUrl ? { jdUrl } : {}),
-        cvText,
-        ...(profileText ? { profileText } : {}),
-        targetRole,
-        strictness,
-        language,
-        mustHaves,
-      },
-    };
-
     try {
-      const result = await callAnalyze(payload);
-      setField('result', result);
-      setField('weights', hydrateWeightsFromResult(result));
+      const response = await callAnalyzeV3({
+        cvText: trimmedCv,
+        llm,
+        language,
+        ...(role ? { role } : {}),
+        ...(profileText.trim() ? { profileText: profileText.trim() } : {}),
+      });
+
+      if (isNeedsRoleConfirm(response)) {
+        setField('awaitingRoleConfirm', true);
+        setField('roleCandidates', response.candidates);
+        return;
+      }
+
+      // Success path
+      setField('result', response);
+      setField('targetRoleConfirmed', response.targetRole);
+      if (response.inferredRole) setField('inferredRole', response.inferredRole);
+      setField('weights', hydrateWeightsFromResult(response));
+      setField('awaitingRoleConfirm', false);
+      setField('roleCandidates', []);
     } catch (err) {
-      setField('error', err instanceof Error ? err.message : 'Analysis failed.');
+      setField('error', err instanceof Error ? err.message : 'Phân tích thất bại.');
     } finally {
       setField('isAnalyzing', false);
     }
   }
 
+  function handleConfirmRole(role: string) {
+    setField('awaitingRoleConfirm', false);
+    void runAnalyze(role);
+  }
+
+  function handleCloseModal() {
+    setField('awaitingRoleConfirm', false);
+    setField('roleCandidates', []);
+  }
+
   return (
-    <div className="flex flex-col items-center gap-3 w-full">
+    <div className="flex w-full flex-col items-center gap-3">
       {error && (
         <ErrorState
-          title="Analysis failed"
+          title="Phân tích thất bại"
           description={error}
-          {...(canAnalyze ? { retry: handleAnalyze } : {})}
-          className="py-4 w-full"
+          {...(canAnalyze ? { retry: () => void runAnalyze() } : {})}
+          className="w-full py-4"
         />
       )}
 
@@ -91,23 +108,29 @@ export function AnalyzeActions() {
         size="xl"
         loading={isAnalyzing}
         disabled={!canAnalyze}
-        onClick={handleAnalyze}
+        onClick={() => void runAnalyze()}
         trailingIcon={
           <span className="material-symbols-outlined" aria-hidden="true">
             {isAnalyzing ? 'progress_activity' : 'rocket_launch'}
           </span>
         }
       >
-        {isAnalyzing ? 'Calculating score…' : 'Analyze & Score'}
+        {isAnalyzing ? 'Đang chấm điểm…' : 'Phân tích CV'}
       </Button>
 
       {isAnalyzing ? null : disabledHint ? (
         <p className="text-label-sm text-on-surface-variant">{disabledHint}</p>
       ) : (
-        <p className="text-label-sm text-on-surface-variant">
-          Estimated processing time: 4–6 seconds
-        </p>
+        <p className="text-label-sm text-on-surface-variant">Thời gian xử lý khoảng 4–6 giây</p>
       )}
+
+      <RoleConfirmModal
+        open={awaitingRoleConfirm}
+        candidates={roleCandidates}
+        onConfirm={handleConfirmRole}
+        onClose={handleCloseModal}
+        busy={isAnalyzing}
+      />
     </div>
   );
 }

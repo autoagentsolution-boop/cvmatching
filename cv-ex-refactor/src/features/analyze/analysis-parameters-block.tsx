@@ -1,34 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, Checkbox, FormField, Select, Slider } from '@/components/ui';
+import { Card, FormField, Select, Slider } from '@/components/ui';
 import type { SelectOption } from '@/components/ui';
 import { useAnalysis } from './analysis-store';
-import { MustHavesBlock } from './must-haves-block';
 import { hydrateWeightsFromResult } from '@/lib/scoring/recompute-overall';
-import type { Language, RoleFamily, Strictness, Weights } from './types';
+import type { Language, Weights } from './types';
 
-const roleFamilyOptions: SelectOption[] = [
-  { value: 'auto', label: 'Auto-detect' },
-  { value: 'data_engineer', label: 'Data Engineer' },
-  { value: 'data_platform', label: 'Data Platform' },
-  { value: 'manager', label: 'Engineering Manager' },
-  { value: 'pm_delivery', label: 'PM / Delivery' },
-  { value: 'solution', label: 'Solutions Architect' },
-  { value: 'software', label: 'Software Engineer' },
-  { value: 'other', label: 'Other' },
-];
-
-const strictnessOptions: SelectOption[] = [
-  { value: 'balanced', label: 'Balanced' },
-  { value: 'strict', label: 'Strict (recruiter-grade)' },
-  { value: 'friendly', label: 'Friendly (encouraging)' },
-];
-
+// v0.4: targetRole + strictness + must-haves removed — no JD to anchor them
+// against. Language is the only remaining LLM control surface on this page.
 const languageOptions: SelectOption[] = [
-  { value: 'auto', label: 'Match JD language' },
+  { value: 'auto', label: 'Theo CV' },
   { value: 'en', label: 'English' },
-  { value: 'vi', label: 'Vietnamese' },
+  { value: 'vi', label: 'Tiếng Việt' },
 ];
 
 interface SliderSpec {
@@ -40,48 +24,48 @@ interface SliderSpec {
 const SLIDERS: SliderSpec[] = [
   {
     key: 'coreSkill',
-    label: 'Core Skill Match',
-    description: 'Core competencies the role demands (e.g. system design, data modeling).',
+    label: 'Core Skill',
+    description: 'Năng lực lõi cần cho vai trò (system design, data modeling…).',
   },
   {
     key: 'tool',
     label: 'Tool / Platform',
-    description: 'Concrete tools, frameworks, and platforms named in the JD.',
+    description: 'Công cụ, framework, nền tảng quen thuộc cho vai trò.',
   },
   {
     key: 'scope',
-    label: 'Scope Match',
-    description: 'Has owned the same kind of scope — team size, IC vs lead, greenfield vs ops.',
+    label: 'Scope',
+    description: 'Quy mô công việc đã sở hữu — team, IC/lead, greenfield/maintenance.',
   },
   {
     key: 'production',
-    label: 'Production Experience',
-    description: 'Real live systems, real users, business-critical environments.',
+    label: 'Production',
+    description: 'Kinh nghiệm hệ thống thật, người dùng thật, môi trường business-critical.',
   },
   {
     key: 'domain',
-    label: 'Domain / Industry',
-    description: 'Relevant industry context — fintech, ad-tech, healthcare, etc.',
+    label: 'Domain',
+    description: 'Ngữ cảnh ngành cho vai trò — fintech, ad-tech, healthcare…',
   },
   {
     key: 'evidence',
-    label: 'Evidence Strength',
-    description: 'Concrete projects, roles, dates, ownership — not just buzzwords.',
+    label: 'Evidence',
+    description: 'Bằng chứng cụ thể: project, role, ngày, ownership — không buzzword.',
   },
   {
     key: 'seniority',
-    label: 'Seniority / Ownership',
-    description: 'Level, years, decision-making authority, ownership depth.',
+    label: 'Seniority',
+    description: 'Level, năm kinh nghiệm, quyền ra quyết định, độ sâu sở hữu.',
   },
   {
     key: 'impact',
-    label: 'Impact / Achievement',
-    description: 'Magnitude of outcomes — metrics, scale, business results.',
+    label: 'Impact',
+    description: 'Độ lớn kết quả — metric, quy mô, business outcome.',
   },
   {
     key: 'communication',
-    label: 'Communication Fit',
-    description: 'Stakeholder collaboration, business acumen, and soft skills.',
+    label: 'Communication',
+    description: 'Hợp tác stakeholder, business acumen, soft skills.',
   },
 ];
 
@@ -116,11 +100,7 @@ function SliderCell({ label, value, onValueChange, description, disabled = false
 }
 
 export function AnalysisParametersBlock() {
-  const { weights, targetRole, strictness, language, result, setField } = useAnalysis();
-
-  const [benchmarks, setBenchmarks] = useState(true);
-  const [atsCheck, setAtsCheck] = useState(false);
-  const [actionVerbs, setActionVerbs] = useState(true);
+  const { weights, language, result, setField } = useAnalysis();
   const [resetFlash, setResetFlash] = useState(false);
 
   const hasAnalyzed = result !== null;
@@ -133,8 +113,6 @@ export function AnalysisParametersBlock() {
     if (!result) return;
     setField('weights', hydrateWeightsFromResult(result));
     setResetFlash(true);
-    // Visual feedback even when weights already match AI scores (no slider movement).
-    // Without this, the user perceives the click as a no-op.
     setTimeout(() => setResetFlash(false), 1500);
   }
 
@@ -142,18 +120,18 @@ export function AnalysisParametersBlock() {
     <Card padding="lg" className="flex flex-col gap-8">
       <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h3 className="text-headline-md font-bold text-primary">3. Analysis Parameters</h3>
+          <h3 className="text-headline-md font-bold text-primary">Điểm 9 chiều</h3>
           <p className="text-body-md text-on-surface-variant">
             {hasAnalyzed
-              ? 'AI scored your CV on 9 dimensions. Adjust if you disagree — the overall score will recompute.'
-              : 'AI will score your CV on 9 dimensions after you click Analyze.'}
+              ? 'AI đã chấm CV theo 9 chiều cho vai trò mục tiêu. Chỉnh slider nếu bạn không đồng ý — điểm tổng tính lại tức thì.'
+              : 'AI sẽ chấm CV theo 9 chiều sau khi bạn bấm Phân tích.'}
           </p>
         </div>
         {hasAnalyzed && (
           <button
             type="button"
             onClick={resetToAiScores}
-            aria-label="Reset slider values to AI-suggested scores"
+            aria-label="Reset slider về điểm AI gợi ý"
             aria-live="polite"
             className={`self-start rounded-full border px-4 py-1 text-label-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-tertiary-container/40 md:self-auto ${
               resetFlash
@@ -161,39 +139,19 @@ export function AnalysisParametersBlock() {
                 : 'border-outline-variant bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
             }`}
           >
-            {resetFlash ? '✓ Đã reset về điểm AI' : 'Reset to AI scores'}
+            {resetFlash ? '✓ Đã reset về điểm AI' : 'Reset về điểm AI'}
           </button>
         )}
       </header>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <FormField label="Target role" htmlFor="target-role">
-          <Select
-            id="target-role"
-            options={roleFamilyOptions}
-            value={targetRole}
-            onChange={(e) => setField('targetRole', e.target.value as RoleFamily)}
-          />
-        </FormField>
-        <FormField label="Strictness" htmlFor="strictness">
-          <Select
-            id="strictness"
-            options={strictnessOptions}
-            value={strictness}
-            onChange={(e) => setField('strictness', e.target.value as Strictness)}
-          />
-        </FormField>
-        <FormField label="Output language" htmlFor="language">
-          <Select
-            id="language"
-            options={languageOptions}
-            value={language}
-            onChange={(e) => setField('language', e.target.value as Language)}
-          />
-        </FormField>
-      </div>
-
-      <MustHavesBlock />
+      <FormField label="Ngôn ngữ output" htmlFor="language">
+        <Select
+          id="language"
+          options={languageOptions}
+          value={language}
+          onChange={(e) => setField('language', e.target.value as Language)}
+        />
+      </FormField>
 
       {!hasAnalyzed && (
         <div className="flex items-start gap-3 rounded-xl border border-outline-variant bg-surface-container-low p-4">
@@ -202,11 +160,11 @@ export function AnalysisParametersBlock() {
           </span>
           <div>
             <p className="text-label-md font-bold text-on-surface">
-              Sliders activate after analysis
+              Sliders sẽ kích hoạt sau phân tích
             </p>
             <p className="text-label-sm text-on-surface-variant">
-              The AI will score your CV against the JD on 9 dimensions. After analysis, drag any
-              slider to override the AI&apos;s score — overall match recomputes instantly.
+              AI sẽ chấm CV của bạn theo 9 chiều cho vai trò mục tiêu. Sau khi có
+              kết quả, kéo slider để override điểm AI — điểm tổng tính lại tức thì.
             </p>
           </div>
         </div>
@@ -223,24 +181,6 @@ export function AnalysisParametersBlock() {
             disabled={!hasAnalyzed}
           />
         ))}
-      </div>
-
-      <div className="flex flex-wrap gap-6 border-t border-outline-variant pt-6">
-        <Checkbox
-          label="Compare with industry benchmarks"
-          checked={benchmarks}
-          onCheckedChange={setBenchmarks}
-        />
-        <Checkbox
-          label="Check for ATS readability issues"
-          checked={atsCheck}
-          onCheckedChange={setAtsCheck}
-        />
-        <Checkbox
-          label="AI-Suggested action verbs"
-          checked={actionVerbs}
-          onCheckedChange={setActionVerbs}
-        />
       </div>
     </Card>
   );
