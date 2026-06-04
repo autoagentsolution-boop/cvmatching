@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { MdRoute } from 'react-icons/md';
+import { MdRoute, MdAutoAwesome } from 'react-icons/md';
 import { Button, EmptyState, ErrorState, LoadingState, PageHeader, Card } from '@/components/ui';
 import { FormPageLayout } from '@/components/layouts';
 import { useAnalysis } from '@/features/analyze/analysis-store';
@@ -91,13 +91,13 @@ export function CareerPathPage() {
     }
   }
 
-  // Auto-fetch suggestions once when CV is present and cache miss.
-  useEffect(() => {
-    if (hasCv && !cacheValid && !isSuggesting && !suggestError) {
-      void fetchSuggestions();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasCv, cacheValid]);
+  // v0.4: removed the auto-fetch useEffect. It burned a /career-path/suggest
+  // quota slot on every cache-miss visit — surprising users who only wanted
+  // to skim the page or fill the aspiration form manually. User must now
+  // click "Đề xuất hướng phát triển" to consume the slot. Matches the
+  // explicit-fetch pattern in job-fit-list-page (commit 0fbcc83 rationale).
+  const showSuggestPrompt =
+    hasCv && !cacheValid && !isSuggesting && !suggestError && suggestions.length === 0;
 
   return (
     <FormPageLayout
@@ -127,14 +127,49 @@ export function CareerPathPage() {
         />
       ) : (
         <>
-          <PathSuggestionsBlock
-            suggestions={suggestions}
-            selected={selectedSuggestion}
-            isLoading={isSuggesting}
-            error={suggestError}
-            onSelect={selectSuggestion}
-            onRetry={fetchSuggestions}
-          />
+          {showSuggestPrompt && (
+            <Card padding="lg" className="flex flex-col items-start gap-4">
+              <div className="flex flex-col gap-1">
+                <span className="text-label-md font-bold uppercase tracking-wide text-primary">
+                  Đề xuất hướng phát triển
+                </span>
+                <p className="text-body-md text-on-surface-variant">
+                  AI sẽ đọc CV và đề xuất 3-5 hướng phát triển khả thi. Mỗi lần đề xuất tốn 1 lượt quota.
+                  {' '}Nếu bạn đã biết hướng đi, có thể bỏ qua bước này và tự nhập aspiration bên dưới.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={fetchSuggestions}
+                  leadingIcon={<MdAutoAwesome size={18} aria-hidden="true" />}
+                  aria-label="AI đề xuất 3-5 hướng phát triển từ CV"
+                >
+                  Đề xuất hướng phát triển →
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="md"
+                  onClick={() => setShowAspiration(true)}
+                  aria-label="Bỏ qua đề xuất, tự nhập aspiration"
+                >
+                  Tự nhập aspiration
+                </Button>
+              </div>
+            </Card>
+          )}
+
+          {(suggestions.length > 0 || isSuggesting || suggestError) && (
+            <PathSuggestionsBlock
+              suggestions={suggestions}
+              selected={selectedSuggestion}
+              isLoading={isSuggesting}
+              error={suggestError}
+              onSelect={selectSuggestion}
+              onRetry={fetchSuggestions}
+            />
+          )}
 
           <Card padding="lg" className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
