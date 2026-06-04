@@ -49,3 +49,6 @@ data/ingest-progress.json
 
 # scraped job snapshots — large, regenerable; KV is the source of truth
 data/scraped-*.json
+
+# audit script outputs — regenerable diagnostic artifacts
+data/audit-*.tsv

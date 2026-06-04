@@ -42,7 +42,7 @@ const TECH_TAXONOMY: VerticalTaxonomy = {
     {
       id: 'tech.software',
       vertical: 'tech',
-      titlesPositive: /(software (engineer|developer)|backend|back[- ]?end|frontend|front[- ]?end|full[- ]?stack|mobile (developer|engineer)|ios|android|game (developer|programmer)|embedded|developer|programmer|lập trình|kỹ sư phần mềm|node\.?js|react|vue|angular|java|python|golang|ruby|php|\.net|c\+\+|kotlin|swift)/iu,
+      titlesPositive: /(software (engineer|developer)|backend|back[- ]?end|frontend|front[- ]?end|full[- ]?stack|mobile (developer|engineer)|ios|android|game (developer|programmer)|embedded|developer|programmer|lập trình|kỹ sư phần mềm|chuyên viên triển khai|implementation (engineer|consultant|specialist)|integration engineer|\berp\b|node\.?js|react|vue|angular|java|python|golang|ruby|php|\.net|c\+\+|kotlin|swift)/iu,
       sourceSlugs: { vl24h: TECH_SLUGS_VL24H },
     },
     {
@@ -50,7 +50,7 @@ const TECH_TAXONOMY: VerticalTaxonomy = {
       vertical: 'tech',
       // Short tokens (\bbi\b, \bba\b, \bdba\b) need word boundaries — bare
       // `bi`/`ba` matched substrings of unrelated words like "specialist".
-      titlesPositive: /(data (engineer|analyst|scientist|architect|engineering)|business analyst|business intelligence|\bbi\b|\bba\b(?! sale)|\bdba\b|database (admin|engineer)|\betl\b|\bspark\b|airflow|snowflake|bigquery|redshift|chuyên viên phân tích dữ liệu|kỹ sư dữ liệu)/iu,
+      titlesPositive: /(data (engineer|analyst|scientist|architect|engineering|consultant)|business analy(?:st|sist)|business intelligence|\bbi\b|\bba\b(?! sale)|\bdba\b|database (admin|engineer)|\betl\b|\bspark\b|airflow|snowflake|bigquery|redshift|chuyên viên phân tích dữ liệu|kỹ sư dữ liệu)/iu,
       sourceSlugs: { vl24h: ['phan-tich-thong-ke-du-lieu', 'it-phan-mem'] },
     },
     {
@@ -64,19 +64,19 @@ const TECH_TAXONOMY: VerticalTaxonomy = {
     {
       id: 'tech.infra',
       vertical: 'tech',
-      titlesPositive: /(devops|sre|site reliability|cloud (engineer|architect)|platform engineer|sysadmin|system admin|infrastructure engineer|kubernetes|terraform|aws|gcp|azure|kỹ sư hệ thống|kỹ sư cloud|kỹ sư devops)/iu,
+      titlesPositive: /(devops|sre|site reliability|cloud (engineer|architect)|platform engineer|sysadmin|system admin(?:istrator)?|infrastructure engineer|kubernetes|terraform|aws|gcp|azure|kỹ sư hệ thống|kỹ sư cloud|kỹ sư devops|quản trị hệ thống|vận hành hệ thống|chuyên viên quản trị (hệ thống|mạng))/iu,
       sourceSlugs: { vl24h: ['it-phan-mem', 'it-phan-cung-mang'] },
     },
     {
       id: 'tech.security',
       vertical: 'tech',
-      titlesPositive: /(security engineer|cyber ?security|infosec|appsec|application security|soc analyst|penetration test|pentest|red team|blue team|kỹ sư an toàn thông tin|chuyên viên bảo mật)/iu,
+      titlesPositive: /(security engineer|cyber ?security|infosec|appsec|application security|soc analyst|penetration test|pentest|red team|blue team|it security|security compliance|kỹ sư an toàn thông tin|chuyên viên bảo mật)/iu,
       sourceSlugs: { vl24h: ['it-phan-mem', 'it-phan-cung-mang'] },
     },
     {
       id: 'tech.architecture',
       vertical: 'tech',
-      titlesPositive: /(solution architect|software architect|technical lead|tech lead|engineering manager|em lead|cto|principal engineer|kiến trúc sư phần mềm)/iu,
+      titlesPositive: /(solution architect|software architect|technical lead|tech lead|engineering manager|em lead|cto|principal engineer|kiến trúc sư phần mềm|\bit (manager|lead|director|head|project manager)\b|head of (it|engineering|cntt)|trưởng phòng (it|cntt)|trưởng bộ phận (it|cntt))/iu,
       sourceSlugs: { vl24h: ['it-phan-mem'] },
     },
     {
@@ -413,7 +413,12 @@ const OTHER_TAXONOMY: VerticalTaxonomy = {
   ],
 };
 
-export const TAXONOMY: Record<Vertical, VerticalTaxonomy> = {
+// Raw taxonomy carries patterns with VN diacritics for readability. At module
+// load we fold every regex to its diacritic-free form so the runtime patterns
+// match both diacritic titles (detail-stage ld.title) and folded URL slugs
+// (pre-filter from vl24h sitemap). Normalize step on the title side strips
+// diacritics symmetrically — see `normalizeTitle` below.
+const RAW_TAXONOMY: Record<Vertical, VerticalTaxonomy> = {
   tech: TECH_TAXONOMY,
   marketing: MARKETING_TAXONOMY,
   finance: FINANCE_TAXONOMY,
@@ -421,6 +426,38 @@ export const TAXONOMY: Record<Vertical, VerticalTaxonomy> = {
   ops: OPS_TAXONOMY,
   other: OTHER_TAXONOMY,
 };
+
+/** Strip Vietnamese diacritics. NFD decomposition + combining-mark removal +
+ *  explicit đ/Đ → d/D (NFD doesn't decompose those). */
+function stripDiacritics(s: string): string {
+  return s
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D');
+}
+
+function foldRegex(re: RegExp): RegExp {
+  return new RegExp(stripDiacritics(re.source), re.flags);
+}
+
+function foldTaxonomy(raw: Record<Vertical, VerticalTaxonomy>): Record<Vertical, VerticalTaxonomy> {
+  const out = {} as Record<Vertical, VerticalTaxonomy>;
+  for (const v of Object.keys(raw) as Vertical[]) {
+    const tax = raw[v];
+    out[v] = {
+      vertical: tax.vertical,
+      titlesNegative: foldRegex(tax.titlesNegative),
+      subDomains: tax.subDomains.map((sd) => ({
+        ...sd,
+        titlesPositive: foldRegex(sd.titlesPositive),
+      })),
+    };
+  }
+  return out;
+}
+
+export const TAXONOMY: Record<Vertical, VerticalTaxonomy> = foldTaxonomy(RAW_TAXONOMY);
 
 // ── helpers ──────────────────────────────────────────────────────────────
 
@@ -453,12 +490,12 @@ export type ClassifyResult =
  * - if titlesNegative matches → reject
  * - if no titlesPositive matches → reject (caller can opt in to fallback)
  */
-// JS regex `i` flag does ASCII case-folding only; Vietnamese diacritics like
-// `Ê` won't fold to `ê` without the `u` flag, which we don't use to keep ``
-// behaving as plain word boundaries. So we lowercase the title up front and
-// let the `i` flag handle whatever uppercase slips through.
+// Titles arrive from two sources: pre-filter passes folded URL slugs (ASCII,
+// no diacritics) and detail-stage passes ld.title (often with diacritics).
+// We strip diacritics symmetrically here so both sources match the folded
+// patterns built by `foldTaxonomy` at module load.
 function normalizeTitle(s: string): string {
-  return s.toLowerCase();
+  return stripDiacritics(s.toLowerCase());
 }
 
 export function classifyTitle(
