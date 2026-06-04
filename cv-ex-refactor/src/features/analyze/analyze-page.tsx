@@ -4,6 +4,7 @@ import { ResultsSection } from '@/features/results/results-section';
 import { AnalyzeActions } from './analyze-actions';
 import { AnalysisParametersBlock } from './analysis-parameters-block';
 import { CvInputBlock } from './cv-input-block';
+import { ReAnalyzeBanner } from './re-analyze-banner';
 
 /**
  * v0.4 CV-Solo Analyze page.
@@ -31,6 +32,7 @@ export function AnalyzePage() {
       }
       actionsSlot={<AnalyzeActions />}
     >
+      <ReAnalyzeBanner />
       <CvInputBlock />
 
       <AnalysisParametersBlock />

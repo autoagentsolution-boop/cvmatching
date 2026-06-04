@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { AnalysisResult, Language, RoleFamily, Strictness, Weights } from './types';
+import { CURRENT_STORAGE_KEY } from './cache-migration';
 
 /** v0.4 candidate role surfaced via /api/analyze when role-infer confidence is low. */
 export interface RoleCandidate {
@@ -98,7 +99,7 @@ export const useAnalysis = create<AnalysisState>()(
       reset: () => set(initial),
     }),
     {
-      name: 'cv-ex-analysis-v1',
+      name: CURRENT_STORAGE_KEY,
       storage: createJSONStorage(() => sessionStorage),
       partialize: (s) => ({
         jdText: s.jdText,
