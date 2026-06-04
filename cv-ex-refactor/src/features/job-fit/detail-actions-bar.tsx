@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { MdArrowBack, MdOpenInNew } from 'react-icons/md';
 import { Button } from '@/components/ui';
 import { ActionButton } from './action-button';
+import { CoverLetterShortcut } from './cover-letter-shortcut';
 import type { TierLetter } from '@/lib/jobs/fit-tier';
 import type { JobMatchOut } from '@/lib/llm/normalize-job-recommend';
 
@@ -51,6 +52,7 @@ export function DetailActionsBar({ job, source }: DetailActionsBarProps) {
             <MdOpenInNew size={16} aria-hidden="true" />
           </a>
         )}
+        <CoverLetterShortcut jobId={job.jobId} />
         <ActionButton tier={job.tier} job={job} size="md" />
       </div>
     </div>

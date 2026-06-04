@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { MdAutoAwesome } from 'react-icons/md';
 import { Button, Card, ErrorState, LoadingState, MarkdownView } from '@/components/ui';
@@ -42,6 +42,7 @@ async function callCoverLetter(payload: CoverLetterBodyT): Promise<CoverLetterRe
 export function CoverLetterBlock() {
   const params = useSearchParams();
   const jobId = params.get('jobId');
+  const intent = params.get('intent');
   const { jobs } = useJobFit();
   const { cvText, language } = useAnalysis();
   const { provider, model, temperature, baseUrl } = useSettings();
@@ -50,6 +51,16 @@ export function CoverLetterBlock() {
   const [quota, setQuota] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  // v0.4: when user arrives via "Tạo Cover Letter" CTA on Job Fit detail
+  // (?intent=cover-letter), scroll the block into view so they don't have
+  // to hunt for it inside the aside. Fires once on mount.
+  useEffect(() => {
+    if (intent === 'cover-letter' && rootRef.current) {
+      rootRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [intent]);
 
   const job = jobId ? jobs.find((j) => j.jobId === jobId) ?? null : null;
   const hasCv = cvText.trim().length >= 50;
@@ -86,6 +97,7 @@ export function CoverLetterBlock() {
   }
 
   return (
+    <div ref={rootRef} id="cover-letter">
     <Card padding="md" className="flex flex-col gap-3 bg-primary-container">
       <header className="flex items-center gap-2">
         <MdAutoAwesome size={18} className="text-on-primary-container" aria-hidden="true" />
@@ -138,5 +150,6 @@ export function CoverLetterBlock() {
         </div>
       )}
     </Card>
+    </div>
   );
 }
