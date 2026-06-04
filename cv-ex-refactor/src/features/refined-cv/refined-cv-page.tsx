@@ -1,8 +1,6 @@
 import { Suspense } from 'react';
 import { DetailPanelLayout } from '@/components/layouts';
 import { PageHeader } from '@/components/ui';
-import { getSession } from '@/lib/get-session';
-import { isAdminUser } from '@/lib/usage/admin-auth';
 import { DownloadActions } from './download-actions';
 import { KeyEnhancementsBlock } from './key-enhancements-block';
 import { RefineToolsBlock } from './refine-tools-block';
@@ -14,20 +12,18 @@ import { JobFitCtaSection } from './job-fit-cta-section';
 /**
  * RSC — composes DetailPanelLayout for the /refined-cv route.
  * Auth check omitted: BYOK guests must access their generated CV without auth.
- * Locked decisions #4 (no PDF), #9 (plain markdown).
- * Cover Letter: Phase 2 placeholder stub rendered in aside.
- * Job Fit CTA is admin-only during the v0.3 KV-seed pilot.
+ *
+ * v0.4: JobFitCtaSection unlocked for all users. The Analyze → Refined CV
+ * → Job Fit chain is the canonical CV-solo flow; the admin gate from v0.3
+ * (KV-seed pilot caution) no longer applies now that the job pool is live.
  */
-export async function RefinedCvPage() {
-  const session = await getSession().catch(() => null);
-  const isAdmin = isAdminUser(session?.user);
-
+export function RefinedCvPage() {
   return (
     <DetailPanelLayout
       header={
         <PageHeader
           title="Refined CV"
-          subtitle="Your CV optimised for the target role."
+          subtitle="CV được tinh chỉnh cho vai trò bạn nhắm tới."
           action={<DownloadActions />}
         />
       }
@@ -44,7 +40,7 @@ export async function RefinedCvPage() {
       asideWidth="md"
     >
       <RefinedCvView />
-      {isAdmin && <JobFitCtaSection />}
+      <JobFitCtaSection />
     </DetailPanelLayout>
   );
 }

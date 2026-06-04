@@ -6,9 +6,44 @@ import { Button, ErrorState, LoadingState, PageHeader, Tabs } from '@/components
 import { DetailPanelLayout as Layout } from '@/components/layouts';
 import { useAnalysis } from '@/features/analyze/analysis-store';
 import { useSettings } from '@/features/analyze/settings-store';
-import { callGenerateCv } from '@/features/analyze/api-client';
+import { callGenerateCv, callGenerateCvV3 } from '@/features/analyze/api-client';
 import { recomputeOverall } from '@/lib/scoring/recompute-overall';
-import type { GenerateCvRequest } from '@/features/analyze/types';
+import type { AnalysisResult, GenerateCvRequest } from '@/features/analyze/types';
+
+/**
+ * v0.4 helper: extract the analyze-findings payload the v3 refine prompt
+ * needs from the existing AnalysisResult shape. Pure derivation — no LLM
+ * call — so the refine prompt is anchored to the SAME analyze findings the
+ * user is looking at on the result page (no drift).
+ */
+function buildV3Findings(result: AnalysisResult, role: string) {
+  const strengths = result.strengths
+    .map((s) => [s.title, s.evidence].filter(Boolean).join(' — '))
+    .filter((s) => s.length > 0)
+    .slice(0, 8);
+  const wordingGaps = result.gaps
+    .filter((g) => g.type === 'wording')
+    .map((g) => [g.title, g.recommendation, g.fixAction].filter(Boolean).join(' — '))
+    .filter((s) => s.length > 0)
+    .slice(0, 8);
+  const recommendations = result.recommendations
+    .map((r) => [r.title, r.action].filter(Boolean).join(' — '))
+    .filter((s) => s.length > 0)
+    .slice(0, 8);
+  // Dimensions scoring under 60 are the ones the refine prompt should focus on.
+  const weakDimensions = result.metrics
+    .filter((m) => m.score < 60)
+    .map((m) => m.name)
+    .slice(0, 9);
+  return {
+    role: role || result.detectedRole || 'Target role',
+    strengths,
+    wordingGaps,
+    recommendations,
+    ...(result.suggestedSummaryLine ? { suggestedSummaryLine: result.suggestedSummaryLine } : {}),
+    weakDimensions,
+  };
+}
 import { KeywordCoverageBlock } from './keyword-coverage-block';
 import { MatchScoreBlock } from './match-score-block';
 import { OptimizationPathsBlock } from './optimization-paths-block';
@@ -27,7 +62,7 @@ const TABS = [
 export function ResultsSection() {
   const {
     result, weights, matchedCv, isAnalyzing, isGeneratingCv, error,
-    jdText, targetRoleConfirmed, inferredRole, setField,
+    jdText, profileText, language, targetRoleConfirmed, inferredRole, setField,
   } = useAnalysis();
   const { provider, model, temperature, baseUrl } = useSettings();
   const [activeTab, setActiveTab] = useState('optimization');
@@ -44,11 +79,15 @@ export function ResultsSection() {
   if (!result) return null;
 
   const displayed = recomputeOverall(weights);
-  // v0.4 Cover Letter generation lives on Job Fit detail (Phase 5) — this
-  // page's "Generate refined CV" still uses /api/generate-cv which requires
-  // jdText. When user is on the CV-solo v3 path (no jdText), hide the CTA so
-  // they don't hit a confusing 400. Phase 5 reroutes the affordance entirely.
-  const canGenerateRefinedCv = jdText.trim().length > 0;
+  // v0.4: when user has a v3 analyze result (no jdText), the "Generate
+  // refined CV" CTA routes to /api/generate-cv with the v3 body shape
+  // (`findings` instead of `jdText`). The server prompt rewrites the CV
+  // optimised for the candidate's claimed role using the analyze findings,
+  // then RefinedCvView renders + JobFitCtaSection offers "find jobs with
+  // this refined CV" as the next step (Analyze → Refined → Job Fit chain).
+  const hasJd = jdText.trim().length > 0;
+  const canGenerateV2 = hasJd;
+  const canGenerateV3 = !hasJd && !!targetRoleConfirmed;
 
   async function handleOverrideRole(newRole: string) {
     setField('isAnalyzing', true);
@@ -97,20 +136,41 @@ export function ResultsSection() {
       ...(baseUrl ? { baseUrl } : {}),
     };
 
-    const payload: GenerateCvRequest = {
-      llm,
-      inputs: {
-        jdText: useAnalysis.getState().jdText,
-        cvText: useAnalysis.getState().cvText,
-        language: useAnalysis.getState().language,
-        tone: 'impact',
-        length: 'medium',
-      },
-      analysisSummary: result.summary,
-    };
-
     try {
-      const { markdown, refineNotes } = await callGenerateCv(payload);
+      let markdown: string;
+      let refineNotes: string | null;
+
+      if (hasJd) {
+        // Legacy v2 CV-vs-JD path.
+        const payload: GenerateCvRequest = {
+          llm,
+          inputs: {
+            jdText: useAnalysis.getState().jdText,
+            cvText: useAnalysis.getState().cvText,
+            language: useAnalysis.getState().language,
+            tone: 'impact',
+            length: 'medium',
+          },
+          analysisSummary: result.summary,
+        };
+        const res = await callGenerateCv(payload);
+        markdown = res.markdown;
+        refineNotes = res.refineNotes;
+      } else {
+        // v0.4 CV-Solo path — derive findings from the analyze result.
+        const findings = buildV3Findings(result, targetRoleConfirmed ?? '');
+        const trimmedProfile = profileText.trim();
+        const res = await callGenerateCvV3({
+          llm,
+          cvText: useAnalysis.getState().cvText,
+          language,
+          findings,
+          ...(trimmedProfile ? { profileText: trimmedProfile } : {}),
+        });
+        markdown = res.markdown;
+        refineNotes = res.refineNotes;
+      }
+
       setField('matchedCv', markdown);
       setField('refineNotes', refineNotes);
     } catch (err) {
@@ -120,14 +180,15 @@ export function ResultsSection() {
     }
   }
 
-  // v0.4: in the CV-solo flow refining a CV is per-job, so the canonical
-  // next step from /analyze is /job-fit. Refined-CV remains available only
-  // when the legacy v2 jdText is still in store (transitional users).
+  // v0.4 chain: Analyze → Refined CV (CV-solo polish for inferred role)
+  //             → Job Fit (uses the refined CV).
+  // If matched CV already generated → "Mở Refined CV". Otherwise generate
+  // (v3 by default, v2 legacy when jdText is present).
   const headerAction = matchedCv ? (
     <Button variant="primary" size="sm" asChild>
-      <Link href="/refined-cv">Mở Refined CV</Link>
+      <Link href="/refined-cv">Mở Refined CV →</Link>
     </Button>
-  ) : canGenerateRefinedCv ? (
+  ) : (canGenerateV2 || canGenerateV3) ? (
     <Button variant="primary" size="sm" loading={isGeneratingCv} onClick={handleGenerateCv}>
       {isGeneratingCv ? 'Đang tạo…' : 'Generate refined CV'}
     </Button>

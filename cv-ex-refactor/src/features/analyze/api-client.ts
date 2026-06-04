@@ -101,6 +101,53 @@ export interface GenerateCvResult {
   refineNotes: string | null;
 }
 
+export interface CallGenerateCvV3Args {
+  cvText: string;
+  profileText?: string;
+  language: Language;
+  llm: AnalyzeRequestLLM;
+  findings: {
+    role: string;
+    strengths: string[];
+    wordingGaps: string[];
+    recommendations: string[];
+    suggestedSummaryLine?: string;
+    weakDimensions: string[];
+  };
+  tone?: 'concise' | 'impact' | 'recruiter' | 'executive';
+  length?: 'short' | 'medium' | 'long';
+  extraInstructions?: string;
+}
+
+/**
+ * v0.4 CV-Solo refine call. Body shape carries `findings` instead of jdText
+ * + analysisSummary; server route dispatches to the v3 prompt builder.
+ */
+export async function callGenerateCvV3(args: CallGenerateCvV3Args): Promise<GenerateCvResult> {
+  const res = await fetch('/api/generate-cv', {
+    method: 'POST',
+    headers: JSON_HEADERS,
+    body: JSON.stringify({
+      llm: args.llm,
+      inputs: {
+        cvText: args.cvText,
+        ...(args.profileText ? { profileText: args.profileText } : {}),
+        language: args.language,
+        tone: args.tone ?? 'impact',
+        length: args.length ?? 'medium',
+        ...(args.extraInstructions ? { extraInstructions: args.extraInstructions } : {}),
+      },
+      findings: args.findings,
+    }),
+    credentials: 'same-origin',
+  });
+  if (!res.ok) {
+    throw new Error(buildErrorMessage(await parseErrorBody(res), 'Tạo refined CV thất bại'));
+  }
+  const data = (await res.json()) as { markdown: string; refineNotes?: string | null };
+  return { markdown: data.markdown, refineNotes: data.refineNotes ?? null };
+}
+
 export async function callGenerateCv(payload: GenerateCvRequest): Promise<GenerateCvResult> {
   const res = await fetch('/api/generate-cv', {
     method: 'POST',

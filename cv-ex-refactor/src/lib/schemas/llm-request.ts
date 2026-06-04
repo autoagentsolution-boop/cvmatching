@@ -98,6 +98,33 @@ export const GenerateCvBody = z.object({
   analysisSummary: z.string().min(10).max(4_000),
 });
 
+// v0.4 CV-solo generate-cv contract. Coexists with GenerateCvBody (v2) during
+// the transition — /api/generate-cv discriminates by body shape (presence of
+// inputs.jdText). v3 has no JD; refinement is driven by the analyze findings
+// (strengths to amplify + wording-gaps to address + recommendations to apply).
+export const AnalyzeFindings = z.object({
+  role: z.string().min(2).max(160),
+  strengths: z.array(z.string().max(400)).max(8).default([]),
+  wordingGaps: z.array(z.string().max(400)).max(8).default([]),
+  recommendations: z.array(z.string().max(400)).max(8).default([]),
+  suggestedSummaryLine: z.string().max(400).optional(),
+  /** Names of dimensions (coreSkill/tool/…) the CV scored weakly on — for prompt focus. */
+  weakDimensions: z.array(z.string().max(40)).max(9).default([]),
+});
+
+export const GenerateCvV3Body = z.object({
+  llm: LlmConfig,
+  inputs: z.object({
+    cvText: z.string().min(50).max(MAX_TEXT),
+    profileText: z.string().max(10_000).optional(),
+    language: LanguageEnum.default('auto'),
+    tone: ToneEnum.default('impact'),
+    length: LengthEnum.default('medium'),
+    extraInstructions: z.string().max(500).optional(),
+  }),
+  findings: AnalyzeFindings,
+});
+
 export const ExtractMustHavesBody = z.object({
   llm: LlmConfig,
   jdText: z.string().min(50).max(MAX_TEXT),
@@ -152,6 +179,8 @@ export const SuggestPathsBody = z.object({
 export type AnalyzeBodyT = z.infer<typeof AnalyzeBody>;
 export type AnalyzeV3BodyT = z.infer<typeof AnalyzeV3Body>;
 export type AnalyzeV3InputsT = z.infer<typeof AnalyzeV3Inputs>;
+export type GenerateCvV3BodyT = z.infer<typeof GenerateCvV3Body>;
+export type AnalyzeFindingsT = z.infer<typeof AnalyzeFindings>;
 export type GenerateCvBodyT = z.infer<typeof GenerateCvBody>;
 export type ExtractMustHavesBodyT = z.infer<typeof ExtractMustHavesBody>;
 export type CareerPathBodyT = z.infer<typeof CareerPathBody>;

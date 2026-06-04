@@ -42,10 +42,10 @@ export function RefinedCvView() {
         {modeBanner}
         <EmptyState
           title="Chưa có Refined CV"
-          description="Refined CV là CV được rewrite cho một JD cụ thể. Hãy chạy Analyze (paste CV + JD) trước, rồi bấm Generate refined CV trên trang kết quả."
+          description="Refined CV là CV của bạn được tinh chỉnh — làm nổi bật điểm mạnh, sửa cách diễn đạt yếu, và tối ưu cho vai trò bạn nhắm tới. Hãy chạy Analyze (chỉ cần paste CV), sau đó bấm Generate refined CV trên trang kết quả."
           action={
             <Button asChild variant="primary">
-              <Link href="/analyze">Bắt đầu ở Analyze</Link>
+              <Link href="/analyze">Bắt đầu ở Analyze →</Link>
             </Button>
           }
         />
