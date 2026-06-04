@@ -33,6 +33,9 @@ Thumbs.db
 # Large binary artifacts (already extracted to CVEXRefactor/)
 stitch_ai_resume_optimizer.zip
 
+# Local session screenshots — UI debug captures, not deliverables
+Screenshot/
+
 # Claude — track only rules/ (project-scoped guidance); everything else is local
 .claude/*
 !.claude/rules/
