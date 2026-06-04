@@ -25,6 +25,13 @@ export interface AnalyzeV3Inputs {
   language?: Language;
   /** Optional candidate notes / real-experience profile (same role as v2). */
   profileText?: string;
+  /**
+   * Server-supplied "today" so the LLM doesn't reason about date validity
+   * against its training-cutoff snapshot. Required to avoid hallucinated
+   * "Mar 2026 is in the future" warnings when the candidate's current role
+   * has a 2026 end date but today is actually past it. ISO yyyy-mm-dd.
+   */
+  todayIso?: string;
 }
 
 export interface BuiltPromptsV3 {
@@ -72,7 +79,7 @@ const DIMENSION_DOCS_V3 = [
 ].map(([k, v]) => `- ${k}: ${v}`).join('\n');
 
 export function buildAnalyzeV3Prompts(inputs: AnalyzeV3Inputs): BuiltPromptsV3 {
-  const { cvText, role, language = 'auto', profileText } = inputs;
+  const { cvText, role, language = 'auto', profileText, todayIso } = inputs;
 
   const langInstr =
     language === 'vi'
@@ -85,6 +92,10 @@ export function buildAnalyzeV3Prompts(inputs: AnalyzeV3Inputs): BuiltPromptsV3 {
     'You are an expert technical recruiter and CV reviewer. Score CVs intrinsically against the candidate\'s claimed role using industry-standard role baselines — you are NOT comparing against any specific JD. Always return ONE valid JSON object matching the requested schema. Be concrete, honest, concise. Never invent candidate experience. Never fabricate quantitative outcomes the CV does not state.';
 
   const user = `Evaluate the candidate's CV for the claimed role. Use industry-standard expectations for that role as the baseline — there is no JD. Score each dimension based on what THIS role typically requires and what the CV evidences.
+
+=== TODAY'S DATE (server time) ===
+${todayIso ?? '(unknown — treat all CV dates as historical unless clearly future)'}
+Use this to judge whether CV dates are past / current / future. Do NOT assume today is your training-cutoff date — a "Mar 2026" end date may be in the past relative to TODAY.
 
 === CANDIDATE'S CLAIMED ROLE ===
 ${role}

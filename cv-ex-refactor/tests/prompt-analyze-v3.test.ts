@@ -106,4 +106,19 @@ describe('buildAnalyzeV3Prompts', () => {
     expect(system).toMatch(/intrinsically/i);
     expect(system).toMatch(/not comparing against any specific JD/i);
   });
+
+  describe('todayIso injection (date-hallucination hotfix)', () => {
+    it('renders the provided date verbatim under TODAY section', () => {
+      const { user } = buildAnalyzeV3Prompts({
+        cvText: CV_SAMPLE, role: ROLE, todayIso: '2026-06-04',
+      });
+      expect(user).toContain("TODAY'S DATE");
+      expect(user).toContain('2026-06-04');
+      expect(user).toMatch(/may be in the past relative to TODAY/i);
+    });
+    it('warns the LLM not to assume training-cutoff date when omitted', () => {
+      const { user } = buildAnalyzeV3Prompts({ cvText: CV_SAMPLE, role: ROLE });
+      expect(user).toMatch(/unknown.*treat all CV dates as historical/i);
+    });
+  });
 });

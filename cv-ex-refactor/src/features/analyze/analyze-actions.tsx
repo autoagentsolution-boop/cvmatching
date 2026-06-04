@@ -10,6 +10,20 @@ import type { AnalyzeRequestLLM } from './types';
 
 const MIN_CV_LEN = 100;
 
+// v0.4 hotfix: Job Fit reads CV from this sessionStorage key (legacy contract
+// from the v0.3 refined-cv → job-fit flow). In v0.4 there's no /refined-cv
+// step in the analyze path, so the analyze handler writes it directly so
+// Job Fit can see the CV without a manual hand-off.
+const JOB_FIT_CV_SESSION_KEY = 'refined-cv-text:v1';
+function writeCvForJobFit(cvText: string): void {
+  try {
+    sessionStorage.setItem(JOB_FIT_CV_SESSION_KEY, cvText);
+  } catch {
+    // Quota / private mode — best-effort. Job Fit empty-state guides the
+    // user if write fails.
+  }
+}
+
 export function AnalyzeActions() {
   const {
     cvText,
@@ -75,6 +89,7 @@ export function AnalyzeActions() {
       setField('weights', hydrateWeightsFromResult(response));
       setField('awaitingRoleConfirm', false);
       setField('roleCandidates', []);
+      writeCvForJobFit(trimmedCv);
     } catch (err) {
       setField('error', err instanceof Error ? err.message : 'Phân tích thất bại.');
     } finally {

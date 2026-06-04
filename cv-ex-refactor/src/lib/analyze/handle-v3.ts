@@ -110,10 +110,12 @@ export async function handleAnalyzeV3(
   }
 
   // Stage 2: scoring
+  const todayIso = new Date().toISOString().slice(0, 10);
   const { system, user } = buildAnalyzeV3Prompts({
     cvText,
     role: targetRole,
     language,
+    todayIso,
     ...(profileText ? { profileText } : {}),
   });
   const inputChars = system.length + user.length;
@@ -125,6 +127,11 @@ export async function handleAnalyzeV3(
       system,
       user,
       expectJson: true,
+      // v0.4 hotfix: v3 scoring prompt is structured JSON with a clear rubric.
+      // Gemini 2.5's thinking phase added 40-50s without quality gain on smoke
+      // (52s second-call observed in prod 2026-06-04). Disable it — matches
+      // the recommend/generate-cv treatment for structured-output tasks.
+      disableThinking: true,
     });
 
     const parsedRaw = safeParseJson(raw);

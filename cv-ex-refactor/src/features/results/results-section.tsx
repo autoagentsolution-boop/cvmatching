@@ -74,6 +74,10 @@ export function ResultsSection() {
       setField('targetRoleConfirmed', response.targetRole);
       if (response.inferredRole) setField('inferredRole', response.inferredRole);
       setField('weights', hydrateWeightsFromResult(response));
+      // Keep Job Fit's CV view in sync after a role-override re-analyze too.
+      try { sessionStorage.setItem('refined-cv-text:v1', cvText); } catch {
+        // best-effort
+      }
     } catch (err) {
       setField('error', err instanceof Error ? err.message : 'Phân tích lại thất bại.');
     } finally {
@@ -116,15 +120,24 @@ export function ResultsSection() {
     }
   }
 
+  // v0.4: in the CV-solo flow refining a CV is per-job, so the canonical
+  // next step from /analyze is /job-fit. Refined-CV remains available only
+  // when the legacy v2 jdText is still in store (transitional users).
   const headerAction = matchedCv ? (
     <Button variant="primary" size="sm" asChild>
-      <Link href="/refined-cv">Open refined CV</Link>
+      <Link href="/refined-cv">Mở Refined CV</Link>
     </Button>
   ) : canGenerateRefinedCv ? (
     <Button variant="primary" size="sm" loading={isGeneratingCv} onClick={handleGenerateCv}>
-      {isGeneratingCv ? 'Generating…' : 'Generate refined CV'}
+      {isGeneratingCv ? 'Đang tạo…' : 'Generate refined CV'}
     </Button>
-  ) : null;
+  ) : (
+    <Button variant="primary" size="sm" asChild>
+      <Link href="/job-fit" aria-label="Đi tới Job Fit để tìm job phù hợp với CV này">
+        Tìm job phù hợp →
+      </Link>
+    </Button>
+  );
 
   return (
     <section className="mt-10 border-t border-outline-variant pt-10">
