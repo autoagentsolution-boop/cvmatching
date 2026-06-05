@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState } from 'react';
 import { MdAutoAwesome } from 'react-icons/md';
 import { Button, Card, ErrorState, LoadingState, MarkdownView } from '@/components/ui';
 import { useAnalysis } from '@/features/analyze/analysis-store';
@@ -37,22 +36,15 @@ async function callCoverLetter(payload: CoverLetterBodyT): Promise<CoverLetterRe
 }
 
 interface CoverLetterBlockProps {
-  /**
-   * Optional explicit job id — used when block is mounted on the Job Fit
-   * detail page directly. When absent, falls back to reading ?jobId from
-   * the URL (legacy /refined-cv?jobId=X entry path).
-   */
-  jobId?: string;
+  /** Explicit job id from the Job Fit detail mount — required as of 2026-06-05. */
+  jobId: string;
 }
 
-// Reads job context from prop OR ?jobId in URL (set by /refined-cv arrival
-// from Job Fit). Falls back to disabled state with hint if context missing —
-// never silently degrades.
+// Mounted on /job-fit/[jobId] detail page only. Cover letter is bound to a
+// specific job — without a jobId we have nothing to generate against, so
+// the URL-fallback / refined-cv-aside path was removed.
 // Pilot quota: 3/day for logged-in users (consume-quota.ts), 0 for anonymous.
-export function CoverLetterBlock({ jobId: jobIdProp }: CoverLetterBlockProps = {}) {
-  const params = useSearchParams();
-  const jobId = jobIdProp ?? params.get('jobId');
-  const intent = params.get('intent');
+export function CoverLetterBlock({ jobId }: CoverLetterBlockProps) {
   const { jobs } = useJobFit();
   const { cvText, language } = useAnalysis();
   const { provider, model, temperature, baseUrl } = useSettings();
@@ -61,18 +53,8 @@ export function CoverLetterBlock({ jobId: jobIdProp }: CoverLetterBlockProps = {
   const [quota, setQuota] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const rootRef = useRef<HTMLDivElement | null>(null);
 
-  // v0.4: when user arrives via "Tạo Cover Letter" CTA on Job Fit detail
-  // (?intent=cover-letter), scroll the block into view so they don't have
-  // to hunt for it inside the aside. Fires once on mount.
-  useEffect(() => {
-    if (intent === 'cover-letter' && rootRef.current) {
-      rootRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }, [intent]);
-
-  const job = jobId ? jobs.find((j) => j.jobId === jobId) ?? null : null;
+  const job = jobs.find((j) => j.jobId === jobId) ?? null;
   const hasCv = cvText.trim().length >= 50;
   const canGenerate = Boolean(job && hasCv);
 
@@ -107,7 +89,7 @@ export function CoverLetterBlock({ jobId: jobIdProp }: CoverLetterBlockProps = {
   }
 
   return (
-    <div ref={rootRef} id="cover-letter">
+    <div id="cover-letter">
     <Card padding="md" className="flex flex-col gap-3 bg-primary-container">
       <header className="flex items-center gap-2">
         <MdAutoAwesome size={18} className="text-on-primary-container" aria-hidden="true" />
@@ -118,7 +100,7 @@ export function CoverLetterBlock({ jobId: jobIdProp }: CoverLetterBlockProps = {
         <p className="text-label-sm text-on-primary-container/80 leading-relaxed">
           {!hasCv
             ? 'Cần CV trong phiên — chạy Analyze trước.'
-            : 'Cần chọn job từ Job Fit. Vào /job-fit, click Apply trên job tier S/A/B để load context.'}
+            : 'Phiên job không còn — quay lại /job-fit và click vào job này từ list để nạp lại context.'}
         </p>
       )}
 
