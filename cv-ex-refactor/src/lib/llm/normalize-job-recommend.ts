@@ -66,6 +66,12 @@ export interface JobMatchOut {
    * separately — see [[project_v04_pivot_cv_solo_analyze]] follow-ups.
    */
   mustHaves?: string[];
+  /**
+   * v0.4 Phase A — slug into the Company KV namespace. Undefined on jobs
+   * ingested before Phase 02 lite (no companyId attached). Detail UI
+   * conditionally renders CompanyCard only when present.
+   */
+  companyId?: string;
 }
 
 // ── Normalizer ─────────────────────────────────────────────────────────────
@@ -123,6 +129,7 @@ function normalizeItems(
       matchReasons: match.matchReasons,
       studyTopics: match.studyTopics,
       ...(job.mustHaves && job.mustHaves.length > 0 ? { mustHaves: job.mustHaves } : {}),
+      ...(job.companyId ? { companyId: job.companyId } : {}),
     });
   }
 

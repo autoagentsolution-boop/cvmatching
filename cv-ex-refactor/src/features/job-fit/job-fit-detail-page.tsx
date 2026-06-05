@@ -8,6 +8,7 @@ import { StudyTopicsBlock } from './study-topics-block';
 import { DetailActionsBar } from './detail-actions-bar';
 import { EmptyStateBackToList } from './empty-state-back-to-list';
 import { MustHaveBlock } from './must-have-block';
+import { CompanyCard } from './company-card';
 
 interface JobFitDetailPageProps {
   jobId: string;
@@ -50,6 +51,7 @@ export function JobFitDetailPage({ jobId }: JobFitDetailPageProps) {
           }
         />
 
+        <CompanyCard companyId={match.companyId} fallbackName={match.company} />
         <MustHaveBlock mustHaves={match.mustHaves} />
         <JobScoreBlock match={match} />
         <MatchReasonsBlock reasons={match.matchReasons} />
