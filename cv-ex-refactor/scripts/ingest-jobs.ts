@@ -2,7 +2,7 @@
 // Usage: pnpm run ingest <command> [args]
 // Env: loaded from .env.local via tsx --env-file flag in package.json script.
 
-const COMMANDS = ['paste', 'file', 'stats', 'expire', 'rebuild-embeddings', 'build-vertical-index'] as const;
+const COMMANDS = ['paste', 'file', 'urls', 'stats', 'expire', 'rebuild-embeddings', 'build-vertical-index'] as const;
 type Command = (typeof COMMANDS)[number];
 
 function printHelp(): void {
@@ -12,6 +12,7 @@ Usage: pnpm run ingest <command> [args]
 Commands:
   paste                    Interactive: prompt for one job's fields, classify, embed, save
   file <path>              Batch: read JSON array from file, dedup, classify, embed, save
+  urls <url> [<url>...]    Batch: fetch each URL, extract JSON-LD JobPosting, dedup, embed, save
   stats                    Print active/expired counts by vertical and seniority
   expire                   Mark jobs where verifiedAt > 21 days as expired
   rebuild-embeddings       Pack all active embeddings into a versioned KV blob
@@ -63,6 +64,11 @@ async function main(): Promise<void> {
     }
     case 'file': {
       const { run } = await import('./ingest-file.js');
+      await run(args);
+      break;
+    }
+    case 'urls': {
+      const { run } = await import('./ingest-urls.js');
       await run(args);
       break;
     }

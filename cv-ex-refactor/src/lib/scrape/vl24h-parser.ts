@@ -17,7 +17,7 @@ export interface JobPostingLd {
   datePosted: string | null;
   validThrough: string | null;
   description: string;
-  hiringOrganization: { name: string } | null;
+  hiringOrganization: { name: string; sameAs?: string } | null;
   jobLocation:
     | Array<{ address?: { addressLocality?: string; addressRegion?: string } }>
     | { address?: { addressLocality?: string; addressRegion?: string } }
