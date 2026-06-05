@@ -77,7 +77,10 @@ export function isSitemapIndex(xml: string): boolean {
 }
 
 export function parseJobPostingLd(html: string): JobPostingLd | null {
-  const matches = html.matchAll(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g);
+  // Accept both single and double-quoted type attributes — vl24h uses
+  // double quotes, ITviec uses single. Widening is strictly broader; no
+  // false positives because the JSON.parse guard rejects non-LD content.
+  const matches = html.matchAll(/<script[^>]*type=['"]application\/ld\+json['"][^>]*>([\s\S]*?)<\/script>/g);
   for (const m of matches) {
     let parsed: unknown;
     try {
