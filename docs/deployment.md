@@ -348,13 +348,18 @@ Reserved for v0.4+ if full-text or faceted search added.
 
 ## 14. Quota bucket table — all versions
 
-| Bucket | Anon limit | Signed-in | BYOK | Notes |
+Source of truth: `src/lib/quota/consume-quota.ts` (`QUOTA_LIMITS`,
+`ANON_QUOTA_LIMITS`). Update this table whenever those constants change.
+
+| Bucket | Anon | Signed-in | BYOK | Notes |
 |---|---|---|---|---|
-| `analyze` | 3/day | 10/day | unlimited | CV-JD analysis |
-| `rewrite` | 1/day | 3/day | unlimited | Resume rewrite |
+| `analyze` | 3/day | 5/day | unlimited | v0.4 CV-Solo 2-stage analyze |
+| `generate-cv` | 1/day | 2/day | unlimited | Polished CV (v3 CV-Solo prompt) |
+| `generate-cover-letter` | 0/day | 3/day | unlimited | Anon blocked by design (pilot decision) |
 | `career-path` | 2/day | 3/day | unlimited | Career roadmap (v0.2+) |
-| `career-path-suggest` | 10/min | 20/min | unlimited | Passthrough IP rate-limit (no quota debit) |
-| `job-recommend` | 5/day | 12/day | unlimited | Job recommendations (v0.3+) |
+| `job-recommend` | 5/day | 12/day | unlimited | Job-fit recommendations (v0.3+, admin-only currently) |
+| `extract-must-haves` | passthrough | passthrough | passthrough | IP rate-limited, no quota debit |
+| `career-path-suggest` | passthrough | passthrough | passthrough | IP rate-limited, no quota debit |
 
 ---
 
@@ -395,13 +400,17 @@ After ship date, the site is locked down to control free-tier Gemini cost
 while admin completes usage analysis on the ultra-tier API key. Lockdown
 state is enforced by three orthogonal switches; admins bypass all three.
 
-### Current lockdown state (as of 2026-06-02 ~21:00 ICT)
+### Current lockdown state (as of 2026-06-04 EOD, post v0.4 ship)
 
 | Switch | State | Storage | Effect on non-admin |
 |---|---|---|---|
 | `DISABLE_SHARED_KEY=1` | ON | Vercel env | All non-BYOK requests → 503 `shared_key_disabled` at `resolveApiKey` |
-| `kill-switch:*` (4 buckets) | ON | KV `kill-switch:<bucket>` = `'1'` | Per-action 503 `service_unavailable` at route handler |
+| `kill-switch:*` (7 buckets) | ON | KV `kill-switch:<bucket>` = `'1'` | Per-action 503 `service_unavailable` at route handler |
 | `login:enabled` | OFF | KV `login:enabled` deleted | `/sign-in` returns 404; topnav login button hidden |
+
+Authoritative bucket list in `src/lib/cost/buckets.ts`:
+`analyze`, `generate-cv`, `generate-cover-letter`, `career-path`,
+`career-path-suggest`, `extract-must-haves`, `job-recommend`.
 
 Admin (`auto.agent.solution@gmail.com` per `ADMIN_USER_EMAILS`) bypasses all
 three: resolves via `resolveApiKey` returning `isAdmin: true`; routes skip
@@ -436,32 +445,53 @@ vercel env ls production | findstr DISABLE_SHARED_KEY
 # Expected: no row, or row with empty value
 ```
 
-**Step 4 — Smoke**:
+**Step 4 — Smoke** (walks the full v0.4 CV-Solo chain end-to-end):
 
 1. Open private/incognito browser → `https://resume-refactor.vercel.app`
 2. Click **"Đăng nhập với Google"** in topnav → complete OAuth
-3. Paste a sample CV + JD → click Analyze → result in <10s
-4. Visit `/refined-cv` → click Generate → markdown opens
-5. Visit `/career-path` → suggestions load
-6. Verify `/api/whoami` (logged-in): `{ admin: { isAdmin: false }, authed: true }`
-7. Monitor `/admin/usage` over next 2-4 hours — confirm daily spend stays
-   well below `ALERT_SHARED_DAILY_COST_USD` (default $2.50)
+3. `/analyze`: paste CV-only (no JD field exists in v0.4) → Analyze → 9 sliders
+   render in ~10s. Sliders show LLM CV-intrinsic scores for inferred role; the
+   `ReAnalyzeBanner` may appear once if the account has stale `v1` cache —
+   click it to refresh into `cv-ex-analysis-v2`.
+4. Click **"Tạo CV refined"** → `/refined-cv` polished markdown opens (~5-15s).
+   Confirms `refined-cv-text:v1` write side-effect.
+5. Click **"Tìm 10 job phù hợp →"** → `/job-fit` ranks against the refined CV.
+   Open any tier S/A/B detail → confirm Cover Letter shortcut CTA renders.
+6. Click **"Tạo Cover Letter"** on a job detail → auto-scrolls to
+   CoverLetterBlock + streams output. Burns 1 `generate-cover-letter` quota.
+7. `/career-path`: confirm single Card with **one** primary CTA (no auto-fire
+   on mount per `feedback_no_auto_llm_calls`). Click it once → suggestion loads.
+8. Verify `/api/whoami` (logged-in): `{ admin: { isAdmin: false }, authed: true }`.
+9. Monitor `/admin/usage` over next 2-4 hours — confirm daily spend stays
+   well below `ALERT_SHARED_DAILY_COST_USD` (default $2.50) and that
+   `extract-must-haves` / `career-path-suggest` rate-limiters are not
+   tripping under real traffic.
 
 ### Quotas in effect once shared key is re-enabled
 
 Per `src/lib/quota/consume-quota.ts`. Anonymous shared-key path was removed
-2026-06-02; only signed-in users hit the shared key.
+2026-06-02; only signed-in users hit the shared key. Anon column reflects
+`ANON_QUOTA_LIMITS` — applied only if the anon path is ever reopened.
 
-| Action | Logged-in daily cap | Notes |
-|---|---|---|
-| `analyze` | 5 | Match endpoint |
-| `generate-cv` | 2 | Polished CV |
-| `career-path` | 3 | Roadmap |
-| `job-recommend` | 12 | Admin-only currently |
-| `extract-must-haves` | unlimited (passthrough) | IP-rate-limited separately |
-| `career-path-suggest` | unlimited (passthrough) | IP-rate-limited separately |
+| Action | Logged-in cap/day | Anon cap/day | Notes |
+|---|---|---|---|
+| `analyze` | 5 | 3 | v0.4 CV-Solo 2-stage call |
+| `generate-cv` | 2 | 1 | Polished CV (v3 prompt) |
+| `generate-cover-letter` | 3 | 0 | Anon blocked by design |
+| `career-path` | 3 | 2 | Roadmap |
+| `job-recommend` | 12 | 5 | Admin-only currently |
+| `extract-must-haves` | unlimited (passthrough) | — | IP-rate-limited separately |
+| `career-path-suggest` | unlimited (passthrough) | — | IP-rate-limited separately |
 
 Reset 00:00 ICT (Vietnam midnight). BYOK users skip quotas entirely.
+
+### Post-reopen tunables to observe
+
+| Setting | Default | Tune when |
+|---|---|---|
+| `ROLE_INFER_CONFIDENCE_THRESHOLD` (Vercel env, optional) | `0.75` | Confirm-modal fires too often (>30% of analyzes) → lower to `0.65`; if it rarely fires but mis-classifications appear → raise to `0.85` |
+| `ALERT_SHARED_DAILY_COST_USD` | `2.50` | Real traffic shows sustained spend pattern — tighten or loosen accordingly |
+| `ALERT_WEBHOOK_URL` (Pushover/CallMeBot) | unset | **Set before reopen** — without it, cost-kill events log silently to console |
 
 ### Roll back fast (if cost spike detected)
 
