@@ -9,6 +9,7 @@ import { DetailActionsBar } from './detail-actions-bar';
 import { EmptyStateBackToList } from './empty-state-back-to-list';
 import { MustHaveBlock } from './must-have-block';
 import { CompanyCard } from './company-card';
+import { CoverLetterBlock } from '@/features/refined-cv/cover-letter-block';
 
 interface JobFitDetailPageProps {
   jobId: string;
@@ -56,6 +57,7 @@ export function JobFitDetailPage({ jobId }: JobFitDetailPageProps) {
         <JobScoreBlock match={match} />
         <MatchReasonsBlock reasons={match.matchReasons} />
         <StudyTopicsBlock jobId={match.jobId} topics={match.studyTopics} />
+        <CoverLetterBlock jobId={match.jobId} />
         <DetailActionsBar
           job={match}
           {...(match.sourceUrl ? { source: extractSource(match.sourceUrl) } : {})}

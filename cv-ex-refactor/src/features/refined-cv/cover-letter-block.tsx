@@ -36,12 +36,22 @@ async function callCoverLetter(payload: CoverLetterBodyT): Promise<CoverLetterRe
   return (await res.json()) as CoverLetterResponse;
 }
 
-// Reads job context from ?jobId in URL (set by /refined-cv arrival from Job Fit).
-// Falls back to disabled state with hint if context missing — never silently degrades.
+interface CoverLetterBlockProps {
+  /**
+   * Optional explicit job id — used when block is mounted on the Job Fit
+   * detail page directly. When absent, falls back to reading ?jobId from
+   * the URL (legacy /refined-cv?jobId=X entry path).
+   */
+  jobId?: string;
+}
+
+// Reads job context from prop OR ?jobId in URL (set by /refined-cv arrival
+// from Job Fit). Falls back to disabled state with hint if context missing —
+// never silently degrades.
 // Pilot quota: 3/day for logged-in users (consume-quota.ts), 0 for anonymous.
-export function CoverLetterBlock() {
+export function CoverLetterBlock({ jobId: jobIdProp }: CoverLetterBlockProps = {}) {
   const params = useSearchParams();
-  const jobId = params.get('jobId');
+  const jobId = jobIdProp ?? params.get('jobId');
   const intent = params.get('intent');
   const { jobs } = useJobFit();
   const { cvText, language } = useAnalysis();
