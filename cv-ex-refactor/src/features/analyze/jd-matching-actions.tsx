@@ -60,7 +60,7 @@ export function JdMatchingActions() {
   async function runMatch() {
     setField('error', null);
     setField('isAnalyzing', true);
-    setField('result', null);
+    setField('jdMatchResult', null);
 
     const llm: AnalyzeRequestLLM = {
       provider,
@@ -85,8 +85,9 @@ export function JdMatchingActions() {
 
     try {
       const response = await callAnalyze(payload);
-      setField('result', response);
-      setField('weights', hydrateWeightsFromResult(response));
+      setField('jdMatchResult', response);
+      setField('jdMatchWeights', hydrateWeightsFromResult(response));
+      setField('activeResultSource', 'jd-matching');
       writeCvForJobFit(trimmedCv);
     } catch (err) {
       setField('error', err instanceof Error ? err.message : 'So khớp thất bại.');

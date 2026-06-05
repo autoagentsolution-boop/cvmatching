@@ -53,7 +53,7 @@ export function AnalyzeActions() {
   async function runAnalyze(role?: string) {
     setField('error', null);
     setField('isAnalyzing', true);
-    setField('result', null);
+    setField('analyzeResult', null);
     if (!role) {
       // Fresh analyze — clear any prior role-confirm state from a previous run.
       setField('targetRoleConfirmed', null);
@@ -82,11 +82,12 @@ export function AnalyzeActions() {
         return;
       }
 
-      // Success path
-      setField('result', response);
+      // Success path — write to Analyze slot, mark Analyze as active source.
+      setField('analyzeResult', response);
+      setField('analyzeWeights', hydrateWeightsFromResult(response));
+      setField('activeResultSource', 'analyze');
       setField('targetRoleConfirmed', response.targetRole);
       if (response.inferredRole) setField('inferredRole', response.inferredRole);
-      setField('weights', hydrateWeightsFromResult(response));
       setField('awaitingRoleConfirm', false);
       setField('roleCandidates', []);
       writeCvForJobFit(trimmedCv);

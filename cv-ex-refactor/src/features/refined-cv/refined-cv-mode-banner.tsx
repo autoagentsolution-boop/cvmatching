@@ -42,7 +42,8 @@ export function RefinedCvModeBanner() {
   const mode = isCvMode(modeParam) ? modeParam : null;
 
   const { jobs } = useJobFit();
-  const { cvText, language, profileText, isGeneratingCv, matchedCv, setField } = useAnalysis();
+  const { cvText, language, profileText, isGeneratingCv, jobFitMatchedCv, setField } = useAnalysis();
+  const matchedCv = jobFitMatchedCv;
   const { provider, model, temperature, baseUrl } = useSettings();
 
   const [localError, setLocalError] = useState<string | null>(null);
@@ -112,8 +113,9 @@ export function RefinedCvModeBanner() {
     };
     try {
       const { markdown, refineNotes } = await callGenerateCv(payload);
-      setField('matchedCv', markdown);
-      setField('refineNotes', refineNotes);
+      setField('jobFitMatchedCv', markdown);
+      setField('jobFitRefineNotes', refineNotes);
+      setField('activeResultSource', 'job-fit');
     } catch (e) {
       setLocalError(e instanceof Error ? e.message : 'Refine thất bại.');
     } finally {

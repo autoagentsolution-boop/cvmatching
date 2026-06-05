@@ -2,8 +2,8 @@
 
 import { Badge, Card } from '@/components/ui';
 import type { BadgeProps } from '@/components/ui';
-import { useAnalysis } from '@/features/analyze/analysis-store';
 import type { RecommendationPriority } from '@/features/analyze/types';
+import { useSourceData } from './use-source-resolver';
 
 type BadgeVariant = NonNullable<BadgeProps['variant']>;
 
@@ -14,7 +14,7 @@ const priorityVariant: Record<RecommendationPriority, BadgeVariant> = {
 };
 
 export function KeyEnhancementsBlock() {
-  const result = useAnalysis((s) => s.result);
+  const { result } = useSourceData();
 
   if (!result) return null;
 

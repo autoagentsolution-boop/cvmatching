@@ -8,7 +8,10 @@ import { callCareerPath } from './api-client';
 import type { CareerPathRequest } from './types';
 
 export function CareerPathActions() {
-  const { cvText, result: analysisResult, language } = useAnalysis();
+  // Pull analyze context from whichever source the user last worked with —
+  // career-path uses it for summary + detectedRole hinting only (optional).
+  const { cvText, language } = useAnalysis();
+  const analysisResult = useAnalysis((s) => s.analyzeResult ?? s.jdMatchResult);
   const { provider, model, temperature, baseUrl } = useSettings();
   const {
     isGenerating,

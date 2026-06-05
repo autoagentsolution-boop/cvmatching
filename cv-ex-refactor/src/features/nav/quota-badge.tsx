@@ -24,8 +24,13 @@ interface QuotaPayload {
 
 export function QuotaBadge({ isAuthed: _isAuthed }: { isAuthed: boolean }) {
   const hasRegisteredKey = useSettings((s) => s.hasRegisteredKey);
-  const result = useAnalysis((s) => s.result);
-  const matchedCv = useAnalysis((s) => s.matchedCv);
+  // Refresh-triggers: any analyze run flips activeResultSource, any matchedCv
+  // generation (analyze/jd-match/job-fit) bumps the union below. Cheap signal
+  // for refresh(); badge doesn't care WHICH slot changed.
+  const activeSource = useAnalysis((s) => s.activeResultSource);
+  const matchedCvSignal = useAnalysis(
+    (s) => s.analyzeMatchedCv ?? s.jdMatchMatchedCv ?? s.jobFitMatchedCv,
+  );
   const careerResult = useCareerPath((s) => s.result);
 
   const [status, setStatus] = useState<QuotaPayload | null>(null);
@@ -48,7 +53,7 @@ export function QuotaBadge({ isAuthed: _isAuthed }: { isAuthed: boolean }) {
 
   useEffect(() => {
     refresh();
-  }, [result, matchedCv, careerResult, refresh]);
+  }, [activeSource, matchedCvSignal, careerResult, refresh]);
 
   if (hasRegisteredKey) return null;
   if (!status?.ok || status.enforced === false || !status.kinds) return null;

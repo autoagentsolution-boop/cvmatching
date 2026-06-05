@@ -1,12 +1,11 @@
 'use client';
 
-import { useAnalysis } from '@/features/analyze/analysis-store';
 import { MatchScoreBlock } from '@/features/results/match-score-block';
 import { recomputeOverall } from '@/lib/scoring/recompute-overall';
+import { useSourceData } from './use-source-resolver';
 
 export function MatchScoreBlockAside() {
-  const result = useAnalysis((s) => s.result);
-  const weights = useAnalysis((s) => s.weights);
+  const { result, weights } = useSourceData();
 
   if (!result) return null;
 

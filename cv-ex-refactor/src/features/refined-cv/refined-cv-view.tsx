@@ -4,11 +4,13 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { Button, Card, EmptyState, ErrorState, LoadingState, MarkdownView } from '@/components/ui';
 import { useAnalysis } from '@/features/analyze/analysis-store';
+import { useSourceData } from './use-source-resolver';
 import { RedFlagsBanner } from './red-flags-banner';
 import { RefinedCvModeBanner } from './refined-cv-mode-banner';
 
 export function RefinedCvView() {
-  const { matchedCv, refineNotes, isGeneratingCv, error, result } = useAnalysis();
+  const { matchedCv, refineNotes, result } = useSourceData();
+  const { isGeneratingCv, error } = useAnalysis();
 
   // Mode banner reads URL params + job-fit store; render whenever query is present
   // so the user can kick off Wave A refine flow even before matchedCv exists.

@@ -33,8 +33,8 @@ export function JdMatchingPage() {
       <CvInputBlock />
       <JdInputBlock />
       <MustHavesBlock />
-      <AnalysisParametersBlock />
-      <ResultsSection />
+      <AnalysisParametersBlock source="jd-matching" />
+      <ResultsSection source="jd-matching" />
     </FormPageLayout>
   );
 }

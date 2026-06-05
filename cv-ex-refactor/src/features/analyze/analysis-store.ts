@@ -11,7 +11,15 @@ export interface RoleCandidate {
   confidence: number;
 }
 
+/**
+ * Result source — one of three Refined-CV entry points. Used to namespace
+ * `result/weights/matchedCv/refineNotes` so the three flows never overwrite
+ * each other (was a real bug pre-2026-06-05 split).
+ */
+export type ResultSource = 'analyze' | 'jd-matching' | 'job-fit';
+
 interface AnalysisState {
+  // ── shared inputs / settings (same across all sources) ─────────────────
   jdText: string;
   jdUrl: string;
   cvText: string;
@@ -19,26 +27,42 @@ interface AnalysisState {
   targetRole: RoleFamily;
   strictness: Strictness;
   language: Language;
-  weights: Weights;
   mustHaves: string[];
   isExtractingMustHaves: boolean;
   mustHavesError: string | null;
-  result: AnalysisResult | null;
-  matchedCv: string | null;
-  /** Refine meta (Changes Made + Gaps) — separate from matchedCv so downloads/sends never include it. */
-  refineNotes: string | null;
+
+  // ── per-source slots ───────────────────────────────────────────────────
+  // Analyze (v0.4 CV-solo) — written by AnalyzeActions + results re-analyze.
+  analyzeResult: AnalysisResult | null;
+  analyzeWeights: Weights;
+  analyzeMatchedCv: string | null;
+  analyzeRefineNotes: string | null;
+
+  // JD Matching (v2 CV-vs-JD) — written by JdMatchingActions + results regen.
+  jdMatchResult: AnalysisResult | null;
+  jdMatchWeights: Weights;
+  jdMatchMatchedCv: string | null;
+  jdMatchRefineNotes: string | null;
+
+  // Job Fit — only generates a refined CV (no result/weights; useJobFit owns
+  // the source data). Written by RefinedCvModeBanner when ?jobId&mode present.
+  jobFitMatchedCv: string | null;
+  jobFitRefineNotes: string | null;
+
+  /** Pointer to the source the user most recently worked with. Refined CV
+   *  falls back to this when no `?from=` / `?jobId` URL param is present. */
+  activeResultSource: ResultSource | null;
+
+  // ── transient UI state (excluded from persistence) ─────────────────────
   isAnalyzing: boolean;
   isGeneratingCv: boolean;
   error: string | null;
-  // ---- v0.4 CV-solo additions ----
-  /** Role the server actually scored against (LLM-inferred or user-confirmed). */
+  // v0.4 CV-solo role-infer flow — only used by Analyze (v3) path.
   targetRoleConfirmed: string | null;
-  /** Role-infer metadata for the inferred-role banner ({canonical, confidence}). */
   inferredRole: RoleCandidate | null;
-  /** Whether the API returned needsRoleConfirm and the modal should open. */
   awaitingRoleConfirm: boolean;
-  /** Candidates to render in the role-confirm modal. */
   roleCandidates: RoleCandidate[];
+
   setField: <K extends keyof Omit<AnalysisState, 'setField' | 'reset'>>(
     k: K,
     v: AnalysisState[K],
@@ -46,7 +70,7 @@ interface AnalysisState {
   reset: () => void;
 }
 
-const ZERO_WEIGHTS = {
+const ZERO_WEIGHTS: Weights = {
   coreSkill: 0,
   tool: 0,
   scope: 0,
@@ -56,7 +80,7 @@ const ZERO_WEIGHTS = {
   seniority: 0,
   impact: 0,
   communication: 0,
-} as const;
+};
 
 const initial: Omit<AnalysisState, 'setField' | 'reset'> = {
   jdText: '',
@@ -66,16 +90,25 @@ const initial: Omit<AnalysisState, 'setField' | 'reset'> = {
   targetRole: 'auto',
   strictness: 'balanced',
   language: 'auto',
-  // Weights are per-dim CV-vs-JD scores produced by the LLM, hydrated after analyze
-  // via hydrateWeightsFromResult(). Zero on init means "not analyzed yet" — UI uses
-  // result presence (not weights values) to gate the sliders.
-  weights: { ...ZERO_WEIGHTS },
   mustHaves: [],
   isExtractingMustHaves: false,
   mustHavesError: null,
-  result: null,
-  matchedCv: null,
-  refineNotes: null,
+
+  analyzeResult: null,
+  analyzeWeights: { ...ZERO_WEIGHTS },
+  analyzeMatchedCv: null,
+  analyzeRefineNotes: null,
+
+  jdMatchResult: null,
+  jdMatchWeights: { ...ZERO_WEIGHTS },
+  jdMatchMatchedCv: null,
+  jdMatchRefineNotes: null,
+
+  jobFitMatchedCv: null,
+  jobFitRefineNotes: null,
+
+  activeResultSource: null,
+
   isAnalyzing: false,
   isGeneratingCv: false,
   error: null,
@@ -109,16 +142,26 @@ export const useAnalysis = create<AnalysisState>()(
         targetRole: s.targetRole,
         strictness: s.strictness,
         language: s.language,
-        weights: s.weights,
         mustHaves: s.mustHaves,
-        result: s.result,
-        matchedCv: s.matchedCv,
-        refineNotes: s.refineNotes,
+
+        analyzeResult: s.analyzeResult,
+        analyzeWeights: s.analyzeWeights,
+        analyzeMatchedCv: s.analyzeMatchedCv,
+        analyzeRefineNotes: s.analyzeRefineNotes,
+
+        jdMatchResult: s.jdMatchResult,
+        jdMatchWeights: s.jdMatchWeights,
+        jdMatchMatchedCv: s.jdMatchMatchedCv,
+        jdMatchRefineNotes: s.jdMatchRefineNotes,
+
+        jobFitMatchedCv: s.jobFitMatchedCv,
+        jobFitRefineNotes: s.jobFitRefineNotes,
+
+        activeResultSource: s.activeResultSource,
         targetRoleConfirmed: s.targetRoleConfirmed,
         inferredRole: s.inferredRole,
         // awaitingRoleConfirm + roleCandidates are transient (modal state) —
-        // never restored across reloads to avoid surprising the user with a
-        // half-completed modal on F5.
+        // never restored across reloads.
       }),
     },
   ),

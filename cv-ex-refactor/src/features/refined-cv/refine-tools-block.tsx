@@ -5,8 +5,10 @@ import { Button, Card, FormField, Select, Textarea } from '@/components/ui';
 import type { SelectOption } from '@/components/ui';
 import { useAnalysis } from '@/features/analyze/analysis-store';
 import { useSettings } from '@/features/analyze/settings-store';
-import { callGenerateCv } from '@/features/analyze/api-client';
+import { callGenerateCv, callGenerateCvV3 } from '@/features/analyze/api-client';
+import { buildV3Findings } from '@/features/analyze/build-v3-findings';
 import type { GenerateCvRequest } from '@/features/analyze/types';
+import { useResolvedSource, useSourceData, useSourceSetters } from './use-source-resolver';
 
 const TONE_OPTIONS: SelectOption[] = [
   { value: 'impact', label: 'Impact-focused' },
@@ -21,8 +23,8 @@ const LENGTH_OPTIONS: SelectOption[] = [
   { value: 'long', label: 'Detailed' },
 ];
 
-type Tone = GenerateCvRequest['inputs']['tone'];
-type Length = GenerateCvRequest['inputs']['length'];
+type Tone = NonNullable<GenerateCvRequest['inputs']['tone']>;
+type Length = NonNullable<GenerateCvRequest['inputs']['length']>;
 
 export function RefineToolsBlock() {
   const [tone, setTone] = useState<Tone>('impact');
@@ -30,13 +32,18 @@ export function RefineToolsBlock() {
   const [extraInstructions, setExtraInstructions] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
 
-  const { result, jdText, cvText, language, isGeneratingCv, setField } = useAnalysis();
+  const source = useResolvedSource();
+  const { result } = useSourceData();
+  const { setMatchedCv, setRefineNotes } = useSourceSetters(source);
+  const { jdText, cvText, language, isGeneratingCv, targetRoleConfirmed, setField } = useAnalysis();
   const { provider, model, temperature, baseUrl } = useSettings();
 
-  const canRegenerate = result !== null && !isGeneratingCv;
+  // Job Fit refine flow lives in RefinedCvModeBanner (it has the Job context).
+  // RefineToolsBlock supports only analyze + jd-matching sources.
+  const canRegenerate = result !== null && !isGeneratingCv && (source === 'analyze' || source === 'jd-matching');
 
   async function handleRegenerate() {
-    if (!result) return;
+    if (!result || (source !== 'analyze' && source !== 'jd-matching')) return;
     setLocalError(null);
     setField('isGeneratingCv', true);
 
@@ -47,23 +54,43 @@ export function RefineToolsBlock() {
       ...(baseUrl ? { baseUrl } : {}),
     };
 
-    const payload: GenerateCvRequest = {
-      llm,
-      inputs: {
-        jdText,
-        cvText,
-        language,
-        tone,
-        length,
-        ...(extraInstructions.trim() ? { extraInstructions: extraInstructions.trim() } : {}),
-      },
-      analysisSummary: result.summary,
-    };
-
     try {
-      const { markdown, refineNotes } = await callGenerateCv(payload);
-      setField('matchedCv', markdown);
-      setField('refineNotes', refineNotes);
+      let markdown: string;
+      let refineNotes: string | null;
+
+      if (source === 'analyze') {
+        const findings = buildV3Findings(result, targetRoleConfirmed ?? '');
+        const res = await callGenerateCvV3({
+          llm,
+          cvText,
+          language,
+          findings,
+          tone,
+          length,
+          ...(extraInstructions.trim() ? { extraInstructions: extraInstructions.trim() } : {}),
+        });
+        markdown = res.markdown;
+        refineNotes = res.refineNotes;
+      } else {
+        const payload: GenerateCvRequest = {
+          llm,
+          inputs: {
+            jdText,
+            cvText,
+            language,
+            tone,
+            length,
+            ...(extraInstructions.trim() ? { extraInstructions: extraInstructions.trim() } : {}),
+          },
+          analysisSummary: result.summary,
+        };
+        const res = await callGenerateCv(payload);
+        markdown = res.markdown;
+        refineNotes = res.refineNotes;
+      }
+
+      setMatchedCv(markdown);
+      setRefineNotes(refineNotes);
     } catch (err) {
       setLocalError(err instanceof Error ? err.message : 'Regeneration failed.');
     } finally {

@@ -22,7 +22,8 @@ import { AlternativePathsBlock } from './alternative-paths-block';
 import { QuickWinsBlock } from './quick-wins-block';
 
 export function CareerPathPage() {
-  const { cvText, result: analysisResult, language } = useAnalysis();
+  const { cvText, language } = useAnalysis();
+  const analysisResult = useAnalysis((s) => s.analyzeResult ?? s.jdMatchResult);
   const { provider, model, temperature, baseUrl } = useSettings();
   const {
     suggestions,

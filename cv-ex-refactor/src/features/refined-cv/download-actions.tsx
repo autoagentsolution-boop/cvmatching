@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui';
-import { useAnalysis } from '@/features/analyze/analysis-store';
+import { useSourceData } from './use-source-resolver';
 
 /**
  * Locked decision #4: .md and .html downloads only. No PDF.
@@ -37,7 +37,7 @@ function buildHtmlDocument(markdown: string): string {
 }
 
 export function DownloadActions() {
-  const matchedCv = useAnalysis((s) => s.matchedCv);
+  const { matchedCv } = useSourceData();
 
   if (!matchedCv) return null;
 

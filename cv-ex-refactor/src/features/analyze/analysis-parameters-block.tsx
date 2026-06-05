@@ -99,19 +99,31 @@ function SliderCell({ label, value, onValueChange, description, disabled = false
   );
 }
 
-export function AnalysisParametersBlock() {
-  const { weights, language, result, setField } = useAnalysis();
+type Source = 'analyze' | 'jd-matching';
+
+interface AnalysisParametersBlockProps {
+  /** Source slot to read result/weights from + write weights to.
+   *  Default 'analyze' for back-compat (AnalyzePage callers). */
+  source?: Source;
+}
+
+export function AnalysisParametersBlock({ source = 'analyze' }: AnalysisParametersBlockProps) {
+  const isAnalyzeSource = source === 'analyze';
+  const result = useAnalysis((s) => (isAnalyzeSource ? s.analyzeResult : s.jdMatchResult));
+  const weights = useAnalysis((s) => (isAnalyzeSource ? s.analyzeWeights : s.jdMatchWeights));
+  const { language, setField } = useAnalysis();
   const [resetFlash, setResetFlash] = useState(false);
 
+  const weightsKey: 'analyzeWeights' | 'jdMatchWeights' = isAnalyzeSource ? 'analyzeWeights' : 'jdMatchWeights';
   const hasAnalyzed = result !== null;
 
   function setWeight(key: keyof Weights, val: number) {
-    setField('weights', { ...weights, [key]: val });
+    setField(weightsKey, { ...weights, [key]: val });
   }
 
   function resetToAiScores() {
     if (!result) return;
-    setField('weights', hydrateWeightsFromResult(result));
+    setField(weightsKey, hydrateWeightsFromResult(result));
     setResetFlash(true);
     setTimeout(() => setResetFlash(false), 1500);
   }

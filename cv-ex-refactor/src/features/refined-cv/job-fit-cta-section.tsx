@@ -9,13 +9,13 @@
 import { useRouter } from 'next/navigation';
 import { MdWork } from 'react-icons/md';
 import { Button, Card } from '@/components/ui';
-import { useAnalysis } from '@/features/analyze/analysis-store';
+import { useSourceData } from './use-source-resolver';
 
 const SESSION_KEY = 'refined-cv-text:v1';
 
 export function JobFitCtaSection() {
   const router = useRouter();
-  const { matchedCv } = useAnalysis();
+  const { matchedCv } = useSourceData();
 
   if (!matchedCv) return null;
 

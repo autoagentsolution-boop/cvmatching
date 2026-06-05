@@ -8,42 +8,8 @@ import { useAnalysis } from '@/features/analyze/analysis-store';
 import { useSettings } from '@/features/analyze/settings-store';
 import { callGenerateCv, callGenerateCvV3 } from '@/features/analyze/api-client';
 import { recomputeOverall } from '@/lib/scoring/recompute-overall';
-import type { AnalysisResult, GenerateCvRequest } from '@/features/analyze/types';
-
-/**
- * v0.4 helper: extract the analyze-findings payload the v3 refine prompt
- * needs from the existing AnalysisResult shape. Pure derivation — no LLM
- * call — so the refine prompt is anchored to the SAME analyze findings the
- * user is looking at on the result page (no drift).
- */
-function buildV3Findings(result: AnalysisResult, role: string) {
-  const strengths = result.strengths
-    .map((s) => [s.title, s.evidence].filter(Boolean).join(' — '))
-    .filter((s) => s.length > 0)
-    .slice(0, 8);
-  const wordingGaps = result.gaps
-    .filter((g) => g.type === 'wording')
-    .map((g) => [g.title, g.recommendation, g.fixAction].filter(Boolean).join(' — '))
-    .filter((s) => s.length > 0)
-    .slice(0, 8);
-  const recommendations = result.recommendations
-    .map((r) => [r.title, r.action].filter(Boolean).join(' — '))
-    .filter((s) => s.length > 0)
-    .slice(0, 8);
-  // Dimensions scoring under 60 are the ones the refine prompt should focus on.
-  const weakDimensions = result.metrics
-    .filter((m) => m.score < 60)
-    .map((m) => m.name)
-    .slice(0, 9);
-  return {
-    role: role || result.detectedRole || 'Target role',
-    strengths,
-    wordingGaps,
-    recommendations,
-    ...(result.suggestedSummaryLine ? { suggestedSummaryLine: result.suggestedSummaryLine } : {}),
-    weakDimensions,
-  };
-}
+import { buildV3Findings } from '@/features/analyze/build-v3-findings';
+import type { GenerateCvRequest } from '@/features/analyze/types';
 import { KeywordCoverageBlock } from './keyword-coverage-block';
 import { MatchScoreBlock } from './match-score-block';
 import { OptimizationPathsBlock } from './optimization-paths-block';
@@ -59,11 +25,23 @@ const TABS = [
   { id: 'recommendations', label: 'Recommendations' },
 ];
 
-export function ResultsSection() {
-  const {
-    result, weights, matchedCv, isAnalyzing, isGeneratingCv, error,
-    jdText, profileText, language, targetRoleConfirmed, inferredRole, setField,
-  } = useAnalysis();
+type ResultsSource = 'analyze' | 'jd-matching';
+
+interface ResultsSectionProps {
+  /** Which source's slot to read/write. analyze-page → 'analyze',
+   *  jd-matching-page → 'jd-matching'. Drives per-source store namespacing
+   *  + Generate CV dispatch (v3 vs v2) + Refined CV deep-link `?from=`. */
+  source: ResultsSource;
+}
+
+export function ResultsSection({ source }: ResultsSectionProps) {
+  // Per-source slot selection — same store, different keys per page.
+  const isAnalyzeSource = source === 'analyze';
+  const result = useAnalysis((s) => (isAnalyzeSource ? s.analyzeResult : s.jdMatchResult));
+  const weights = useAnalysis((s) => (isAnalyzeSource ? s.analyzeWeights : s.jdMatchWeights));
+  const matchedCv = useAnalysis((s) => (isAnalyzeSource ? s.analyzeMatchedCv : s.jdMatchMatchedCv));
+  const { isAnalyzing, isGeneratingCv, error, profileText, language, targetRoleConfirmed, inferredRole, setField } =
+    useAnalysis();
   const { provider, model, temperature, baseUrl } = useSettings();
   const [activeTab, setActiveTab] = useState('optimization');
   const [genError, setGenError] = useState<string | null>(null);
@@ -79,15 +57,16 @@ export function ResultsSection() {
   if (!result) return null;
 
   const displayed = recomputeOverall(weights);
-  // v0.4: when user has a v3 analyze result (no jdText), the "Generate
-  // refined CV" CTA routes to /api/generate-cv with the v3 body shape
-  // (`findings` instead of `jdText`). The server prompt rewrites the CV
-  // optimised for the candidate's claimed role using the analyze findings,
-  // then RefinedCvView renders + JobFitCtaSection offers "find jobs with
-  // this refined CV" as the next step (Analyze → Refined → Job Fit chain).
-  const hasJd = jdText.trim().length > 0;
-  const canGenerateV2 = hasJd;
-  const canGenerateV3 = !hasJd && !!targetRoleConfirmed;
+  // v0.4 Generate-CV dispatch is now driven by `source`, not jdText presence.
+  // analyze-page (v3 CV-solo) → callGenerateCvV3 + findings derivation.
+  // jd-matching-page (v2 CV-vs-JD) → callGenerateCv with jdText.
+  const canGenerateV2 = !isAnalyzeSource;
+  const canGenerateV3 = isAnalyzeSource && !!targetRoleConfirmed;
+  const resultFieldKey: 'analyzeResult' | 'jdMatchResult' = isAnalyzeSource ? 'analyzeResult' : 'jdMatchResult';
+  const weightsFieldKey: 'analyzeWeights' | 'jdMatchWeights' = isAnalyzeSource ? 'analyzeWeights' : 'jdMatchWeights';
+  const matchedCvFieldKey: 'analyzeMatchedCv' | 'jdMatchMatchedCv' = isAnalyzeSource ? 'analyzeMatchedCv' : 'jdMatchMatchedCv';
+  const refineNotesFieldKey: 'analyzeRefineNotes' | 'jdMatchRefineNotes' = isAnalyzeSource ? 'analyzeRefineNotes' : 'jdMatchRefineNotes';
+  const refinedCvHref = `/refined-cv?from=${source}`;
 
   async function handleOverrideRole(newRole: string) {
     setField('isAnalyzing', true);
@@ -109,10 +88,11 @@ export function ResultsSection() {
         setField('roleCandidates', response.candidates);
         return;
       }
-      setField('result', response);
+      setField(resultFieldKey, response);
       setField('targetRoleConfirmed', response.targetRole);
       if (response.inferredRole) setField('inferredRole', response.inferredRole);
-      setField('weights', hydrateWeightsFromResult(response));
+      setField(weightsFieldKey, hydrateWeightsFromResult(response));
+      setField('activeResultSource', source);
       // Keep Job Fit's CV view in sync after a role-override re-analyze too.
       try { sessionStorage.setItem('refined-cv-text:v1', cvText); } catch {
         // best-effort
@@ -140,8 +120,8 @@ export function ResultsSection() {
       let markdown: string;
       let refineNotes: string | null;
 
-      if (hasJd) {
-        // Legacy v2 CV-vs-JD path.
+      if (!isAnalyzeSource) {
+        // JD Matching (v2) CV-vs-JD path.
         const payload: GenerateCvRequest = {
           llm,
           inputs: {
@@ -171,8 +151,8 @@ export function ResultsSection() {
         refineNotes = res.refineNotes;
       }
 
-      setField('matchedCv', markdown);
-      setField('refineNotes', refineNotes);
+      setField(matchedCvFieldKey, markdown);
+      setField(refineNotesFieldKey, refineNotes);
     } catch (err) {
       setGenError(err instanceof Error ? err.message : 'Failed to generate CV.');
     } finally {
@@ -186,7 +166,7 @@ export function ResultsSection() {
   // (v3 by default, v2 legacy when jdText is present).
   const headerAction = matchedCv ? (
     <Button variant="primary" size="sm" asChild>
-      <Link href="/refined-cv">Mở Refined CV →</Link>
+      <Link href={refinedCvHref}>Mở Refined CV →</Link>
     </Button>
   ) : (canGenerateV2 || canGenerateV3) ? (
     <Button variant="primary" size="sm" loading={isGeneratingCv} onClick={handleGenerateCv}>
@@ -222,7 +202,7 @@ export function ResultsSection() {
         }
         asideWidth="md"
       >
-        {targetRoleConfirmed && (
+        {isAnalyzeSource && targetRoleConfirmed && (
           <div className="mb-6">
             <InferredRoleBanner
               role={targetRoleConfirmed}
