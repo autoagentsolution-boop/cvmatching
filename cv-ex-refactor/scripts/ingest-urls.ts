@@ -46,7 +46,7 @@ function stripHtml(s: string): string {
     .trim();
 }
 
-async function urlToJobInput(url: string): Promise<JobInput | null> {
+export async function urlToJobInput(url: string): Promise<JobInput | null> {
   let html: string;
   try {
     const r = await fetch(url, { headers: { 'user-agent': UA, accept: 'text/html' } });
