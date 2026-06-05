@@ -5,6 +5,7 @@ import { cn } from '@/lib/cn';
 export type ActiveNav =
   | 'dashboard'
   | 'analyze'
+  | 'jd-matching'
   | 'refined-cv'
   | 'history'
   | 'optimizations'
@@ -27,6 +28,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { key: 'dashboard', label: 'Dashboard', icon: 'home', href: '/' },
   { key: 'analyze', label: 'Analyze', icon: 'analytics', href: '/analyze' },
+  { key: 'jd-matching', label: 'JD Matching', icon: 'compare_arrows', href: '/jd-matching' },
   { key: 'refined-cv', label: 'Refined CV', icon: 'description', href: '/refined-cv' },
   { key: 'career-path', label: 'Career Path', icon: 'psychology', href: '/career-path' },
   { key: 'history', label: 'History', icon: 'history', href: '/history' },

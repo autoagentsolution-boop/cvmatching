@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useRef } from 'react';
 import { MdClose, MdRefresh } from 'react-icons/md';
 import { Badge, Button, ErrorState, LoadingState } from '@/components/ui';
 import { useAnalysis } from './analysis-store';
@@ -47,18 +47,10 @@ export function MustHavesBlock() {
     }
   }, [jdText, language, provider, model, temperature, baseUrl, setField]);
 
-  // Auto-fire once when JD becomes long enough and we have no extraction yet.
-  useEffect(() => {
-    if (
-      jdText.trim().length >= MIN_JD_LENGTH &&
-      mustHaves.length === 0 &&
-      !isExtractingMustHaves &&
-      !mustHavesError &&
-      lastExtractedRef.current !== jdText
-    ) {
-      runExtract();
-    }
-  }, [jdText, mustHaves.length, isExtractingMustHaves, mustHavesError, runExtract]);
+  // Per [[feedback_no_auto_llm_calls]]: never auto-fire LLM calls on state
+  // change. Must-have extraction now strictly user-driven via the
+  // "Extract from JD" / "Re-extract" button below. lastExtractedRef stays
+  // for future dedupe if we ever add a confirm-before-re-extract flow.
 
   function removeChip(value: string) {
     setField(
