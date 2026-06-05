@@ -37,7 +37,7 @@ export function AnalyzePage() {
 
       <AnalysisParametersBlock />
 
-      <ResultsSection />
+      <ResultsSection source="analyze" />
     </FormPageLayout>
   );
 }
