@@ -8,9 +8,8 @@
 
 import { parseJobPostingLd, type JobPostingLd } from '../src/lib/scrape/vl24h-parser.js';
 import { ingestEntries } from './ingest-file.js';
+import { fetchViaCurl, assertCurlAvailable } from './fetch-via-curl.js';
 import type { Job, JobInput } from '../src/lib/jobs/types.js';
-
-const UA = 'Mozilla/5.0 (compatible; CVMatching/0.4 ingest)';
 
 function detectSource(url: string): Job['source'] {
   const u = url.toLowerCase();
@@ -49,12 +48,12 @@ function stripHtml(s: string): string {
 export async function urlToJobInput(url: string): Promise<JobInput | null> {
   let html: string;
   try {
-    const r = await fetch(url, { headers: { 'user-agent': UA, accept: 'text/html' } });
-    if (!r.ok) {
+    const r = await fetchViaCurl(url);
+    if (r.status < 200 || r.status >= 300) {
       console.warn(`[ingest urls] HTTP ${r.status} for ${url}`);
       return null;
     }
-    html = await r.text();
+    html = r.body;
   } catch (err) {
     console.warn(`[ingest urls] Fetch failed for ${url}: ${err instanceof Error ? err.message : err}`);
     return null;
@@ -105,6 +104,8 @@ export async function run(args: string[]): Promise<void> {
     console.error('[ingest urls] Usage: pnpm run ingest urls <url> [<url> ...]');
     process.exit(1);
   }
+
+  await assertCurlAvailable();
 
   const entries: JobInput[] = [];
   for (let i = 0; i < args.length; i++) {

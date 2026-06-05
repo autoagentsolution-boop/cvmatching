@@ -14,26 +14,27 @@
 
 import { ingestEntries } from './ingest-file.js';
 import { urlToJobInput } from './ingest-urls.js';
+import { fetchViaCurl, assertCurlAvailable } from './fetch-via-curl.js';
 import type { JobInput } from '../src/lib/jobs/types.js';
 
-const UA =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 const LISTING_DELAY_MS = 1500;
 const DETAIL_DELAY_MS = 1000;
-const FETCH_TIMEOUT_MS = 15000;
 
 interface ParsedArgs {
   categories: string[];
   pagesPerCategory: number;
+  dryRun: boolean;
 }
 
 function parseArgs(argv: string[]): ParsedArgs {
-  const out: ParsedArgs = { categories: [], pagesPerCategory: 1 };
+  const out: ParsedArgs = { categories: [], pagesPerCategory: 1, dryRun: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!;
     if (a === '--pages') {
       const n = parseInt(argv[++i] ?? '1', 10);
       out.pagesPerCategory = Number.isFinite(n) && n > 0 ? n : 1;
+    } else if (a === '--dry-run') {
+      out.dryRun = true;
     } else {
       out.categories.push(a);
     }
@@ -43,23 +44,13 @@ function parseArgs(argv: string[]): ParsedArgs {
 
 async function fetchListing(category: string, page: number): Promise<string | null> {
   const url = `https://itviec.com/it-jobs/${category}${page > 1 ? `?page=${page}` : ''}`;
-  const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), FETCH_TIMEOUT_MS);
   try {
-    const r = await fetch(url, {
-      headers: {
-        'user-agent': UA,
-        accept: 'text/html,application/xhtml+xml,application/xml;q=0.9',
-        'accept-language': 'vi-VN,vi;q=0.9,en;q=0.8',
-      },
-      redirect: 'follow',
-      signal: ctl.signal,
-    });
-    if (!r.ok) {
+    const r = await fetchViaCurl(url);
+    if (r.status < 200 || r.status >= 300) {
       console.warn(`[ingest itviec] listing ${category} p${page}: HTTP ${r.status}`);
       return null;
     }
-    return await r.text();
+    return r.body;
   } catch (err) {
     console.warn(
       `[ingest itviec] listing ${category} p${page} fetch failed: ${
@@ -67,8 +58,6 @@ async function fetchListing(category: string, page: number): Promise<string | nu
       }`,
     );
     return null;
-  } finally {
-    clearTimeout(timer);
   }
 }
 
@@ -137,18 +126,23 @@ async function discoverUrls(
 }
 
 export async function run(args: string[]): Promise<void> {
-  const { categories, pagesPerCategory } = parseArgs(args);
+  const { categories, pagesPerCategory, dryRun } = parseArgs(args);
   if (categories.length === 0) {
     console.error(
-      '[ingest itviec] Usage: pnpm run ingest itviec <category-slug> [<slug>...] [--pages N]\n' +
+      '[ingest itviec] Usage: pnpm run ingest itviec <category-slug> [<slug>...] [--pages N] [--dry-run]\n' +
         '  Example: pnpm run ingest itviec data-engineer senior-data-engineer --pages 2\n' +
+        '  --dry-run: discover URLs only, skip detail fetch + ingest\n' +
         '  Discover slugs from https://itviec.com/it-jobs nav menu.',
     );
     process.exit(1);
   }
 
+  await assertCurlAvailable();
+
   console.log(
-    `[ingest itviec] Discovering: ${categories.join(', ')} × ${pagesPerCategory} page(s)`,
+    `[ingest itviec] Discovering: ${categories.join(', ')} × ${pagesPerCategory} page(s)${
+      dryRun ? ' (--dry-run)' : ''
+    }`,
   );
   const urls = await discoverUrls(categories, pagesPerCategory);
   console.log(`\n[ingest itviec] Discovered ${urls.length} unique job-detail URLs\n`);
@@ -156,6 +150,12 @@ export async function run(args: string[]): Promise<void> {
   if (urls.length === 0) {
     console.error('[ingest itviec] No URLs discovered. Check slugs are valid on itviec.com.');
     process.exit(1);
+  }
+
+  if (dryRun) {
+    for (const u of urls) console.log(u);
+    console.log(`\n[ingest itviec] --dry-run: printed ${urls.length} URLs, skipping ingest.`);
+    return;
   }
 
   const entries: JobInput[] = [];
