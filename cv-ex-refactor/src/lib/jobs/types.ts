@@ -33,6 +33,13 @@ export interface Job {
    * non-empty (no fake empty-state clutter while ingest catches up).
    */
   mustHaves?: string[];
+  /**
+   * v0.4 Phase A — slug pointing to the resolved Company entity in
+   * `co:{slug}` KV namespace. Optional: existing 150 live jobs read with
+   * `undefined` until backfill script attaches them (Phase 02). New
+   * ingests carry it through from `resolveCompany()` at write time.
+   */
+  companyId?: string;
 }
 
 // Input shape from seed JSON / CLI paste — fields filled at ingest time are omitted.

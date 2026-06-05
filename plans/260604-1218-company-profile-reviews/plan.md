@@ -14,7 +14,31 @@ effort: 14-22h (Phase A 6-9h, Phase B 5-8h, Phase C deferred post-pilot)
 
 ## Status
 
-Pending — brainstorm + 4 locked decisions in `reports/brainstorm-260604-1218-company-profile-reviews.md`. Phase files (01-07) to be fleshed out next; Phase 08 deferred to post-pilot Postgres migration plan.
+In-progress as of 2026-06-05 14:10 ICT. Brainstorm + 4 original locked decisions in `reports/brainstorm-260604-1218-company-profile-reviews.md`. 5 additional decisions locked this session (see below).
+
+## Locked decisions — session 2026-06-05 14:10
+
+| # | Decision | Source |
+|---|---|---|
+| L1 | **Rating sources:** scrape ITviec/TopCV/VNW company section (primary) + Google search link-out (fallback). Drop Glassdoor/LinkedIn official APIs (enterprise-gated, $6K+/mo); defer Google Places API ($144/yr) until pilot shows ≥30% of companies have Maps listings | Q1 answer + research-260605-1407 |
+| L2 | **LLM enrichment trigger:** hybrid — lazy on first detail-page open per company (30d cache) + weekly cron that refreshes only companies with ≥1 active job in last 7d. Avoids pre-warming dead companies | Q2 answer |
+| L3 | **Backfill 150 existing jobs with `companyId`:** mixed strategy — auto-merge at ≥0.95 LLM confidence, queue 0.7-0.95 for admin review, mint-new for <0.7. ~1h LLM (~$0.50) + 1-2h admin review labor. Run as one-off script in Phase 02 | Q3 answer + spec §7 |
+| L4 | **Stale UX:** show "Updated Nd ago" stamp only when tier1 expired (>90d); silent when fresh. Admin dashboard sees stamp always | Q4 answer |
+| L5 | **Admin refresh tool:** 3 entry points — CLI (`pnpm run company-refresh`), Admin UI button, weekly cron (`/api/companies/refresh-cron`, Sunday 03:00 ICT). All call same `refreshCompany(slug, opts)` lib (DRY) | Phase A intent + spec §11 |
+
+## Inspirations from `job_intelligence_local_spec.html` (2026-06-05 reference)
+
+Port these patterns into CVMatching TypeScript codebase (not building separate Python tool):
+
+- **3-level dedup ladder** (canonical_url → source_job_id → company+title+location → fuzzy ≥0.90 company / ≥0.85 title / ≥0.75 JD) — already aligned with plan's ≥0.95 auto-merge, additional fuzzy tier added for Phase 02
+- **Normalization rules** — VN-specific: strip "Cty/TNHH/JSC/Cổ phần/Ltd/Inc"; map "HCMC/Saigon/Hồ Chí Minh" → "ho chi minh city" — port into `lib/companies/normalize.ts` + new `lib/jobs/normalize-location.ts`
+- **"Never auto-delete duplicates, mark with duplicate_group_id"** — matches existing `feedback_ingest_freshness_constraint`
+- **Adapter-based source design** — already in `lib/scrape/sources/*`
+- **`review_link` as Google search URL placeholder** — Phase 03 uses this for Glassdoor/Indeed link-out
+
+## Today's scope (2026-06-05, ~6-9h)
+
+Phase 01 (entity) → Phase 02 (ingest tier1 + backfill 150) → Phase 04 (UI company card). Phase 03 (external ratings scrape) + Phase 05 (LLM enrichment endpoint) deferred to next session for careful bot-risk handling.
 
 ## Problem
 
