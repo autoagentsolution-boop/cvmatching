@@ -42,13 +42,17 @@ export async function fetchViaCurl(url: string, opts: CurlOptions = {}): Promise
   const acceptLanguage = opts.acceptLanguage ?? 'vi-VN,vi;q=0.9,en;q=0.8';
   const timeoutSec = Math.ceil((opts.timeoutMs ?? DEFAULT_TIMEOUT_MS) / 1000);
 
+  // NOTE on encoding: Windows-bundled curl.exe lacks brotli; advertising `br`
+  // and using --compressed makes the server send brotli that curl can't
+  // decode → "Unrecognized content encoding" (exit 61). Stick to gzip+deflate
+  // which both Windows curl and Linux/macOS curl support universally.
   const args = [
     '-sSL',
     '--max-time', String(timeoutSec),
     '-A', ua,
     '-H', `Accept-Language: ${acceptLanguage}`,
     '-H', 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    '-H', 'Accept-Encoding: gzip, deflate, br',
+    '-H', 'Accept-Encoding: gzip, deflate',
     '--compressed',
     '--write-out', '\n__CURL_STATUS__:%{http_code}',
     url,
