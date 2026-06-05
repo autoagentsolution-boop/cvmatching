@@ -447,6 +447,22 @@ vercel env ls production | findstr DISABLE_SHARED_KEY
 
 **Step 4 — Smoke** (walks the full v0.4 CV-Solo chain end-to-end):
 
+0. **Pre-flight (run BEFORE lifting any switch):** verify cost-alert webhook
+   reaches your device end-to-end. If `ALERT_WEBHOOK_URL` is marked
+   "Sensitive" in Vercel (recommended), `vercel env pull` will mask the
+   value — feed it via stdin instead:
+
+   ```powershell
+   cd cv-ex-refactor
+   $secure = Read-Host "Paste Pushover URL" -AsSecureString
+   $env:ALERT_WEBHOOK_URL = [System.Net.NetworkCredential]::new('', $secure).Password
+   pnpm tsx scripts/test-cost-alert.ts
+   $env:ALERT_WEBHOOK_URL = $null; Remove-Variable secure
+   ```
+
+   Expect `OK [Pushover] 200` + one push within ~5s. Fails here mean prod
+   cost-kill events will silently no-op — DO NOT proceed to Step 1 reopen.
+
 1. Open private/incognito browser → `https://resume-refactor.vercel.app`
 2. Click **"Đăng nhập với Google"** in topnav → complete OAuth
 3. `/analyze`: paste CV-only (no JD field exists in v0.4) → Analyze → 9 sliders

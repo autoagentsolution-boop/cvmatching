@@ -54,3 +54,5 @@ plans/**/probe-*.json
 plans/**/*next-data*.json
 plans/**/diag-*.mts
 !plans/**/plan.md
+
+.env*
