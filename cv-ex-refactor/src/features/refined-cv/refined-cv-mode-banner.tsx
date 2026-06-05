@@ -8,6 +8,7 @@ import { useSettings } from '@/features/analyze/settings-store';
 import { useJobFit } from '@/features/job-fit/job-fit-store';
 import { callGenerateCv } from '@/features/analyze/api-client';
 import type { CvMode, GenerateCvRequest } from '@/features/analyze/types';
+import { useSourceData } from './use-source-resolver';
 
 const MODE_COPY: Record<CvMode, { label: string; verb: string; tone: string }> = {
   apply: {
@@ -42,7 +43,10 @@ export function RefinedCvModeBanner() {
   const mode = isCvMode(modeParam) ? modeParam : null;
 
   const { jobs } = useJobFit();
-  const { cvText, language, profileText, isGeneratingCv, jobFitMatchedCv, setField } = useAnalysis();
+  // Job Fit refine context: CV bridges via sessionStorage (mirror of last
+  // Analyze/JD-Match write). See use-source-resolver for the contract.
+  const { cvText } = useSourceData();
+  const { language, profileText, isGeneratingCv, jobFitMatchedCv, setField } = useAnalysis();
   const matchedCv = jobFitMatchedCv;
   const { provider, model, temperature, baseUrl } = useSettings();
 

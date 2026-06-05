@@ -36,10 +36,11 @@ afterEach(() => {
 });
 
 describe('CURRENT_STORAGE_KEY + LEGACY_STORAGE_KEYS', () => {
-  it('exposes v3 as current and v1/v2 as legacy (no overlap)', () => {
-    expect(CURRENT_STORAGE_KEY).toBe('cv-ex-analysis-v3');
+  it('exposes v4 as current and v1/v2/v3 as legacy (no overlap)', () => {
+    expect(CURRENT_STORAGE_KEY).toBe('cv-ex-analysis-v4');
     expect(LEGACY_STORAGE_KEYS).toContain('cv-ex-analysis-v1');
     expect(LEGACY_STORAGE_KEYS).toContain('cv-ex-analysis-v2');
+    expect(LEGACY_STORAGE_KEYS).toContain('cv-ex-analysis-v3');
     expect(LEGACY_STORAGE_KEYS).not.toContain(CURRENT_STORAGE_KEY);
   });
 });

@@ -33,7 +33,7 @@ export function AnalyzePage() {
       actionsSlot={<AnalyzeActions />}
     >
       <ReAnalyzeBanner />
-      <CvInputBlock />
+      <CvInputBlock source="analyze" />
 
       <AnalysisParametersBlock />
 

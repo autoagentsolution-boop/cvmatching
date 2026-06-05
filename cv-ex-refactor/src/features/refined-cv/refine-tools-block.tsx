@@ -33,9 +33,9 @@ export function RefineToolsBlock() {
   const [localError, setLocalError] = useState<string | null>(null);
 
   const source = useResolvedSource();
-  const { result } = useSourceData();
+  const { result, cvText } = useSourceData();
   const { setMatchedCv, setRefineNotes } = useSourceSetters(source);
-  const { jdText, cvText, language, isGeneratingCv, targetRoleConfirmed, setField } = useAnalysis();
+  const { jdText, language, isGeneratingCv, targetRoleConfirmed, setField } = useAnalysis();
   const { provider, model, temperature, baseUrl } = useSettings();
 
   // Job Fit refine flow lives in RefinedCvModeBanner (it has the Job context).

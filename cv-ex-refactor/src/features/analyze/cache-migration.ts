@@ -9,10 +9,10 @@
 //
 // See plans/260604-1356-v04-cv-solo-analyze-pivot/phase-06-cache-version-bump.md
 
-export const CURRENT_STORAGE_KEY = 'cv-ex-analysis-v3' as const;
+export const CURRENT_STORAGE_KEY = 'cv-ex-analysis-v4' as const;
 
 /** Older keys, oldest first. Each gets cleaned on dismissal. */
-export const LEGACY_STORAGE_KEYS = ['cv-ex-analysis-v1', 'cv-ex-analysis-v2'] as const;
+export const LEGACY_STORAGE_KEYS = ['cv-ex-analysis-v1', 'cv-ex-analysis-v2', 'cv-ex-analysis-v3'] as const;
 
 const DISMISS_FLAG_KEY = 'cv-ex-analysis-banner-dismissed';
 

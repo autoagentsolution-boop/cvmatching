@@ -40,6 +40,7 @@ export function ResultsSection({ source }: ResultsSectionProps) {
   const result = useAnalysis((s) => (isAnalyzeSource ? s.analyzeResult : s.jdMatchResult));
   const weights = useAnalysis((s) => (isAnalyzeSource ? s.analyzeWeights : s.jdMatchWeights));
   const matchedCv = useAnalysis((s) => (isAnalyzeSource ? s.analyzeMatchedCv : s.jdMatchMatchedCv));
+  const cvText = useAnalysis((s) => (isAnalyzeSource ? s.analyzeCvText : s.jdMatchCvText));
   const { isAnalyzing, isGeneratingCv, error, profileText, language, targetRoleConfirmed, inferredRole, setField } =
     useAnalysis();
   const { provider, model, temperature, baseUrl } = useSettings();
@@ -76,11 +77,11 @@ export function ResultsSection({ source }: ResultsSectionProps) {
         provider, model, temperature,
         ...(baseUrl ? { baseUrl } : {}),
       };
-      const cvText = useAnalysis.getState().cvText.trim();
+      const trimmedCv = cvText.trim();
       const language = useAnalysis.getState().language;
       const profileText = useAnalysis.getState().profileText.trim();
       const response = await callAnalyzeV3({
-        cvText, llm, language, role: newRole,
+        cvText: trimmedCv, llm, language, role: newRole,
         ...(profileText ? { profileText } : {}),
       });
       if (isNeedsRoleConfirm(response)) {
@@ -94,7 +95,7 @@ export function ResultsSection({ source }: ResultsSectionProps) {
       setField(weightsFieldKey, hydrateWeightsFromResult(response));
       setField('activeResultSource', source);
       // Keep Job Fit's CV view in sync after a role-override re-analyze too.
-      try { sessionStorage.setItem('refined-cv-text:v1', cvText); } catch {
+      try { sessionStorage.setItem('refined-cv-text:v1', trimmedCv); } catch {
         // best-effort
       }
     } catch (err) {
@@ -126,7 +127,7 @@ export function ResultsSection({ source }: ResultsSectionProps) {
           llm,
           inputs: {
             jdText: useAnalysis.getState().jdText,
-            cvText: useAnalysis.getState().cvText,
+            cvText,
             language: useAnalysis.getState().language,
             tone: 'impact',
             length: 'medium',
@@ -142,7 +143,7 @@ export function ResultsSection({ source }: ResultsSectionProps) {
         const trimmedProfile = profileText.trim();
         const res = await callGenerateCvV3({
           llm,
-          cvText: useAnalysis.getState().cvText,
+          cvText,
           language,
           findings,
           ...(trimmedProfile ? { profileText: trimmedProfile } : {}),

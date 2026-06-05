@@ -22,8 +22,17 @@ interface AnalysisState {
   // ── shared inputs / settings (same across all sources) ─────────────────
   jdText: string;
   jdUrl: string;
-  cvText: string;
   profileText: string;
+
+  // ── per-source CV inputs ───────────────────────────────────────────────
+  // Users can keep different CVs for Analyze (general role) vs JD Matching
+  // (tailored to a specific JD). Job Fit context CV bridges via
+  // sessionStorage['refined-cv-text:v1'] — written by Analyze/JD-Match on
+  // run success; Job Fit list + Refined CV (jobId path) + CoverLetterBlock
+  // all read that key.
+  analyzeCvText: string;
+  jdMatchCvText: string;
+
   targetRole: RoleFamily;
   strictness: Strictness;
   language: Language;
@@ -85,8 +94,9 @@ const ZERO_WEIGHTS: Weights = {
 const initial: Omit<AnalysisState, 'setField' | 'reset'> = {
   jdText: '',
   jdUrl: '',
-  cvText: '',
   profileText: '',
+  analyzeCvText: '',
+  jdMatchCvText: '',
   targetRole: 'auto',
   strictness: 'balanced',
   language: 'auto',
@@ -137,8 +147,9 @@ export const useAnalysis = create<AnalysisState>()(
       partialize: (s) => ({
         jdText: s.jdText,
         jdUrl: s.jdUrl,
-        cvText: s.cvText,
         profileText: s.profileText,
+        analyzeCvText: s.analyzeCvText,
+        jdMatchCvText: s.jdMatchCvText,
         targetRole: s.targetRole,
         strictness: s.strictness,
         language: s.language,

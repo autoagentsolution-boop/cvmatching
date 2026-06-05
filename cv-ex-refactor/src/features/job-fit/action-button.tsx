@@ -21,6 +21,7 @@ function refinedHref(jobId: string, mode: CvMode): string {
 function careerHref(job: JobMatchOut): string {
   const topGaps = job.studyTopics.slice(0, 3).map((t) => t.name).join('|');
   const params = new URLSearchParams({
+    from: 'job-fit',
     target: `${job.title} @ ${job.company}`,
     skillGaps: topGaps,
   });

@@ -26,7 +26,7 @@ function writeCvForJobFit(cvText: string): void {
 
 export function AnalyzeActions() {
   const {
-    cvText,
+    analyzeCvText: cvText,
     profileText,
     language,
     isAnalyzing,

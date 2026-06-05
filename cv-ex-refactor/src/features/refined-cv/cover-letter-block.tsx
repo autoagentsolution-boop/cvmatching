@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MdAutoAwesome } from 'react-icons/md';
 import { Button, Card, ErrorState, LoadingState, MarkdownView } from '@/components/ui';
 import { useAnalysis } from '@/features/analyze/analysis-store';
 import { useSettings } from '@/features/analyze/settings-store';
 import { useJobFit } from '@/features/job-fit/job-fit-store';
+import { JOB_FIT_CV_SESSION_KEY } from './use-source-resolver';
 import type { CoverLetterBodyT } from '@/lib/schemas/cover-letter-request';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
@@ -46,7 +47,18 @@ interface CoverLetterBlockProps {
 // Pilot quota: 3/day for logged-in users (consume-quota.ts), 0 for anonymous.
 export function CoverLetterBlock({ jobId }: CoverLetterBlockProps) {
   const { jobs } = useJobFit();
-  const { cvText, language } = useAnalysis();
+  const { language } = useAnalysis();
+  // Job Fit context CV — sessionStorage bridge written by Analyze /
+  // JD-Matching on completion. Per-source store slots aren't reachable here
+  // since CoverLetterBlock has no `?from=` URL.
+  const [cvText, setCvText] = useState('');
+  useEffect(() => {
+    try {
+      setCvText(window.sessionStorage.getItem(JOB_FIT_CV_SESSION_KEY) ?? '');
+    } catch {
+      setCvText('');
+    }
+  }, []);
   const { provider, model, temperature, baseUrl } = useSettings();
 
   const [markdown, setMarkdown] = useState<string | null>(null);

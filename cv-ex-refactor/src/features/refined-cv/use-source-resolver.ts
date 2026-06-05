@@ -1,8 +1,14 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAnalysis, type ResultSource } from '@/features/analyze/analysis-store';
 import type { AnalysisResult, Weights } from '@/features/analyze/types';
+
+/** Shared sessionStorage bridge for Job Fit context CV. Written by
+ *  AnalyzeActions + JdMatchingActions on run success; read by Job Fit list
+ *  + RefinedCvModeBanner + CoverLetterBlock. */
+export const JOB_FIT_CV_SESSION_KEY = 'refined-cv-text:v1';
 
 const ZERO_WEIGHTS: Weights = {
   coreSkill: 0,
@@ -43,6 +49,10 @@ export interface SourceData {
   weights: Weights;
   matchedCv: string | null;
   refineNotes: string | null;
+  /** CV input from the originating source. For 'job-fit' this is empty —
+   *  consumers needing the Job Fit context CV read sessionStorage
+   *  ['refined-cv-text:v1'] directly (mirror of analyze/jd-match writes). */
+  cvText: string;
 }
 
 /**
@@ -78,7 +88,30 @@ export function useSourceData(): SourceData {
     source === 'job-fit' ? s.jobFitRefineNotes :
     null,
   );
-  return { source, result, weights, matchedCv, refineNotes };
+  const storeCvText = useAnalysis((s) =>
+    source === 'analyze' ? s.analyzeCvText :
+    source === 'jd-matching' ? s.jdMatchCvText :
+    '',
+  );
+  // For job-fit context, the CV lives in sessionStorage (bridge written by
+  // Analyze/JD-Match on completion). Read once on mount; not reactive to
+  // mid-page writes, which matches the existing Job Fit pattern.
+  const jobFitCv = useJobFitContextCv(source === 'job-fit');
+  const cvText = source === 'job-fit' ? jobFitCv : storeCvText;
+  return { source, result, weights, matchedCv, refineNotes, cvText };
+}
+
+function useJobFitContextCv(enabled: boolean): string {
+  const [text, setText] = useState('');
+  useEffect(() => {
+    if (!enabled) return;
+    try {
+      setText(window.sessionStorage.getItem(JOB_FIT_CV_SESSION_KEY) ?? '');
+    } catch {
+      setText('');
+    }
+  }, [enabled]);
+  return text;
 }
 
 export interface SourceSetters {

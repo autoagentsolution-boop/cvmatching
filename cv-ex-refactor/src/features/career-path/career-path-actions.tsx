@@ -4,14 +4,15 @@ import { Button } from '@/components/ui';
 import { useAnalysis } from '@/features/analyze/analysis-store';
 import { useSettings } from '@/features/analyze/settings-store';
 import { useCareerPath } from './career-path-store';
+import { useCareerSource } from './use-career-source';
 import { callCareerPath } from './api-client';
 import type { CareerPathRequest } from './types';
 
 export function CareerPathActions() {
-  // Pull analyze context from whichever source the user last worked with —
-  // career-path uses it for summary + detectedRole hinting only (optional).
-  const { cvText, language } = useAnalysis();
-  const analysisResult = useAnalysis((s) => s.analyzeResult ?? s.jdMatchResult);
+  // Source resolved from URL `?from=analyze|jd-matching|job-fit` — drives
+  // which CV slot + which analysis result hints feed the LLM call.
+  const { cvText, analysisResult } = useCareerSource();
+  const language = useAnalysis((s) => s.language);
   const { provider, model, temperature, baseUrl } = useSettings();
   const {
     isGenerating,

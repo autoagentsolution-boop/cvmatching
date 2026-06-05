@@ -35,7 +35,8 @@ export function ReAnalyzeBanner() {
   if (!legacy?.found) return null;
 
   function handleReAnalyze() {
-    if (legacy?.cvText) setField('cvText', legacy.cvText);
+    // Re-analyze banner lives on /analyze → seed the Analyze CV slot.
+    if (legacy?.cvText) setField('analyzeCvText', legacy.cvText);
     clearLegacyCache();
     setLegacy(null);
     // Scroll the analyze button into view so user only needs one more click.

@@ -9,6 +9,7 @@ import { FormPageLayout } from '@/components/layouts';
 import { useAnalysis } from '@/features/analyze/analysis-store';
 import { useSettings } from '@/features/analyze/settings-store';
 import { useCareerPath, cvCacheKey } from './career-path-store';
+import { useCareerSource } from './use-career-source';
 import { callSuggestPaths } from './api-client';
 import type { SuggestPathsRequest } from './types';
 import { AspirationInputBlock } from './aspiration-input-block';
@@ -22,8 +23,9 @@ import { AlternativePathsBlock } from './alternative-paths-block';
 import { QuickWinsBlock } from './quick-wins-block';
 
 export function CareerPathPage() {
-  const { cvText, language } = useAnalysis();
-  const analysisResult = useAnalysis((s) => s.analyzeResult ?? s.jdMatchResult);
+  // Source-aware (per `?from=`) CV + analysis result. See use-career-source.
+  const { cvText, analysisResult } = useCareerSource();
+  const language = useAnalysis((s) => s.language);
   const { provider, model, temperature, baseUrl } = useSettings();
   const {
     suggestions,

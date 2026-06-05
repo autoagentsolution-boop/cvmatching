@@ -24,7 +24,7 @@ function writeCvForJobFit(cvText: string): void {
 
 export function JdMatchingActions() {
   const {
-    cvText,
+    jdMatchCvText: cvText,
     jdText,
     jdUrl,
     profileText,

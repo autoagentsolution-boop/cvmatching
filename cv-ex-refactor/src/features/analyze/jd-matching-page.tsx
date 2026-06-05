@@ -30,7 +30,7 @@ export function JdMatchingPage() {
       }
       actionsSlot={<JdMatchingActions />}
     >
-      <CvInputBlock />
+      <CvInputBlock source="jd-matching" />
       <JdInputBlock />
       <MustHavesBlock />
       <AnalysisParametersBlock source="jd-matching" />

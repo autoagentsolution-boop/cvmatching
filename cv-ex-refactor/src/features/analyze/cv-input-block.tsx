@@ -5,8 +5,23 @@ import { Card, DropZone, FormField, Textarea } from '@/components/ui';
 import { useAnalysis } from './analysis-store';
 import { parseFile } from './file-parsers';
 
-export function CvInputBlock() {
-  const { cvText, profileText, setField } = useAnalysis();
+type Source = 'analyze' | 'jd-matching';
+
+interface CvInputBlockProps {
+  /** Which page is this rendered on — drives which CV slot it reads/writes.
+   *  Defaults to 'analyze' for back-compat with any caller that hasn't been
+   *  updated yet. */
+  source?: Source;
+}
+
+export function CvInputBlock({ source = 'analyze' }: CvInputBlockProps) {
+  const isAnalyzeSource = source === 'analyze';
+  const cvFieldKey: 'analyzeCvText' | 'jdMatchCvText' = isAnalyzeSource
+    ? 'analyzeCvText'
+    : 'jdMatchCvText';
+  const cvText = useAnalysis((s) => (isAnalyzeSource ? s.analyzeCvText : s.jdMatchCvText));
+  const profileText = useAnalysis((s) => s.profileText);
+  const setField = useAnalysis((s) => s.setField);
   const [parseError, setParseError] = useState<string | null>(null);
   const [parsedFileName, setParsedFileName] = useState<string | null>(null);
 
@@ -15,7 +30,7 @@ export function CvInputBlock() {
     setParsedFileName(null);
     try {
       const text = await parseFile(file);
-      setField('cvText', text);
+      setField(cvFieldKey, text);
       setParsedFileName(file.name);
     } catch (err) {
       setParseError(err instanceof Error ? err.message : 'File parsing failed.');
@@ -56,7 +71,7 @@ export function CvInputBlock() {
             placeholder="Paste your CV content here…"
             rows={6}
             value={cvText}
-            onChange={(e) => setField('cvText', e.target.value)}
+            onChange={(e) => setField(cvFieldKey, e.target.value)}
           />
         </FormField>
 
