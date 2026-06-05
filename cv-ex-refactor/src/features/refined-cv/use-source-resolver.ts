@@ -49,39 +49,36 @@ export interface SourceData {
  * Read-only snapshot of the active source's result/weights/matchedCv. Job
  * Fit source has no result/weights — UI blocks that depend on them should
  * branch on `source === 'job-fit'` and render from useJobFit() instead.
+ *
+ * Each field uses a primitive/stable-ref selector so zustand's default
+ * Object.is equality holds. A single selector returning `{...}` literal
+ * would re-create the object on every store update → infinite re-render.
  */
 export function useSourceData(): SourceData {
   const source = useResolvedSource();
-  return useAnalysis((s) => {
-    if (source === 'analyze') {
-      return {
-        source,
-        result: s.analyzeResult,
-        weights: s.analyzeWeights,
-        matchedCv: s.analyzeMatchedCv,
-        refineNotes: s.analyzeRefineNotes,
-      };
-    }
-    if (source === 'jd-matching') {
-      return {
-        source,
-        result: s.jdMatchResult,
-        weights: s.jdMatchWeights,
-        matchedCv: s.jdMatchMatchedCv,
-        refineNotes: s.jdMatchRefineNotes,
-      };
-    }
-    if (source === 'job-fit') {
-      return {
-        source,
-        result: null,
-        weights: ZERO_WEIGHTS,
-        matchedCv: s.jobFitMatchedCv,
-        refineNotes: s.jobFitRefineNotes,
-      };
-    }
-    return { source: null, result: null, weights: ZERO_WEIGHTS, matchedCv: null, refineNotes: null };
-  });
+  const result = useAnalysis((s) =>
+    source === 'analyze' ? s.analyzeResult :
+    source === 'jd-matching' ? s.jdMatchResult :
+    null,
+  );
+  const weights = useAnalysis((s) =>
+    source === 'analyze' ? s.analyzeWeights :
+    source === 'jd-matching' ? s.jdMatchWeights :
+    ZERO_WEIGHTS,
+  );
+  const matchedCv = useAnalysis((s) =>
+    source === 'analyze' ? s.analyzeMatchedCv :
+    source === 'jd-matching' ? s.jdMatchMatchedCv :
+    source === 'job-fit' ? s.jobFitMatchedCv :
+    null,
+  );
+  const refineNotes = useAnalysis((s) =>
+    source === 'analyze' ? s.analyzeRefineNotes :
+    source === 'jd-matching' ? s.jdMatchRefineNotes :
+    source === 'job-fit' ? s.jobFitRefineNotes :
+    null,
+  );
+  return { source, result, weights, matchedCv, refineNotes };
 }
 
 export interface SourceSetters {
