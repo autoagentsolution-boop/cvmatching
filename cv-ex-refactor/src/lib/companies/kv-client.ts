@@ -68,6 +68,23 @@ export async function mergeTier1Fields(
   return merged;
 }
 
+/**
+ * Replace `enrichment` block on Company. Caller produces the fully-built
+ * CompanyEnrichment (including enrichedAt + insufficientSources flags).
+ * 30d staleness is enforced at the read path via `enrichedAt`.
+ */
+export async function mergeEnrichment(
+  slug: string,
+  enrichment: NonNullable<Company['enrichment']>,
+): Promise<Company | null> {
+  assertKv();
+  const existing = await getCompany(slug);
+  if (!existing) return null;
+  const merged: Company = { ...existing, enrichment };
+  await kv.set(`co:${slug}`, merged);
+  return merged;
+}
+
 /** Batch fetch — uses parallel `get` since @vercel/kv has no JSON-mget. */
 export async function getCompanyBatch(slugs: string[]): Promise<Company[]> {
   assertKv();

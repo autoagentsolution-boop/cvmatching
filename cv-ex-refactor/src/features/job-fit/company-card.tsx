@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Card, Badge } from '@/components/ui';
 import { cn } from '@/lib/cn';
+import { useSettings } from '@/features/analyze/settings-store';
 import type { Company } from '@/lib/companies/types';
 
 interface CompanyCardProps {
@@ -30,8 +31,12 @@ type FetchState =
  * Phase 04 lite: ratings + enrichment intentionally absent — Phase 03 +
  * Phase 05 build those out behind the same API surface.
  */
+type EnrichmentPhase = 'idle' | 'fetching' | 'failed';
+
 export function CompanyCard({ companyId, fallbackName }: CompanyCardProps) {
   const [state, setState] = useState<FetchState>({ kind: 'idle' });
+  const [enrichPhase, setEnrichPhase] = useState<EnrichmentPhase>('idle');
+  const { provider, model, temperature, baseUrl } = useSettings();
 
   useEffect(() => {
     if (!companyId) {
@@ -73,6 +78,46 @@ export function CompanyCard({ companyId, fallbackName }: CompanyCardProps) {
     };
   }, [companyId]);
 
+  // Lazy Tier 2 enrichment: once GET lands and company has no enrichment
+  // (or stale), fire POST in background. On success, swap company state in
+  // place — UI re-renders with enrichment section populated.
+  useEffect(() => {
+    if (state.kind !== 'ok') return;
+    if (state.company.tier1.pending) return;
+    if (enrichPhase !== 'idle') return;
+    if (state.company.enrichment && !isEnrichmentStaleByDate(state.company.enrichment.enrichedAt)) return;
+
+    let cancelled = false;
+    setEnrichPhase('fetching');
+
+    fetch(`/api/companies/${encodeURIComponent(state.company.slug)}/enrichment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        llm: { provider, model, temperature, ...(baseUrl ? { baseUrl } : {}) },
+      }),
+    })
+      .then(async (res) => {
+        if (cancelled) return;
+        if (!res.ok) {
+          setEnrichPhase('failed');
+          return;
+        }
+        const body = (await res.json()) as { ok: true; company: Company };
+        setState({ kind: 'ok', company: body.company });
+        setEnrichPhase('idle');
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setEnrichPhase('failed');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [state, enrichPhase, provider, model, temperature, baseUrl]);
+
   if (!companyId) return null;
   if (state.kind === 'idle') return null;
   if (state.kind === 'error') return null;
@@ -91,7 +136,7 @@ export function CompanyCard({ companyId, fallbackName }: CompanyCardProps) {
     return <CompanyCardEmpty name={company.tier1.displayName || company.canonicalName} />;
   }
 
-  return <CompanyCardFull company={company} />;
+  return <CompanyCardFull company={company} enrichPhase={enrichPhase} />;
 }
 
 function CompanyCardSkeleton() {
@@ -138,8 +183,14 @@ function CompanyCardEmpty({ name }: { name: string }) {
   );
 }
 
-function CompanyCardFull({ company }: { company: Company }) {
-  const { tier1 } = company;
+function CompanyCardFull({
+  company,
+  enrichPhase,
+}: {
+  company: Company;
+  enrichPhase: EnrichmentPhase;
+}) {
+  const { tier1, enrichment } = company;
   const name = tier1.displayName || company.canonicalName;
   const isStale = isTier1Stale(company.tier1ExpiresAt);
 
@@ -191,6 +242,7 @@ function CompanyCardFull({ company }: { company: Company }) {
           )}
         </div>
       </div>
+      <EnrichmentSection enrichment={enrichment} phase={enrichPhase} />
     </Card>
   );
 }
@@ -224,6 +276,117 @@ function CompanyLogo({ logoUrl, name }: { logoUrl: string | undefined; name: str
       onError={() => setErrored(true)}
     />
   );
+}
+
+function EnrichmentSection({
+  enrichment,
+  phase,
+}: {
+  enrichment: Company['enrichment'];
+  phase: EnrichmentPhase;
+}) {
+  // First-ever load: no enrichment + currently fetching → loader.
+  if (!enrichment && phase === 'fetching') {
+    return (
+      <div className="mt-4 pt-4 border-t border-outline-variant/30">
+        <p className="text-label-sm text-on-surface-variant animate-pulse">
+          Đang phân tích thông tin công ty từ nguồn công khai...
+        </p>
+      </div>
+    );
+  }
+
+  // POST failed silently — render nothing extra; user still has Tier 1.
+  if (!enrichment) return null;
+
+  const hasSummary = enrichment.summary.trim().length > 0;
+  const hasPros = enrichment.pros.length > 0;
+  const hasCons = enrichment.cons.length > 0;
+
+  if (!hasSummary && !hasPros && !hasCons) {
+    return enrichment.insufficientSources ? (
+      <p className="mt-4 pt-4 border-t border-outline-variant/30 text-label-sm text-on-surface-variant">
+        Chưa đủ nguồn công khai để tổng hợp phân tích chi tiết.
+      </p>
+    ) : null;
+  }
+
+  return (
+    <div className="mt-4 pt-4 border-t border-outline-variant/30 space-y-4">
+      {hasSummary && (
+        <p className="text-body-sm text-on-surface leading-relaxed">{enrichment.summary}</p>
+      )}
+      {hasPros && (
+        <div>
+          <h4 className="text-label-md font-semibold text-on-surface mb-2">Điểm sáng</h4>
+          <ul className="space-y-1.5">
+            {enrichment.pros.map((claim, i) => (
+              <li key={i} className="text-body-sm text-on-surface-variant flex items-start gap-2">
+                <span className="text-secondary mt-0.5 shrink-0" aria-hidden>
+                  +
+                </span>
+                <span className="flex-1">
+                  {claim.text}
+                  <CitationChipList citations={claim.citations} />
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {hasCons && (
+        <div>
+          <h4 className="text-label-md font-semibold text-on-surface mb-2">Cần lưu ý</h4>
+          <ul className="space-y-1.5">
+            {enrichment.cons.map((claim, i) => (
+              <li key={i} className="text-body-sm text-on-surface-variant flex items-start gap-2">
+                <span className="text-error mt-0.5 shrink-0" aria-hidden>
+                  !
+                </span>
+                <span className="flex-1">
+                  {claim.text}
+                  <CitationChipList citations={claim.citations} />
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CitationChipList({
+  citations,
+}: {
+  citations: NonNullable<Company['enrichment']>['pros'][number]['citations'];
+}) {
+  if (citations.length === 0) return null;
+  return (
+    <span className="ml-1 inline-flex flex-wrap gap-1">
+      {citations.map((c, i) =>
+        isSafeHttpUrl(c.url) ? (
+          <a
+            key={i}
+            href={c.url}
+            target="_blank"
+            rel="noopener noreferrer nofollow"
+            className="inline-flex items-center text-label-sm text-primary hover:underline rounded px-1 py-0.5 bg-surface-container-highest"
+            title={c.label}
+          >
+            {c.label.length > 24 ? c.label.slice(0, 24) + '…' : c.label}
+          </a>
+        ) : null,
+      )}
+    </span>
+  );
+}
+
+/** Local mirror of lib/companies/enrichment.ts isEnrichmentStale — avoids importing that server module into client bundle. */
+function isEnrichmentStaleByDate(enrichedAt: string): boolean {
+  const t = Date.parse(enrichedAt);
+  if (Number.isNaN(t)) return true;
+  return Date.now() - t > 30 * 24 * 60 * 60 * 1000;
 }
 
 export function isAllTier1Empty(company: Company): boolean {

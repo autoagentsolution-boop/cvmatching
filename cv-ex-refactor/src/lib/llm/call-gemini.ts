@@ -16,6 +16,21 @@ export interface GeminiCallOpts {
    * ON for open-ended reasoning tasks like roadmap design.
    */
   disableThinking?: boolean;
+  /**
+   * Enable Google Search grounding. When true, Gemini may issue web
+   * searches and the response's `groundingMetadata.groundingChunks[]` is
+   * extracted into `citations` on the result. Combine carefully with
+   * `expectJson` — some Gemini versions reject json+tools together; if so
+   * fall back to 2-step (grounded text → second structured-output call).
+   */
+  enableGrounding?: boolean;
+}
+
+export interface LlmCitation {
+  /** Source URL — usually deep link returned by Gemini's web tool. */
+  url: string;
+  /** Human-readable source title (page title or domain). */
+  title: string;
 }
 
 export interface LlmCallResult {
@@ -24,6 +39,8 @@ export interface LlmCallResult {
   completionTokens?: number;
   /** Gemini-style finish reason — STOP, MAX_TOKENS, SAFETY, etc. Undefined for non-Gemini providers. */
   finishReason?: string;
+  /** Populated only when `enableGrounding: true` AND Gemini returned web sources. */
+  citations?: LlmCitation[];
 }
 
 export async function callGemini(opts: GeminiCallOpts): Promise<LlmCallResult> {
@@ -37,6 +54,10 @@ export async function callGemini(opts: GeminiCallOpts): Promise<LlmCallResult> {
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: opts.system }] },
       contents: [{ role: 'user', parts: [{ text: opts.user }] }],
+      // Google Search grounding tool. Gemini 2.5+ supports tools+JSON
+      // together in same call; if a future version rejects the combo, the
+      // caller falls back to 2-step (grounded text → structured-output call).
+      ...(opts.enableGrounding ? { tools: [{ googleSearch: {} }] } : {}),
       generationConfig: {
         temperature: opts.temperature,
         // Default 16K covers analyze (~8-15K chars). Callers with bigger
@@ -67,7 +88,38 @@ export async function callGemini(opts: GeminiCallOpts): Promise<LlmCallResult> {
     throw new Error(`Gemini trả về phản hồi rỗng${reason}`);
   }
   const usage = extractGeminiUsage(json);
-  return { text, ...usage, ...(finishReason ? { finishReason } : {}) };
+  const citations = opts.enableGrounding ? extractGeminiCitations(json) : undefined;
+  return {
+    text,
+    ...usage,
+    ...(finishReason ? { finishReason } : {}),
+    ...(citations && citations.length > 0 ? { citations } : {}),
+  };
+}
+
+/**
+ * Extract web citations from Gemini's groundingMetadata.groundingChunks.
+ * Each chunk shape: { web: { uri, title } }. Skip chunks without web shape
+ * (Gemini may also surface retrieved-context chunks for other tool types).
+ */
+function extractGeminiCitations(payload: unknown): LlmCitation[] {
+  if (!payload || typeof payload !== 'object') return [];
+  const candidates = (payload as { candidates?: unknown }).candidates;
+  if (!Array.isArray(candidates) || candidates.length === 0) return [];
+  const first = candidates[0] as
+    | { groundingMetadata?: { groundingChunks?: Array<{ web?: { uri?: string; title?: string } }> } }
+    | undefined;
+  const chunks = first?.groundingMetadata?.groundingChunks;
+  if (!Array.isArray(chunks)) return [];
+  const seen = new Set<string>();
+  const out: LlmCitation[] = [];
+  for (const c of chunks) {
+    const uri = c?.web?.uri?.trim();
+    if (!uri || seen.has(uri)) continue;
+    seen.add(uri);
+    out.push({ url: uri, title: c.web?.title?.trim() || new URL(uri).hostname });
+  }
+  return out;
 }
 
 function extractGeminiFinishReason(payload: unknown): string | undefined {

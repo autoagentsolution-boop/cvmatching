@@ -18,6 +18,12 @@ export interface CallLlmOpts {
    * Set true for structured-JSON tasks (scoring, extraction, rewriting).
    */
   disableThinking?: boolean;
+  /**
+   * Gemini-only: enable Google Search grounding (tools: [{ googleSearch: {} }]).
+   * When set, response includes `citations` array from groundingMetadata.
+   * No-op for OpenAI-compatible providers.
+   */
+  enableGrounding?: boolean;
 }
 
 export type { LlmCallResult };
@@ -30,6 +36,7 @@ export async function callLLM({
   maxOutputTokens,
   signal,
   disableThinking,
+  enableGrounding,
 }: CallLlmOpts): Promise<LlmCallResult> {
   if (config.provider === 'gemini') {
     return callGemini({
@@ -42,6 +49,7 @@ export async function callLLM({
       ...(maxOutputTokens ? { maxOutputTokens } : {}),
       ...(signal ? { signal } : {}),
       ...(disableThinking ? { disableThinking: true } : {}),
+      ...(enableGrounding ? { enableGrounding: true } : {}),
     });
   }
 

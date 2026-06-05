@@ -27,7 +27,11 @@ export type QuotaKind = keyof typeof QUOTA_LIMITS;
  * counted; helpers like `extract-must-haves` and `career-path-suggest`
  * pass through with no debit (rate-limited at the IP level instead).
  */
-export type QuotaAction = QuotaKind | 'extract-must-haves' | 'career-path-suggest';
+export type QuotaAction =
+  | QuotaKind
+  | 'extract-must-haves'
+  | 'career-path-suggest'
+  | 'company-enrich';
 
 export interface QuotaResult {
   ok: boolean;
