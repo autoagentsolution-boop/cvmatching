@@ -1,8 +1,9 @@
 ---
 name: company-profile-reviews
 title: Company Profile + Reviews on Job Fit Detail
-status: pending
+status: in-progress
 created: 2026-06-04
+shipped_partial: 2026-06-05
 owner: vinh2000ld11@gmail.com
 blockedBy: []
 blocks: []
@@ -12,9 +13,21 @@ effort: 14-22h (Phase A 6-9h, Phase B 5-8h, Phase C deferred post-pilot)
 
 # Company Profile + Reviews on Job Fit Detail
 
-## Status
+## Status — EOD 2026-06-05
 
-In-progress as of 2026-06-05 14:10 ICT. Brainstorm + 4 original locked decisions in `reports/brainstorm-260604-1218-company-profile-reviews.md`. 5 additional decisions locked this session (see below).
+**4 of 7 phases SHIPPED (lite scope each):**
+
+| Phase | Status | Commit | Notes |
+|---|---|---|---|
+| 01 — Entity + alias resolver | ✅ shipped | `6ed66ec` | 1013 LOC + 49 tests |
+| 02 — Tier 1 scrape (ingest hook) | ✅ shipped (lite — ITviec only) | `e9d63de` | TopCV/VNW/VL24H parsers stub |
+| 03 — External ratings | ⏸ deferred | — | research locked scrape+link-out |
+| 04 — UI Company card | ✅ shipped (lite) | `e1dedae` | 5 render states; no sticky sidebar restructure |
+| 05 — LLM enrichment endpoint | ✅ shipped (lite) | `9615f56` | Gemini grounding + 8th cost bucket |
+| 06 — Suspense progressive | ⏸ deferred | — | current GET+POST pattern sufficient |
+| 07 — Admin tooling (CLI/UI/cron) | ⏸ deferred | — | 1 entry point spec'd, none built |
+
+Brainstorm + 4 original locked decisions in `reports/brainstorm-260604-1218-company-profile-reviews.md`. 5 additional decisions locked this session (see below).
 
 ## Locked decisions — session 2026-06-05 14:10
 
@@ -36,9 +49,32 @@ Port these patterns into CVMatching TypeScript codebase (not building separate P
 - **Adapter-based source design** — already in `lib/scrape/sources/*`
 - **`review_link` as Google search URL placeholder** — Phase 03 uses this for Glassdoor/Indeed link-out
 
-## Today's scope (2026-06-05, ~6-9h)
+## Shipped scope (2026-06-05 EOD)
 
-Phase 01 (entity) → Phase 02 (ingest tier1 + backfill 150) → Phase 04 (UI company card). Phase 03 (external ratings scrape) + Phase 05 (LLM enrichment endpoint) deferred to next session for careful bot-risk handling.
+Originally planned Phase 01 → 02 → 04 (~6-9h). **Delivered Phase 01 + 02 lite + 04 lite + 05 lite in ~3h** (faster than estimate because phase plans were rock-solid).
+
+**Lite scope shed across phases:**
+- Phase 02 lite: ITviec parser only; TopCV/VNW/VL24H dispatcher returns 'parser-not-implemented' → caller mints tier1Pending stub. 150-job backfill deferred.
+- Phase 04 lite: single-column layout (no sticky sidebar); 5 render states; no ratings/enrichment Suspense.
+- Phase 05 lite: lazy on first detail-open + 30d cache. No weekly cron, no PII regex, no IP rate-limit, no Pushover 80% budget alert.
+
+## Critical post-ship discovery — pool gap
+
+User CV "senior data engineer" → Job Fit always returns same 2 jobs (Weldcom IT support + Chatbot Node.js Backend). Pool stats: tech 9/150, senior 1/150, tech.data ~0. Recommend pipeline filters by VERTICAL only (not sub-vertical) → 6 nearest-cosine in 9 tech jobs → backend/IT fallback. Phase 05 enrichment can't fix this — it's an ingest coverage gap.
+
+**Locked solution:**
+- Short: manual paste 5-10 data eng jobs via `pnpm run ingest paste` (user in-flight).
+- Medium: `scripts/ingest-urls.ts` batch helper — takes URL args, JSON-LD JobPosting parse (reuse vl24h-parser pattern), runs through ingest-file flow. ~70 LOC, next session.
+- Long: Phase 4 destructive re-ingest with broader filter + senior bias.
+
+## Next session pickup (priority order)
+
+1. Build `scripts/ingest-urls.ts` batch helper + add `pnpm run ingest urls <url>...` command to ingest-jobs.ts dispatcher
+2. §17 docs sync — kill-switch bucket count 7 → 8 (`company-enrich` added)
+3. TopCV/VNW/VL24H source parsers — port ITviec pattern
+4. Phase 4 destructive re-ingest (needs explicit user go)
+5. 150-job backfill standalone script (LLM dedup at ≥0.95 auto)
+6. Phase 06 Suspense + Phase 07 admin tooling (lower priority)
 
 ## Problem
 
