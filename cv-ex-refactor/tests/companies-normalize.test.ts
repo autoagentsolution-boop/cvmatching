@@ -8,6 +8,7 @@ import {
   companyNameToSlug,
   normalizeLocation,
   nameSimilarity,
+  parseSizeRange,
 } from '@/lib/companies/normalize';
 
 describe('normalizeCompanyName — VN legal suffix stripping', () => {
@@ -151,6 +152,55 @@ describe('normalizeLocation — VN city alias map', () => {
   it('passes through unknown cities lowercased + diacritic-stripped', () => {
     expect(normalizeLocation('Bangkok')).toBe('bangkok');
     expect(normalizeLocation('Singapore')).toBe('singapore');
+  });
+});
+
+describe('parseSizeRange — VN+EN phrasings', () => {
+  it('plus suffix (1000+, 5000+)', () => {
+    expect(parseSizeRange('1000+')).toBe('201-1000');
+    expect(parseSizeRange('1000+ employees')).toBe('201-1000');
+    expect(parseSizeRange('1000+ nhân viên')).toBe('201-1000');
+    expect(parseSizeRange('5000+')).toBe('1001-5000');
+    expect(parseSizeRange('10000+')).toBe('5000+');
+    expect(parseSizeRange('10,000+')).toBe('5000+');
+  });
+
+  it('numeric ranges (100-499, 501-1000, 10-24)', () => {
+    expect(parseSizeRange('10-24')).toBe('1-50');
+    expect(parseSizeRange('25-99 employees')).toBe('51-200');
+    expect(parseSizeRange('100-499 nhân viên')).toBe('201-1000');
+    expect(parseSizeRange('501 - 1000 employees')).toBe('201-1000');
+    expect(parseSizeRange('1001-5000')).toBe('1001-5000');
+  });
+
+  it('range with em-dash / en-dash variants', () => {
+    expect(parseSizeRange('100–499')).toBe('201-1000');
+    expect(parseSizeRange('100—499')).toBe('201-1000');
+    expect(parseSizeRange('100 to 499')).toBe('201-1000');
+  });
+
+  it('under-N phrasings', () => {
+    expect(parseSizeRange('Less than 10')).toBe('1-50');
+    expect(parseSizeRange('Under 10 employees')).toBe('1-50');
+    expect(parseSizeRange('Dưới 10')).toBe('1-50');
+    expect(parseSizeRange('duoi 10 nhan vien')).toBe('1-50');
+  });
+
+  it('5-bucket boundary mapping', () => {
+    expect(parseSizeRange('50')).toBe('1-50');
+    expect(parseSizeRange('51')).toBe('51-200');
+    expect(parseSizeRange('200')).toBe('51-200');
+    expect(parseSizeRange('201')).toBe('201-1000');
+    expect(parseSizeRange('1000')).toBe('201-1000');
+    expect(parseSizeRange('1001')).toBe('1001-5000');
+    expect(parseSizeRange('5000')).toBe('1001-5000');
+    expect(parseSizeRange('5001')).toBe('5000+');
+  });
+
+  it('empty + unparseable → undefined', () => {
+    expect(parseSizeRange('')).toBeUndefined();
+    expect(parseSizeRange('not a number')).toBeUndefined();
+    expect(parseSizeRange('unknown')).toBeUndefined();
   });
 });
 

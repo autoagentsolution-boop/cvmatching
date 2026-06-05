@@ -47,6 +47,13 @@ export type JobInput = Omit<Job, 'id' | 'embedding' | 'verifiedAt' | 'vertical' 
   vertical?: Vertical;
   seniority?: Seniority;
   subVertical?: string;
+  /**
+   * v0.4 Phase 02 — optional URL to the company's profile page on the
+   * source site (e.g. https://itviec.com/companies/fpt-software). When
+   * present, ingest pipeline fires Tier 1 scrape against this URL after
+   * resolveCompany mints/refreshes the company. Not persisted on Job.
+   */
+  sourceCompanyUrl?: string;
 };
 
 export interface StudyTopic {

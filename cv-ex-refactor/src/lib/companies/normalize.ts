@@ -117,6 +117,54 @@ export function normalizeLocation(raw: string): string {
 }
 
 /**
+ * Map source-site company-size phrasing to the 5-bucket enum. Returns
+ * undefined if the raw text doesn't match any pattern (caller decides
+ * whether to leave the size field empty or mark scrape as partial).
+ *
+ * Covered shapes from observed VN job boards:
+ *   "1000+", "1000+ employees", "1000+ nhân viên"
+ *   "100-499 nhân viên", "501 - 1000 employees"
+ *   "10-24", "25-99", "100-499", "500-999", "1000+"   (ITviec ranges)
+ *   "Less than 10", "Under 10", "Dưới 10"             (TopCV)
+ *   "10000+", "10,000+"                                (large multinationals)
+ */
+export function parseSizeRange(raw: string): '1-50' | '51-200' | '201-1000' | '1001-5000' | '5000+' | undefined {
+  if (!raw) return undefined;
+  const text = raw.toLowerCase().replace(/[,.]/g, '').replace(/\s+/g, ' ').trim();
+
+  if (/^(under|less than|dưới|duoi)\s*\d+/.test(text)) return '1-50';
+
+  const plusMatch = text.match(/(\d+)\s*\+/);
+  if (plusMatch?.[1]) {
+    const n = Number.parseInt(plusMatch[1], 10);
+    return bucketFor(n);
+  }
+
+  const rangeMatch = text.match(/(\d+)\s*[-–—to]+\s*(\d+)/);
+  if (rangeMatch?.[1] && rangeMatch[2]) {
+    const lo = Number.parseInt(rangeMatch[1], 10);
+    const hi = Number.parseInt(rangeMatch[2], 10);
+    return bucketFor(Math.round((lo + hi) / 2));
+  }
+
+  const singleMatch = text.match(/\b(\d+)\b/);
+  if (singleMatch?.[1]) {
+    const n = Number.parseInt(singleMatch[1], 10);
+    return bucketFor(n);
+  }
+
+  return undefined;
+}
+
+function bucketFor(n: number): '1-50' | '51-200' | '201-1000' | '1001-5000' | '5000+' {
+  if (n <= 50) return '1-50';
+  if (n <= 200) return '51-200';
+  if (n <= 1000) return '201-1000';
+  if (n <= 5000) return '1001-5000';
+  return '5000+';
+}
+
+/**
  * Lightweight similarity ratio for early dedup gate (avoids LLM call when names
  * are clearly identical or clearly different). Jaccard over normalized tokens.
  * Range 0-1. Use threshold 0.5 to call LLM ranker; below → mint-new without LLM.

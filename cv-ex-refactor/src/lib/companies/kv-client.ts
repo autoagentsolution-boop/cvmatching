@@ -42,6 +42,32 @@ export async function setCompany(company: Company): Promise<void> {
   await kv.sadd('co-index', company.slug);
 }
 
+/**
+ * Merge a partial Tier 1 update into an existing Company record. Refreshes
+ * tier1FetchedAt + tier1ExpiresAt (90d). Clears tier1Pending when fields
+ * arrive. No-op if `co:{slug}` does not exist (caller is responsible for
+ * minting via resolveCompany first).
+ */
+export async function mergeTier1Fields(
+  slug: string,
+  patch: Partial<Company['tier1']>,
+): Promise<Company | null> {
+  assertKv();
+  const existing = await getCompany(slug);
+  if (!existing) return null;
+  const now = new Date();
+  const expires = new Date(now);
+  expires.setDate(expires.getDate() + 90);
+  const merged: Company = {
+    ...existing,
+    tier1: { ...existing.tier1, ...patch, pending: false },
+    tier1FetchedAt: now.toISOString(),
+    tier1ExpiresAt: expires.toISOString(),
+  };
+  await kv.set(`co:${slug}`, merged);
+  return merged;
+}
+
 /** Batch fetch — uses parallel `get` since @vercel/kv has no JSON-mget. */
 export async function getCompanyBatch(slugs: string[]): Promise<Company[]> {
   assertKv();

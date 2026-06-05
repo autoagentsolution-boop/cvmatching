@@ -8,6 +8,13 @@
 // `slug` is the stable identifier: kebab-case, ≤60 chars, derived from
 // canonical company name. `companyId` on Job points to this slug.
 
+/**
+ * Five size buckets — coarse enough to span all VN job-board phrasings,
+ * fine enough to differentiate startup / SME / corp / mega-corp for UX
+ * filtering and trust signals.
+ */
+export type CompanySizeBucket = '1-50' | '51-200' | '201-1000' | '1001-5000' | '5000+';
+
 export interface CompanyTier1 {
   /** Source page URL the scrape pulled from (job detail or company section page). */
   sourceUrl: string;
@@ -16,7 +23,7 @@ export interface CompanyTier1 {
   /** Optional fields populated when scrape extracts them. All optional — partial render OK. */
   website?: string;
   hq?: string;
-  size?: string;
+  size?: CompanySizeBucket;
   industry?: string;
   about?: string;
   logoUrl?: string;
