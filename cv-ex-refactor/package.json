@@ -18,6 +18,8 @@
     "db:studio": "drizzle-kit studio",
     "db:smoke": "tsx --env-file=.env.local scripts/db-smoke.ts",
     "db:smoke-repo": "tsx --env-file=.env.local scripts/db-smoke-repo.ts",
+    "db:migrate-from-kv": "tsx --env-file=.env.local scripts/migrate-kv-to-postgres.ts",
+    "db:verify-parity": "tsx --env-file=.env.local scripts/verify-kv-pg-parity.ts",
     "db:enable-pgvector": "tsx --env-file=.env.local scripts/db-enable-pgvector.ts"
   },
   "dependencies": {
