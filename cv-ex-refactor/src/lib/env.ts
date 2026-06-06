@@ -48,6 +48,13 @@ const serverSchema = z.object({
   // suites that don't touch the DB layer must still boot.
   DATABASE_URL: optStr(z.string().url()),
   DATABASE_URL_UNPOOLED: optStr(z.string().url()),
+  // Phase 4 cutover flag for the Job Fit recommend route.
+  // - undefined / '0' / 'false' → LEGACY KV path + admin-only lockdown (current prod behaviour)
+  // - '1' / 'true'              → NEW Postgres path + tier-gated public (anon/free/paid)
+  // Flip to '1' AFTER `pnpm db:migrate-from-kv` runs OR after Phase 5 scrapers
+  // populate the Postgres `jobs` table. Otherwise the route will fail with
+  // 503 "Job index empty" because pgvector has no rows to rank.
+  JOBFIT_USE_POSTGRES: optStr(z.string()),
 });
 
 export const env = serverSchema.parse(process.env);

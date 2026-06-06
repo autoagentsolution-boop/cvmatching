@@ -5,7 +5,8 @@ import { checkKillSwitch, recordCost } from '@/lib/cost/guard';
 import { getCachedEmbedding, setCachedEmbedding } from '@/lib/jobs/embed-cache';
 import { embedText } from '@/lib/jobs/embed';
 import { topKCandidates, JobIndexNotReadyError } from '@/lib/jobs/score';
-import { getJobBatch } from '@/lib/jobs/repo';
+import { getJobBatch as kvGetJobBatch } from '@/lib/jobs/repo';
+import * as repoPg from '@/lib/jobs/repo-postgres';
 import { classifyCvVertical } from '@/lib/jobs/classify-cv-vertical';
 import { getJobIdsForVertical } from '@/lib/jobs/vertical-index';
 import { buildRecommendPrompts } from '@/lib/llm/prompt-job-recommend';
@@ -16,9 +17,20 @@ import { callRecommendLlm } from './llm-call-with-retry';
 import type { Job } from '@/lib/jobs/types';
 import { getSession } from '@/lib/get-session';
 import { isAdminUser } from '@/lib/usage/admin-auth';
+import { resolveUserTier, type UserTier } from '@/lib/users/resolve-user-tier';
+import { applyTierGate } from '@/lib/jobs/apply-tier-gate';
+import { markSeenForUser } from '@/lib/jobs/mark-seen-for-user';
+import { env } from '@/lib/env';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
+// Pin to Singapore for Neon Postgres proximity (Phase 4 of
+// jobfit-db-pool-monetize). Cross-region adds 50-100ms per pgvector query.
+export const preferredRegion = 'sin1';
+
+// True when the Postgres + tier-gating cutover is active. When false, the
+// route falls back to the legacy KV admin-only path (unchanged behaviour).
+const USE_POSTGRES = env.JOBFIT_USE_POSTGRES === '1' || env.JOBFIT_USE_POSTGRES === 'true';
 
 // Internal deadline = maxDuration − safety buffer. Hits ~5s before Vercel's
 // hard kill so our catch block can still return a structured error body
@@ -89,11 +101,12 @@ function classifyLlmError(msg: string): { code: string; status: number; userMsg:
 }
 
 export async function POST(req: NextRequest) {
-  // v0.3 pilot lockdown: route is admin-only while the 150-job KV seed is
-  // being tested. UI lockdown already hides sidebar + CTA + page subtree;
-  // this handler-level gate prevents direct POST by anyone who guesses the URL.
   const session = await getSession().catch(() => null);
-  if (!isAdminUser(session?.user)) {
+
+  // Cutover-flag gate. When Postgres path is off we retain the v0.3 pilot
+  // lockdown so prod behaviour stays identical until the operator flips
+  // JOBFIT_USE_POSTGRES=1 in Vercel envs.
+  if (!USE_POSTGRES && !isAdminUser(session?.user)) {
     return new NextResponse('Not found', { status: 404 });
   }
 
@@ -175,53 +188,89 @@ export async function POST(req: NextRequest) {
     stageTimings.embed = Date.now() - embedStart;
 
     // Vertical pre-filter: classify CV → restrict candidate pool to same vertical.
-    // Fail-open: if classifier returns null OR index bucket too small (<5 jobs,
-    // not enough to rank against), fall back to full pool. Index is built/refreshed
-    // by `scripts/build-vertical-index.ts` post-ingest; absent index = no filter.
-    // Lowered 5 → 3 after the vl24h slug remap (2026-06-03): the tighter
-    // 'tech' bucket has fewer jobs but they're all software/IT — better
-    // to score against 3 relevant candidates than 25 mostly-irrelevant ones.
     const MIN_VERTICAL_POOL = 3;
     const classifyStart = Date.now();
     const cvVertical = classifyCvVertical(body.cvText);
     stageTimings.classify = Date.now() - classifyStart;
 
-    let allowedIds: Set<string> | undefined;
-    let verticalBucketSize: number | null = null;
-    if (cvVertical) {
-      const verticalStart = Date.now();
-      const bucketIds = await getJobIdsForVertical(cvVertical).catch(() => null);
-      stageTimings.verticalLookup = Date.now() - verticalStart;
-      verticalBucketSize = bucketIds?.size ?? 0;
-      if (bucketIds && bucketIds.size >= MIN_VERTICAL_POOL) {
-        allowedIds = bucketIds;
-      }
-    }
-    const verticalApplied = Boolean(allowedIds);
+    // Tier resolution — Postgres path only. Anon UX, free signed-in, paid
+    // (active subscription). Drives K (candidate count) + the post-LLM gate.
+    const userTier: UserTier = USE_POSTGRES ? await resolveUserTier(session) : 'paid';
+    // Paid gets headroom for tier-S/A discovery; free/anon stay tight to
+    // limit LLM cost on traffic that we cap at 1-2 surfaced jobs anyway.
+    const K = USE_POSTGRES ? (userTier === 'paid' ? 12 : 6) : 6;
 
-    // Top-K candidates from job index.
-    // 2026-06-03: reduced 10 → 6 after Wave A bumped output volume (10-15 jobs
-    // requested w/ full dimensionScores + studyTopics blew past 60s ceiling).
-    // 6 candidates → ~3-4K output tokens → p95 ~20-30s LLM, comfortable margin.
     let candidates: Array<{ id: string; score: number }>;
+    let verticalApplied = false;
+    let verticalBucketSize: number | null = null;
     const topkStart = Date.now();
-    try {
-      candidates = await topKCandidates(cvEmbedding, 6, allowedIds);
-    } catch (e) {
-      if (e instanceof JobIndexNotReadyError) {
-        return err('service_unavailable', 'Job index chưa sẵn sàng. Pool jobs trống — admin cần ingest trước.', 503);
+
+    if (USE_POSTGRES) {
+      // Postgres path — pgvector HNSW handles vertical filter + ranking in one
+      // query. Server-side dedup via excludeForUserId (signed-in) or client-
+      // supplied excludeIds (anon body.seenIds).
+      try {
+        candidates = await repoPg.topKByEmbedding(cvEmbedding, {
+          k: K,
+          ...(cvVertical ? { vertical: cvVertical } : {}),
+          ...(session?.user?.id ? { excludeForUserId: session.user.id } : {}),
+          ...(body.seenIds && body.seenIds.length > 0 ? { excludeIds: body.seenIds } : {}),
+        });
+        verticalApplied = Boolean(cvVertical);
+      } catch (e) {
+        return err('internal_error', `Lỗi pgvector query: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`, 500, {
+          stage: 'topk',
+          elapsedMs: stageElapsed(),
+        });
       }
-      return err('internal_error', `Lỗi tải job index: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`, 500, {
-        stage: 'topk',
-        elapsedMs: stageElapsed(),
-      });
+    } else {
+      // Legacy KV path — sidecar vertical-index + module-scope cosine memo.
+      let allowedIds: Set<string> | undefined;
+      if (cvVertical) {
+        const verticalStart = Date.now();
+        const bucketIds = await getJobIdsForVertical(cvVertical).catch(() => null);
+        stageTimings.verticalLookup = Date.now() - verticalStart;
+        verticalBucketSize = bucketIds?.size ?? 0;
+        if (bucketIds && bucketIds.size >= MIN_VERTICAL_POOL) {
+          allowedIds = bucketIds;
+        }
+      }
+      verticalApplied = Boolean(allowedIds);
+      try {
+        candidates = await topKCandidates(cvEmbedding, K, allowedIds);
+      } catch (e) {
+        if (e instanceof JobIndexNotReadyError) {
+          return err('service_unavailable', 'Job index chưa sẵn sàng. Pool jobs trống — admin cần ingest trước.', 503);
+        }
+        return err('internal_error', `Lỗi tải job index: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`, 500, {
+          stage: 'topk',
+          elapsedMs: stageElapsed(),
+        });
+      }
     }
+
     stageTimings.topk = Date.now() - topkStart;
     if (candidates.length === 0) {
+      // For Postgres path this means the user has exhausted matching jobs in
+      // their vertical (NOT EXISTS hit all rows). UX in Phase 7 surfaces a
+      // "no more new matches" CTA — for now return a structured 200 with empty
+      // list so the client can detect it cleanly.
+      if (USE_POSTGRES) {
+        return NextResponse.json({
+          jobs: [],
+          fromCache,
+          tier: userTier,
+          seenPolicy: session?.user?.id ? 'persisted' : 'client',
+          pool: { cvVertical, verticalApplied, candidatesScored: 0 },
+          message: 'no_more_new_matches',
+        });
+      }
       return err('service_unavailable', 'Job index chưa sẵn sàng (0 candidates). Admin cần ingest trước.', 503);
     }
 
-    const jobs = await getJobBatch(candidates.map((c) => c.id));
+    const jobs = USE_POSTGRES
+      ? await repoPg.getJobBatch(candidates.map((c) => c.id))
+      : await kvGetJobBatch(candidates.map((c) => c.id));
     const jobsById = new Map<string, Job>(jobs.map((j) => [j.id, j]));
 
     const { system, user } = buildRecommendPrompts({
@@ -305,7 +354,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const matchedJobs = normalizeRecommend(parsedRaw, jobsById);
+    const matchedJobsRaw = normalizeRecommend(parsedRaw, jobsById);
+    // Tier-gate filter for Postgres path. Legacy KV path is admin-only so the
+    // existing enforceQuota result (S:1 A:3 B:2 C:2 D:1 E:1 = 10) is what
+    // admin sees. Public users go through applyTierGate which subsets the
+    // letters allowed for their tier + caps count.
+    const matchedJobs = USE_POSTGRES
+      ? applyTierGate(matchedJobsRaw, userTier)
+      : matchedJobsRaw;
 
     if (matchedJobs.length === 0) {
       await logLlmCall({
@@ -333,17 +389,30 @@ export async function POST(req: NextRequest) {
       promptTokens, completionTokens,
     });
 
+    // Persist seen for signed-in users. Fire-and-forget — never block the
+    // response. Errors swallowed because seen state is recoverable: worst
+    // case the user sees a duplicate job on next refresh until backfill.
+    if (USE_POSTGRES && session?.user?.id && matchedJobs.length > 0) {
+      void markSeenForUser(
+        session.user.id,
+        matchedJobs.map((j) => j.jobId),
+      ).catch((e) => {
+        console.warn('[recommend] markSeenForUser failed', {
+          userId: session.user?.id,
+          message: e instanceof Error ? e.message : String(e),
+        });
+      });
+    }
+
     return NextResponse.json({
       jobs: matchedJobs,
       fromCache,
       expiresAt: new Date(Date.now() + 6 * 3600 * 1000).toISOString(),
       quotaRemaining: resolved.quotaRemaining,
       timings: stageTimings,
-      // Pool diagnostics — surface decision path so the operator can tell
-      // from devtools whether the vertical filter is active or the request
-      // fell back to scoring against the full pool. If verticalApplied is
-      // false and verticalBucketSize is 0, run `pnpm run ingest
-      // build-vertical-index` to populate the sidecar index.
+      ...(USE_POSTGRES
+        ? { tier: userTier, seenPolicy: session?.user?.id ? 'persisted' : 'client' }
+        : {}),
       pool: {
         cvVertical,
         verticalApplied,

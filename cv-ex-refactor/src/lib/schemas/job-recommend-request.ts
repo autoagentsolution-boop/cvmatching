@@ -9,6 +9,10 @@ export const LLMConfigSchema = z.object({
 export const RecommendBodySchema = z.object({
   cvText: z.string().min(200).max(20000),
   llm: LLMConfigSchema.optional(),
+  // Anon-user client-side dedup. Capped at 50 ids × 32 chars = 1.6KB max.
+  // Only consulted when no session is attached (signed-in dedup is
+  // server-side via user_seen_job table). Phase 4 of jobfit-db-pool-monetize.
+  seenIds: z.array(z.string().max(32)).max(50).optional(),
 });
 
 export type RecommendBody = z.infer<typeof RecommendBodySchema>;
