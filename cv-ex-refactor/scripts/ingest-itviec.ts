@@ -15,6 +15,7 @@
 import { ingestEntries } from './ingest-file.js';
 import { urlToJobInput } from './ingest-urls.js';
 import { fetchViaCurl, assertCurlAvailable } from './fetch-via-curl.js';
+import { extractItemListUrls } from '../src/lib/scrape/jsonld-itemlist.js';
 import type { JobInput } from '../src/lib/jobs/types.js';
 
 const LISTING_DELAY_MS = 1500;
@@ -59,38 +60,6 @@ async function fetchListing(category: string, page: number): Promise<string | nu
     );
     return null;
   }
-}
-
-interface ItemList {
-  '@type'?: unknown;
-  itemListElement?: Array<{ url?: unknown }>;
-}
-
-/**
- * Pull job detail URLs out of every JSON-LD ItemList block on a listing page.
- * ITviec embeds the list twice (once at top, once at bottom of <head>); we
- * dedup at the caller via the seen-set.
- */
-function extractItemListUrls(html: string): string[] {
-  const urls: string[] = [];
-  const re = /<script[^>]*type=['"]application\/ld\+json['"][^>]*>([\s\S]*?)<\/script>/g;
-  for (const m of html.matchAll(re)) {
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(m[1]!.trim());
-    } catch {
-      continue;
-    }
-    const items = Array.isArray(parsed) ? parsed : [parsed];
-    for (const item of items) {
-      if (!item || typeof item !== 'object') continue;
-      if ((item as ItemList)['@type'] !== 'ItemList') continue;
-      for (const el of (item as ItemList).itemListElement ?? []) {
-        if (el && typeof el.url === 'string') urls.push(el.url);
-      }
-    }
-  }
-  return urls;
 }
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));

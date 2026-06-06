@@ -2,7 +2,7 @@
 // Usage: pnpm run ingest <command> [args]
 // Env: loaded from .env.local via tsx --env-file flag in package.json script.
 
-const COMMANDS = ['paste', 'file', 'urls', 'itviec', 'stats', 'expire', 'rebuild-embeddings', 'build-vertical-index'] as const;
+const COMMANDS = ['paste', 'file', 'urls', 'itviec', 'topcv', 'vnw', 'stats', 'expire', 'rebuild-embeddings', 'build-vertical-index'] as const;
 type Command = (typeof COMMANDS)[number];
 
 function printHelp(): void {
@@ -17,6 +17,12 @@ Commands:
                            Discover URLs from ITviec category listing pages (JSON-LD ItemList),
                            then ingest. Default 1 page (~20 URLs/slug). Example slugs:
                            data-engineer, senior-data-engineer, backend-developer, devops
+  topcv  <slug> [<slug>...] [--pages N] [--dry-run]
+                           Discover URLs from TopCV listing pages (JSON-LD → regex fallback).
+                           Slug forms: "viec-lam-it-phan-mem-c10026.html" or shortened.
+  vnw    <slug> [<slug>...] [--pages N] [--dry-run]
+                           Discover URLs from VietnamWorks listings (JSON-LD → __NEXT_DATA__
+                           → regex cascade). Slug forms: "cong-nghe-thong-tin-k1" etc.
   stats                    Print active/expired counts by vertical and seniority
   expire                   Mark jobs where verifiedAt > 21 days as expired
   rebuild-embeddings       Pack all active embeddings into a versioned KV blob
@@ -78,6 +84,16 @@ async function main(): Promise<void> {
     }
     case 'itviec': {
       const { run } = await import('./ingest-itviec.js');
+      await run(args);
+      break;
+    }
+    case 'topcv': {
+      const { run } = await import('./ingest-topcv.js');
+      await run(args);
+      break;
+    }
+    case 'vnw': {
+      const { run } = await import('./ingest-vnw.js');
       await run(args);
       break;
     }
