@@ -1,12 +1,14 @@
 ---
 title: "Job Fit DB migration, pool scale-up, tier-gated monetization"
 description: "Migrate jobs+embeddings to Neon+pgvector, scale pool to 1-2K, gate features by free/paid tier with SePay VietQR billing"
-status: pending
+status: in-progress
 priority: P1
 effort: 38-54h
 branch: main
 tags: [neon, pgvector, sepay, monetization, ingest, jobfit]
 created: 2026-06-06
+phasesShipped: [1, 2, 3, 4]
+phaseOrder: [1, 2, 3, 4, 6, 7, 5, 8]
 ---
 
 # Job Fit DB Migration + Pool Scale + Monetization
@@ -41,18 +43,27 @@ Existing `enforceQuota` in `src/lib/jobs/fit-tier.ts` is the upper cap for paid;
 
 ## Phase map
 
-| # | Phase | File | Effort | Blocks |
-|---|---|---|---|---|
-| 1 | Neon provision + schema | [phase-01-neon-provisioning-and-schema.md](./phase-01-neon-provisioning-and-schema.md) | 4-6h | 2,3 |
-| 2 | Data-access layer (jobs repo over Postgres) | [phase-02-data-access-layer.md](./phase-02-data-access-layer.md) | 5-7h | 3,4,5 |
-| 3 | KV → Postgres migration script | [phase-03-kv-to-postgres-migration.md](./phase-03-kv-to-postgres-migration.md) | 3-4h | 4,8 |
-| 4 | Recommend endpoint rewrite (pgvector + tier gate) | [phase-04-recommend-endpoint-rewrite.md](./phase-04-recommend-endpoint-rewrite.md) | 6-8h | 7 |
-| 5 | Scraper fleet — TopCV + VNW | [phase-05-scraper-fleet-topcv-vnw.md](./phase-05-scraper-fleet-topcv-vnw.md) | 8-12h | — |
-| 6 | Monetization (SePay subscription + /upgrade) | [phase-06-monetization-sepay-subscription.md](./phase-06-monetization-sepay-subscription.md) | 6-8h | 4 |
-| 7 | Refresh dedup + "no more matches" UX | [phase-07-refresh-dedup-and-no-more-matches-ux.md](./phase-07-refresh-dedup-and-no-more-matches-ux.md) | 3-4h | 4 |
-| 8 | Cutover + KV decommission | [phase-08-cutover-and-decommission.md](./phase-08-cutover-and-decommission.md) | 3-5h | 3,4,6,7 |
+| # | Phase | File | Effort | Status | Commit |
+|---|---|---|---|---|---|
+| 1 | Neon provision + schema | [phase-01-neon-provisioning-and-schema.md](./phase-01-neon-provisioning-and-schema.md) | 4-6h | ✅ SHIPPED 2026-06-06 | `46020f9` |
+| 2 | Data-access layer (jobs repo over Postgres) | [phase-02-data-access-layer.md](./phase-02-data-access-layer.md) | 5-7h | ✅ SHIPPED 2026-06-06 | `fc0876d` |
+| 3 | KV → Postgres migration script | [phase-03-kv-to-postgres-migration.md](./phase-03-kv-to-postgres-migration.md) | 3-4h | ✅ SHIPPED 2026-06-06 + RUN (171/171 jobs) | `6a66429` |
+| 4 | Recommend endpoint rewrite (pgvector + tier gate) | [phase-04-recommend-endpoint-rewrite.md](./phase-04-recommend-endpoint-rewrite.md) | 6-8h | ✅ SHIPPED 2026-06-06 (JOBFIT_USE_POSTGRES=1 on Vercel) | `800c108` |
+| 6 | Monetization (SePay subscription + /upgrade) | [phase-06-monetization-sepay-subscription.md](./phase-06-monetization-sepay-subscription.md) | 6-8h | 🔄 NEXT | — |
+| 7 | Refresh dedup + "no more matches" UX | [phase-07-refresh-dedup-and-no-more-matches-ux.md](./phase-07-refresh-dedup-and-no-more-matches-ux.md) | 3-4h | pending | — |
+| 5 | Scraper fleet — TopCV + VNW | [phase-05-scraper-fleet-topcv-vnw.md](./phase-05-scraper-fleet-topcv-vnw.md) | 8-12h | pending | — |
+| 8 | Cutover + KV decommission | [phase-08-cutover-and-decommission.md](./phase-08-cutover-and-decommission.md) | 3-5h | pending | — |
 
-**Sequencing:** 1 → 2 → {3, 5} → 4 → {6, 7} → 8. Phase 5 (scraping) parallelizable with Phase 3 (migration) since they touch different code surfaces.
+**Original sequencing:** 1 → 2 → {3, 5} → 4 → {6, 7} → 8.
+**Revised sequencing (user-confirmed 2026-06-06 16:45):** 1 → 2 → 3 → 4 → **6 → 7 → 5 → 8**.
+Rationale: free tier sees only 2 tier-B jobs from existing pool; Phase 6 (monetization) is the user-impact unlock. Pool scale-up (Phase 5) deferred since 171 jobs serve initial paid traffic. Phase 7 is small UX cleanup before fan-out work.
+
+## Migration result (Phase 3 live run, 2026-06-06)
+
+- KV active 171 → PG upserted 171 (0 skipped, 0 field diffs)
+- Per-vertical in PG: finance 28 · marketing 25 · ops 25 · other 41 · sales 25 · tech 27
+- pgvector 0.8.0, HNSW (m=16, ef_construction=64) confirmed via db-verify-indexes
+- Parity verify "fails" on embeddings — known false positive: score.ts sources from `embeddings:active` blob, NOT per-job hash. PG matches blob.
 
 ## Research
 
