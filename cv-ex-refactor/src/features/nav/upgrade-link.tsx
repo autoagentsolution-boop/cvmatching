@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { env } from '@/lib/env';
+import { isMonetizationEnabled } from '@/lib/monetization/flag';
 import { resolveUserTier } from '@/lib/users/resolve-user-tier';
 import type { Session } from 'next-auth';
 
@@ -9,9 +9,7 @@ import type { Session } from 'next-auth';
 //   - user's current tier is 'free'
 // Hidden for anon (CTA is sign-in, not upgrade) and paid (already there).
 export async function UpgradeLink({ session }: { session: Session | null }) {
-  if (env.MONETIZATION_ENABLED === '0' || env.MONETIZATION_ENABLED === 'false') {
-    return null;
-  }
+  if (!isMonetizationEnabled()) return null;
   if (!session?.user?.id) return null;
 
   const tier = await resolveUserTier(session);

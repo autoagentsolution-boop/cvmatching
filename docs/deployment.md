@@ -58,7 +58,7 @@ Vercel Dashboard → **Settings → Environment Variables**.
 | `SEPAY_ACCOUNT_NAME` | Prod | Account holder name (e.g. `RESUMEREFINE`). |
 | `SEPAY_BANK_NAME` | Prod | VietQR-recognized bank slug (e.g. `Vietcombank`). |
 | `PAID_PLAN_PRICE_VND` | Prod | Pro plan price in VND. Default `99000`. Digits only. |
-| `MONETIZATION_ENABLED` | Prod | `0`/`false` → `/upgrade` redirects + webhook 503 + everyone treated as free. Defaults to enabled. |
+| `MONETIZATION_ENABLED` | Prod | **Default OFF.** Set `1` or `true` to enable SePay. When off: `/upgrade` redirects, webhook + checkout 503, nav link hidden, and any signed-in user is treated as `paid` (so they're not stuck at the 2-job free cap without an upgrade path). |
 
 ### Optional / Cost & Alerts
 

@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { env } from '@/lib/env';
 import { getSession } from '@/lib/get-session';
+import { isMonetizationEnabled } from '@/lib/monetization/flag';
 import { resolveUserTier } from '@/lib/users/resolve-user-tier';
 import { UpgradeClient } from './upgrade-client';
 
@@ -8,7 +9,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export default async function UpgradePage() {
-  if (env.MONETIZATION_ENABLED === '0' || env.MONETIZATION_ENABLED === 'false') {
+  if (!isMonetizationEnabled()) {
     redirect('/job-fit');
   }
 

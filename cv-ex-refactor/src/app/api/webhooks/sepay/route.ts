@@ -14,16 +14,12 @@ import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { getDb, orders, sepayWebhookEvents } from '@/db';
 import { env } from '@/lib/env';
+import { isMonetizationEnabled } from '@/lib/monetization/flag';
 import { findOrderByTransaction, type SepayWebhookPayload } from '@/lib/payments/sepay-match';
 import { activateSubscription } from '@/lib/payments/subscriptions';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-function monetizationOff(): boolean {
-  const flag = env.MONETIZATION_ENABLED;
-  return flag === '0' || flag === 'false';
-}
 
 function verifyAuth(req: Request): boolean {
   const expected = env.SEPAY_WEBHOOK_API_KEY;
@@ -47,7 +43,7 @@ function verifyAuth(req: Request): boolean {
 }
 
 export async function POST(req: Request) {
-  if (monetizationOff()) {
+  if (!isMonetizationEnabled()) {
     return NextResponse.json({ error: 'monetization_disabled' }, { status: 503 });
   }
 

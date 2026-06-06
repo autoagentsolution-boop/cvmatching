@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 import { getDb, orders } from '@/db';
 import { env } from '@/lib/env';
 import { getSession } from '@/lib/get-session';
+import { isMonetizationEnabled } from '@/lib/monetization/flag';
 import { ensureUserRow } from '@/lib/users/ensure-user-row';
 import { buildOrderMemo, generateVietQRUrl } from '@/lib/payments/sepay-qr';
 
@@ -14,11 +15,6 @@ export const dynamic = 'force-dynamic';
 
 const DEFAULT_PRICE_VND = 99_000;
 
-function monetizationOff(): boolean {
-  const flag = env.MONETIZATION_ENABLED;
-  return flag === '0' || flag === 'false';
-}
-
 function priceVnd(): number {
   const raw = env.PAID_PLAN_PRICE_VND;
   const n = raw ? parseInt(raw, 10) : NaN;
@@ -26,7 +22,7 @@ function priceVnd(): number {
 }
 
 export async function POST() {
-  if (monetizationOff()) {
+  if (!isMonetizationEnabled()) {
     return NextResponse.json({ error: 'monetization_disabled' }, { status: 503 });
   }
 

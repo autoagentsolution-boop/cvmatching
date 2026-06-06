@@ -57,8 +57,11 @@ const serverSchema = z.object({
   JOBFIT_USE_POSTGRES: optStr(z.string()),
   // Phase 6 — SePay VietQR monetization. All optional locally; required in
   // production. Webhook + checkout routes fail-closed (503) when absent.
-  // MONETIZATION_ENABLED is the kill switch — '0'/'false' renders /upgrade as
-  // 404 and treats every user as free regardless of subscription state.
+  // MONETIZATION_ENABLED is the kill switch — DEFAULT OFF until pricing
+  // ships. Set '1' or 'true' to enable; any other value (incl. unset, '0',
+  // 'false') keeps /upgrade unreachable, webhook 503, nav link hidden, and
+  // resolveUserTier promotes every signed-in user to 'paid' so they're not
+  // stranded at the 2-job free cap with no way to upgrade.
   SEPAY_WEBHOOK_API_KEY: optStr(z.string().min(16)),
   SEPAY_ACCOUNT_NUMBER: optStr(z.string()),
   SEPAY_ACCOUNT_NAME: optStr(z.string()),
