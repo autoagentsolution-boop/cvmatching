@@ -19,7 +19,7 @@ import { getSession } from '@/lib/get-session';
 import { isAdminUser } from '@/lib/usage/admin-auth';
 import { resolveUserTier, type UserTier } from '@/lib/users/resolve-user-tier';
 import { applyTierGate } from '@/lib/jobs/apply-tier-gate';
-import { markSeenForUser } from '@/lib/jobs/mark-seen-for-user';
+import { markSeenForUser, seenCountForUser } from '@/lib/jobs/mark-seen-for-user';
 import { env } from '@/lib/env';
 
 export const runtime = 'nodejs';
@@ -251,18 +251,22 @@ export async function POST(req: NextRequest) {
 
     stageTimings.topk = Date.now() - topkStart;
     if (candidates.length === 0) {
-      // For Postgres path this means the user has exhausted matching jobs in
-      // their vertical (NOT EXISTS hit all rows). UX in Phase 7 surfaces a
-      // "no more new matches" CTA — for now return a structured 200 with empty
-      // list so the client can detect it cleanly.
+      // Disambiguate empty result: dedup exhausted the user's pool, OR the
+      // vertical pool is genuinely empty. Drives the UI banner copy in Phase 7.
       if (USE_POSTGRES) {
+        const seenCount = session?.user?.id
+          ? await seenCountForUser(session.user.id).catch(() => 0)
+          : (body.seenIds?.length ?? 0);
+        const exhaustedPool = seenCount > 0;
         return NextResponse.json({
           jobs: [],
           fromCache,
           tier: userTier,
           seenPolicy: session?.user?.id ? 'persisted' : 'client',
+          exhaustedPool,
+          seenCount,
           pool: { cvVertical, verticalApplied, candidatesScored: 0 },
-          message: 'no_more_new_matches',
+          message: exhaustedPool ? 'no_more_new_matches' : 'pool_empty',
         });
       }
       return err('service_unavailable', 'Job index chưa sẵn sàng (0 candidates). Admin cần ingest trước.', 503);

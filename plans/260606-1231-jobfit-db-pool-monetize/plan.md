@@ -7,7 +7,7 @@ effort: 38-54h
 branch: main
 tags: [neon, pgvector, sepay, monetization, ingest, jobfit]
 created: 2026-06-06
-phasesShipped: [1, 2, 3, 4, 6]
+phasesShipped: [1, 2, 3, 4, 6, 7]
 phaseOrder: [1, 2, 3, 4, 6, 7, 5, 8]
 ---
 
@@ -50,7 +50,7 @@ Existing `enforceQuota` in `src/lib/jobs/fit-tier.ts` is the upper cap for paid;
 | 3 | KV → Postgres migration script | [phase-03-kv-to-postgres-migration.md](./phase-03-kv-to-postgres-migration.md) | 3-4h | ✅ SHIPPED 2026-06-06 + RUN (171/171 jobs) | `6a66429` |
 | 4 | Recommend endpoint rewrite (pgvector + tier gate) | [phase-04-recommend-endpoint-rewrite.md](./phase-04-recommend-endpoint-rewrite.md) | 6-8h | ✅ SHIPPED 2026-06-06 (JOBFIT_USE_POSTGRES=1 on Vercel) | `800c108` |
 | 6 | Monetization (SePay subscription + /upgrade) | [phase-06-monetization-sepay-subscription.md](./phase-06-monetization-sepay-subscription.md) | 6-8h | ✅ SHIPPED 2026-06-06 (code only — SePay dashboard wiring + 1k VND smoke test still operator-pending) | _pending commit_ |
-| 7 | Refresh dedup + "no more matches" UX | [phase-07-refresh-dedup-and-no-more-matches-ux.md](./phase-07-refresh-dedup-and-no-more-matches-ux.md) | 3-4h | pending | — |
+| 7 | Refresh dedup + "no more matches" UX | [phase-07-refresh-dedup-and-no-more-matches-ux.md](./phase-07-refresh-dedup-and-no-more-matches-ux.md) | 3-4h | ✅ SHIPPED 2026-06-06 | _pending commit_ |
 | 5 | Scraper fleet — TopCV + VNW | [phase-05-scraper-fleet-topcv-vnw.md](./phase-05-scraper-fleet-topcv-vnw.md) | 8-12h | pending | — |
 | 8 | Cutover + KV decommission | [phase-08-cutover-and-decommission.md](./phase-08-cutover-and-decommission.md) | 3-5h | pending | — |
 

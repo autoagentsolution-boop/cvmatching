@@ -27,6 +27,10 @@ interface JobFitState {
   quotaRemaining: number | null;
   /** Set of `${jobId}:${topicName}` — optimistically disliked topics. */
   dislikedKeys: string[];
+  /** Phase 7 — set when server indicates the user has seen all candidates. */
+  exhaustedPool: boolean;
+  emptyReason: 'no_more_new_matches' | 'pool_empty' | null;
+  seenPolicy: 'persisted' | 'client' | null;
 
   generate: (cvText: string) => Promise<void>;
   dislike: (jobId: string, topicName: string) => void;
@@ -55,6 +59,9 @@ const initial = {
   error: null as string | null,
   quotaRemaining: null as number | null,
   dislikedKeys: [] as string[],
+  exhaustedPool: false,
+  emptyReason: null as 'no_more_new_matches' | 'pool_empty' | null,
+  seenPolicy: null as 'persisted' | 'client' | null,
 };
 
 export const useJobFit = create<JobFitState>()(
@@ -72,11 +79,14 @@ export const useJobFit = create<JobFitState>()(
             cvHash: cvTextHash(cvText),
             jobs: res.jobs,
             fetchedAt: new Date().toISOString(),
-            expiresAt: res.expiresAt,
+            expiresAt: res.expiresAt ?? null,
             status: 'success',
             error: null,
-            quotaRemaining: res.quotaRemaining,
+            quotaRemaining: res.quotaRemaining ?? null,
             dislikedKeys: [],
+            exhaustedPool: Boolean(res.exhaustedPool),
+            emptyReason: res.message ?? null,
+            seenPolicy: res.seenPolicy ?? null,
           });
         } catch (e) {
           set({
@@ -113,6 +123,9 @@ export const useJobFit = create<JobFitState>()(
         error: s.error,
         quotaRemaining: s.quotaRemaining,
         dislikedKeys: s.dislikedKeys,
+        exhaustedPool: s.exhaustedPool,
+        emptyReason: s.emptyReason,
+        seenPolicy: s.seenPolicy,
       }),
     },
   ),

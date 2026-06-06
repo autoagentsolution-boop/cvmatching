@@ -190,11 +190,16 @@ async function topKByEmbedding(
     wheres.push(sql`id NOT IN (${sql.join(placeholders, sql`, `)})`);
   }
   if (opts.excludeForUserId) {
+    // Sliding 90-day TTL — seen jobs resurface after 90 days. Aligns with the
+    // ingest freshness window (≤3d posted) so stale-seen rows don't permanently
+    // shrink the pool. Cast `seen_at > now() - interval '90 days'` lives in
+    // SQL because Drizzle's interval helpers add noise.
     wheres.push(
       sql`NOT EXISTS (
         SELECT 1 FROM user_seen_job
         WHERE user_seen_job.user_id = ${opts.excludeForUserId}
           AND user_seen_job.job_id = jobs.id
+          AND user_seen_job.seen_at > now() - interval '90 days'
       )`,
     );
   }

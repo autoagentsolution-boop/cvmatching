@@ -5,6 +5,7 @@ import { Button, Card, PageHeader, LoadingState, ErrorState } from '@/components
 import { useJobFit, isCacheValid } from './job-fit-store';
 import { JobCard } from './job-card';
 import { EmptyStateNeedCv } from './empty-state-need-cv';
+import { ExhaustedPoolBanner } from './exhausted-pool-banner';
 import { semanticForTier, type TierLetter } from '@/lib/jobs/fit-tier';
 import type { JobMatchOut } from '@/lib/llm/normalize-job-recommend';
 
@@ -48,7 +49,13 @@ function readCvText(): string | null {
  * burned shared-key budget.
  */
 export function JobFitListPage() {
-  const { jobs, status, generate, quotaRemaining } = useJobFit();
+  // Per-field selectors only — see feedback_zustand_object_literal_selector.
+  const jobs = useJobFit((s) => s.jobs);
+  const status = useJobFit((s) => s.status);
+  const generate = useJobFit((s) => s.generate);
+  const quotaRemaining = useJobFit((s) => s.quotaRemaining);
+  const emptyReason = useJobFit((s) => s.emptyReason);
+  const seenPolicy = useJobFit((s) => s.seenPolicy);
   const cacheValid = isCacheValid(useJobFit.getState());
 
   const cvText = readCvText();
@@ -170,8 +177,17 @@ export function JobFitListPage() {
         </div>
       )}
 
-      {/* Edge: success but zero matches (shouldn't happen — API errors on 0 matches) */}
-      {status === 'success' && jobs.length === 0 && (
+      {/* Success but zero matches — disambiguated via emptyReason (Phase 7) */}
+      {status === 'success' && jobs.length === 0 && emptyReason && (
+        <ExhaustedPoolBanner
+          seenPolicy={seenPolicy}
+          reason={emptyReason}
+          onAfterReset={handleFetch}
+        />
+      )}
+
+      {/* Fallback: legacy "no matches" path (KV admin route or pre-Phase-7 cache) */}
+      {status === 'success' && jobs.length === 0 && !emptyReason && (
         <ErrorState
           title="Không có job phù hợp"
           description="Không tìm thấy job nào khớp đủ cao. Hãy bổ sung thêm kinh nghiệm vào CV và thử lại."
