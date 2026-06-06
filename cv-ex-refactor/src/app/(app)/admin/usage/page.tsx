@@ -7,6 +7,7 @@ import { vnDateString } from '@/lib/quota/vn-date';
 import { readVisitStats, readDailyVisits } from '@/lib/analytics/visit-counter';
 import { readBucketStatus, isAlertWebhookConfigured, WARN_LIMIT_MICRO_USD, KILL_LIMIT_MICRO_USD } from '@/lib/cost/guard';
 import { COST_BUCKETS } from '@/lib/cost/buckets';
+import { readActivationDay, ACTIVATION_ACTIONS, type ActivationAction } from '@/lib/usage/read-activation';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -54,11 +55,12 @@ export default async function AdminUsagePage({
 
   const snapshot = await getUsageSnapshot(month, days);
   const todayYmd = vnDateString();
-  const [jobFitStats, visitStats, dailyVisits, bucketStatus] = await Promise.all([
+  const [jobFitStats, visitStats, dailyVisits, bucketStatus, activationToday] = await Promise.all([
     getJobFitStats(todayYmd),
     readVisitStats(),
     readDailyVisits(days),
     readBucketStatus(COST_BUCKETS, todayYmd),
+    readActivationDay(todayYmd),
   ]);
   const webhookConfigured = isAlertWebhookConfigured();
   const totalShardSpendToday = bucketStatus.reduce((a, b) => a + b.cumulativeMicroUsd, 0);
@@ -219,6 +221,49 @@ export default async function AdminUsagePage({
           /api, /_next, prefetch). Unique = số IP riêng biệt trong ngày. Signed-in = pageviews có JWT
           NextAuth hợp lệ.
         </p>
+      </section>
+
+      <section>
+        <h2 className="mb-3 font-display text-headline-sm font-bold text-on-surface">
+          Activation today — anon vs signed-in
+        </h2>
+        <p className="mb-2 text-label-sm text-on-surface-variant">
+          Successful submits per feature, split by shared-key anonymous vs signed-in.
+          Conversion = signed-in / total. Anon-only counter started{' '}
+          <strong>2026-06-06</strong> — earlier traffic shows as 100% signed-in (clamped).
+          analyze-v2 = JD Matching page, analyze-v3 = CV-Solo /analyze.
+        </p>
+        <div className="overflow-x-auto rounded-xl border border-outline-variant">
+          <table className="w-full text-label-sm">
+            <thead className="bg-surface-container-low text-on-surface-variant">
+              <tr>
+                <Th>Feature</Th>
+                <Th align="right">Total ok</Th>
+                <Th align="right">Anon</Th>
+                <Th align="right">Signed-in</Th>
+                <Th align="right">Conversion</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {ACTIVATION_ACTIONS.map((action: ActivationAction) => {
+                const c = activationToday.features[action];
+                const conversion =
+                  c.total > 0 ? `${((c.signedIn / c.total) * 100).toFixed(1)}%` : '—';
+                return (
+                  <tr key={action} className="border-t border-outline-variant">
+                    <Td>
+                      <code>{action}</code>
+                    </Td>
+                    <Td align="right">{fmt(c.total)}</Td>
+                    <Td align="right">{fmt(c.anon)}</Td>
+                    <Td align="right">{fmt(c.signedIn)}</Td>
+                    <Td align="right">{conversion}</Td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section>

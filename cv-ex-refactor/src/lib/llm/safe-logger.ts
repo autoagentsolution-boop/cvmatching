@@ -1,4 +1,4 @@
-import { trackUsage, type UsageAction } from '@/lib/usage/track-usage';
+import { trackUsage, type UsageAction, type AnalyzeVariant } from '@/lib/usage/track-usage';
 
 export interface LlmCallMeta {
   endpoint: UsageAction;
@@ -14,6 +14,8 @@ export interface LlmCallMeta {
   error?: string | undefined;
   /** Present iff signed-in (shared-key path or signed-in BYOK). */
   userId?: string | undefined;
+  /** Only meaningful when endpoint === 'analyze' — v2 = JD Matching, v3 = CV-Solo. */
+  variant?: AnalyzeVariant | undefined;
 }
 
 /**
@@ -31,6 +33,7 @@ export async function logLlmCall(meta: LlmCallMeta): Promise<void> {
       status: meta.status,
       byok: meta.byok,
       userId: meta.userId,
+      variant: meta.variant,
       model: meta.model,
       inputChars: meta.inputChars,
       outputChars: meta.outputChars,

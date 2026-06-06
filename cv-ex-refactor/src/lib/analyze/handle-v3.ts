@@ -76,6 +76,7 @@ export async function handleAnalyzeV3(
     if (!infer.ok) {
       await logLlmCall({
         endpoint: 'analyze',
+        variant: 'v3',
         provider: body.llm.provider,
         model: body.llm.model,
         byok: resolved.byok,
@@ -146,6 +147,7 @@ export async function handleAnalyzeV3(
       });
       await logLlmCall({
         endpoint: 'analyze',
+        variant: 'v3',
         provider: body.llm.provider,
         model: body.llm.model,
         byok: resolved.byok,
@@ -171,6 +173,7 @@ export async function handleAnalyzeV3(
 
     await logLlmCall({
       endpoint: 'analyze',
+      variant: 'v3',
       provider: body.llm.provider,
       model: body.llm.model,
       byok: resolved.byok,
@@ -201,6 +204,7 @@ export async function handleAnalyzeV3(
     const message = e instanceof Error ? e.message : String(e);
     await logLlmCall({
       endpoint: 'analyze',
+      variant: 'v3',
       provider: body.llm.provider,
       model: body.llm.model,
       byok: resolved.byok,

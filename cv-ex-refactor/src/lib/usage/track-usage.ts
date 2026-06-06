@@ -12,11 +12,21 @@ export type UsageAction =
   | 'job-recommend';
 export type UsageStatus = 'ok' | 'error';
 
+/**
+ * Sub-action tag for /api/analyze. v2 = legacy CV-vs-JD (JD Matching page);
+ * v3 = CV-Solo Analyze (default `/analyze`). Both paths share the same quota,
+ * cost-bucket, and primary counter (`usage:global:<ymd>:analyze:<status>`),
+ * but writes ALSO go to `usage:global:<ymd>:analyze-<variant>:<status>` so
+ * admin can see the JD Matching vs CV-Solo activation split.
+ */
+export type AnalyzeVariant = 'v2' | 'v3';
+
 export interface TrackUsageInput {
   action: UsageAction;
   status: UsageStatus;
   byok: boolean;
   userId?: string | undefined;
+  variant?: AnalyzeVariant | undefined;
   model?: string | undefined;
   inputChars?: number | undefined;
   outputChars?: number | undefined;
@@ -92,6 +102,25 @@ export async function trackUsage(input: TrackUsageInput): Promise<void> {
     }
     if (tokenVolume > 0) {
       ops.push(incrWithTtl(`usage:global:${ymd}:${input.action}:tokens`, tokenVolume));
+    }
+
+    // Activation tracking — anon shared-key counter for funnel conversion view.
+    // signed-in count is derived as (total - anon) so we don't write a second key.
+    const isAnonShared = !input.userId && !input.byok;
+    if (isAnonShared) {
+      ops.push(incrWithTtl(`usage:global:${ymd}:${input.action}:anon:${input.status}`, 1));
+    }
+
+    // Analyze v2 (JD Matching) vs v3 (CV-Solo) split. Sub-counters keyed under
+    // a pseudo-action `analyze-v2` / `analyze-v3` so the reader can use the same
+    // key shape as the primary `analyze` counter. Variant intentionally only
+    // applies to `analyze`; other actions ignore it.
+    if (input.action === 'analyze' && input.variant) {
+      const variantAction = `analyze-${input.variant}`;
+      ops.push(incrWithTtl(`usage:global:${ymd}:${variantAction}:${input.status}`, 1));
+      if (isAnonShared) {
+        ops.push(incrWithTtl(`usage:global:${ymd}:${variantAction}:anon:${input.status}`, 1));
+      }
     }
 
     // Shared-key spend dedicated bucket — drives the alert webhook.

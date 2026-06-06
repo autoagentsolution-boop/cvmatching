@@ -92,6 +92,7 @@ export async function POST(req: NextRequest) {
       });
       await logLlmCall({
         endpoint: 'analyze',
+        variant: 'v2',
         provider: body.llm.provider,
         model: body.llm.model,
         byok: resolved.byok,
@@ -117,6 +118,7 @@ export async function POST(req: NextRequest) {
 
     await logLlmCall({
       endpoint: 'analyze',
+      variant: 'v2',
       provider: body.llm.provider,
       model: body.llm.model,
       byok: resolved.byok,
@@ -141,6 +143,7 @@ export async function POST(req: NextRequest) {
     const message = e instanceof Error ? e.message : String(e);
     await logLlmCall({
       endpoint: 'analyze',
+      variant: 'v2',
       provider: body.llm.provider,
       model: body.llm.model,
       byok: resolved.byok,
