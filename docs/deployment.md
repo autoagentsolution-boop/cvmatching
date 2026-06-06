@@ -360,6 +360,7 @@ Source of truth: `src/lib/quota/consume-quota.ts` (`QUOTA_LIMITS`,
 | `job-recommend` | 5/day | 12/day | unlimited | Job-fit recommendations (v0.3+, admin-only currently) |
 | `extract-must-haves` | passthrough | passthrough | passthrough | IP rate-limited, no quota debit |
 | `career-path-suggest` | passthrough | passthrough | passthrough | IP rate-limited, no quota debit |
+| `company-enrich` | passthrough | passthrough | passthrough | Lazy on-demand company card LLM enrichment (v0.4 Phase A); cost-only kill-switch + IP rate-limit |
 
 ---
 
@@ -405,12 +406,13 @@ state is enforced by three orthogonal switches; admins bypass all three.
 | Switch | State | Storage | Effect on non-admin |
 |---|---|---|---|
 | `DISABLE_SHARED_KEY=1` | ON | Vercel env | All non-BYOK requests → 503 `shared_key_disabled` at `resolveApiKey` |
-| `kill-switch:*` (7 buckets) | ON | KV `kill-switch:<bucket>` = `'1'` | Per-action 503 `service_unavailable` at route handler |
+| `kill-switch:*` (8 buckets) | ON | KV `kill-switch:<bucket>` = `'1'` | Per-action 503 `service_unavailable` at route handler |
 | `login:enabled` | OFF | KV `login:enabled` deleted | `/sign-in` returns 404; topnav login button hidden |
 
-Authoritative bucket list in `src/lib/cost/buckets.ts`:
+Authoritative bucket list in `src/lib/cost/buckets.ts` (8 buckets):
 `analyze`, `generate-cv`, `generate-cover-letter`, `career-path`,
-`career-path-suggest`, `extract-must-haves`, `job-recommend`.
+`career-path-suggest`, `extract-must-haves`, `job-recommend`,
+`company-enrich`.
 
 Admin (`auto.agent.solution@gmail.com` per `ADMIN_USER_EMAILS`) bypasses all
 three: resolves via `resolveApiKey` returning `isAdmin: true`; routes skip
@@ -431,7 +433,7 @@ pnpm run login-flag on
 
 ```powershell
 pnpm run kill-switch off --all
-pnpm run kill-switch status   # verify all four show off
+pnpm run kill-switch status   # verify all eight show off
 ```
 
 **Step 3 — Lift the env-level shared-key block**:
