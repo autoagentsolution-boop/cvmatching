@@ -50,6 +50,15 @@ Vercel Dashboard → **Settings → Environment Variables**.
 | `EMBED_CACHE_SECRET` | Prod + preview | HMAC key for CV embedding cache (v0.3). Min 32 bytes. Rotate quarterly. |
 | `CRON_SECRET` | Prod only | Bearer token for `/api/jobs/refresh` cron. Auto-injected on Vercel Pro. Min 16 chars for local testing. |
 | `ADMIN_USER_IDS` | Prod + preview | Comma-separated email allowlist for `/admin/usage` dashboard. Blocking: if empty, dashboard returns 404. |
+| `DATABASE_URL` | Prod + preview | Neon pooled (pgbouncer) URL. Auto-injected by Vercel Marketplace Neon. Used at runtime. |
+| `DATABASE_URL_UNPOOLED` | Prod + preview | Neon direct URL (Sensitive — paste from Console after `vercel env pull` masks it). Used by `pnpm db:generate` / `db:migrate`. |
+| `JOBFIT_USE_POSTGRES` | Prod | `1` = serve recommend from Postgres + tier gate. `0` / unset = legacy KV path. |
+| `SEPAY_WEBHOOK_API_KEY` | Prod | Sensitive. Webhook auth (timing-safe). Get from SePay Dashboard → Webhook. ≥16 chars. |
+| `SEPAY_ACCOUNT_NUMBER` | Prod | Bank account number receiving transfers. |
+| `SEPAY_ACCOUNT_NAME` | Prod | Account holder name (e.g. `RESUMEREFINE`). |
+| `SEPAY_BANK_NAME` | Prod | VietQR-recognized bank slug (e.g. `Vietcombank`). |
+| `PAID_PLAN_PRICE_VND` | Prod | Pro plan price in VND. Default `99000`. Digits only. |
+| `MONETIZATION_ENABLED` | Prod | `0`/`false` → `/upgrade` redirects + webhook 503 + everyone treated as free. Defaults to enabled. |
 
 ### Optional / Cost & Alerts
 
@@ -137,6 +146,18 @@ Or push to `main` if Git integration is **and** Git Author Trust is configured (
 - Vercel Dashboard → Deployments → previous good deploy → ⋯ → **Promote to Production**. ~10s DNS swap.
 - KV state survives rollback (decoupled from app version).
 - For env var rotation (AUTH_SECRET): redeploy invalidates active BYOK vault tokens — users re-enter keys.
+
+### SePay monetization (Phase 6)
+- **Kill switch**: `MONETIZATION_ENABLED=0` → `/upgrade` redirects to `/job-fit`, checkout returns 503, webhook returns 503, everyone read as `free` regardless of `subscriptions` rows.
+- **Webhook dashboard config** (SePay Dashboard → Webhooks):
+  - URL: `https://<prod-domain>/api/webhooks/sepay`
+  - Auth type: `Api_Key` — value must match `SEPAY_WEBHOOK_API_KEY` exactly
+  - Event filter: `In_only`, account number = `SEPAY_ACCOUNT_NUMBER`
+- **Idempotency**: `sepay_webhook_events.event_id` is PK; duplicate calls return `{success:true,duplicate:true}` and skip processing.
+- **Always-200 contract**: any post-auth error is recorded in `sepay_webhook_events.error` and returns 200 — SePay must never retry on our internal failures.
+- **Manual replay**: if `findOrderByTransaction` returns `no_match` (e.g. user forgot memo), inspect `sepay_webhook_events` payload and manually run `activateSubscription(userId, orderId)` via a script.
+- **Order TTL**: pending orders >30 min are lazy-expired by the status route. No cron required.
+- **Stack behavior on renewal**: paying while still in an active window extends `current_period_end` by +30d (no lost balance).
 
 ## 8. Known limits
 

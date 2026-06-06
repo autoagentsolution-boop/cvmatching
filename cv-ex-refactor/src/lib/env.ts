@@ -55,6 +55,16 @@ const serverSchema = z.object({
   // populate the Postgres `jobs` table. Otherwise the route will fail with
   // 503 "Job index empty" because pgvector has no rows to rank.
   JOBFIT_USE_POSTGRES: optStr(z.string()),
+  // Phase 6 — SePay VietQR monetization. All optional locally; required in
+  // production. Webhook + checkout routes fail-closed (503) when absent.
+  // MONETIZATION_ENABLED is the kill switch — '0'/'false' renders /upgrade as
+  // 404 and treats every user as free regardless of subscription state.
+  SEPAY_WEBHOOK_API_KEY: optStr(z.string().min(16)),
+  SEPAY_ACCOUNT_NUMBER: optStr(z.string()),
+  SEPAY_ACCOUNT_NAME: optStr(z.string()),
+  SEPAY_BANK_NAME: optStr(z.string()),
+  PAID_PLAN_PRICE_VND: optStr(z.string().regex(/^\d+$/)),
+  MONETIZATION_ENABLED: optStr(z.string()),
 });
 
 export const env = serverSchema.parse(process.env);

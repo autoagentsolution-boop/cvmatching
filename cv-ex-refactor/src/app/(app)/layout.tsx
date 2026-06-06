@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { getSession } from '@/lib/get-session';
 import { AppShell } from '@/features/nav/app-shell';
+import { UpgradeLink } from '@/features/nav/upgrade-link';
 import { isAdminUser } from '@/lib/usage/admin-auth';
 import { isLoginEnabled } from '@/lib/maintenance/login-flag';
 
@@ -16,7 +17,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const loginEnabled = await isLoginEnabled();
 
   return (
-    <AppShell session={session} isAdmin={isAdmin} loginEnabled={loginEnabled}>
+    <AppShell
+      session={session}
+      isAdmin={isAdmin}
+      loginEnabled={loginEnabled}
+      upgradeSlot={<UpgradeLink session={session} />}
+    >
       {children}
     </AppShell>
   );

@@ -14,6 +14,7 @@ interface AppShellProps {
   isAdmin: boolean;
   loginEnabled: boolean;
   children: ReactNode;
+  upgradeSlot?: ReactNode;
 }
 
 function deriveActiveNav(pathname: string): ActiveNav {
@@ -29,7 +30,7 @@ function deriveActiveNav(pathname: string): ActiveNav {
   return 'dashboard';
 }
 
-export function AppShell({ session, isAdmin, loginEnabled, children }: AppShellProps) {
+export function AppShell({ session, isAdmin, loginEnabled, children, upgradeSlot }: AppShellProps) {
   const pathname = usePathname();
   const activeNav = deriveActiveNav(pathname);
   const isAuthed = session !== null;
@@ -41,6 +42,7 @@ export function AppShell({ session, isAdmin, loginEnabled, children }: AppShellP
       isAuthed={isAuthed}
       topnavActions={
         <>
+          {upgradeSlot}
           <VisitsBadge />
           <SettingsDrawerTrigger isAuthed={isAuthed} />
           <UserMenu user={session?.user ?? null} loginEnabled={loginEnabled || isAdmin} />
