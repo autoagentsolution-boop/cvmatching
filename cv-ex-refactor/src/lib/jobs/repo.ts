@@ -11,6 +11,7 @@
 
 import { kv, kvAvailable } from '@/lib/quota/kv-client';
 import type { Job } from './types';
+import type { JobsRepo, TopKOpts, TopKResult } from './repo-interface';
 
 function assertKv(): void {
   if (!kvAvailable) {
@@ -148,3 +149,31 @@ export async function loadBlobChunks(
 
   return { ids, chunks };
 }
+
+// ─── JobsRepo interface compat ────────────────────────────────────────────
+//
+// Phase 02 of jobfit-db-pool-monetize plan: legacy KV repo declares
+// `implements JobsRepo` so the type system catches drift between the two
+// impls. KV repo cannot implement topKByEmbedding (no pgvector); throw a
+// fail-loud error so anyone wiring it up before Phase 04 cutover gets a
+// crystal-clear signal. Deleted in Phase 08.
+
+async function topKByEmbedding(
+  _query: Float32Array,
+  _opts: TopKOpts,
+): Promise<TopKResult[]> {
+  throw new Error(
+    'topKByEmbedding is not supported on the legacy KV repo. Use repo-postgres for vector queries.',
+  );
+}
+
+export const repoKv: JobsRepo = {
+  getJob,
+  getJobBatch,
+  saveJob,
+  expireJob,
+  isActiveJob,
+  listActiveIds,
+  touchVerifiedAt,
+  topKByEmbedding,
+};

@@ -17,6 +17,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:smoke": "tsx --env-file=.env.local scripts/db-smoke.ts",
+    "db:smoke-repo": "tsx --env-file=.env.local scripts/db-smoke-repo.ts",
     "db:enable-pgvector": "tsx --env-file=.env.local scripts/db-enable-pgvector.ts"
   },
   "dependencies": {
