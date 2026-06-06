@@ -40,6 +40,14 @@ const serverSchema = z.object({
   // v0.3 Phase 4: Bearer token for cron route. Vercel Pro auto-injects this.
   // Optional so local dev starts without it; refresh route rejects when absent in prod.
   CRON_SECRET: optStr(z.string().min(16)),
+  // v0.4 Phase A — Neon Postgres + pgvector for jobs/users/seen/subs (jobfit
+  // DB+monetize plan). DATABASE_URL = pgbouncer-pooled for runtime queries;
+  // DATABASE_URL_UNPOOLED = direct connection for Drizzle migrations (pooled
+  // mode does not support DDL across connections). Both auto-injected by
+  // Vercel Marketplace Neon integration; optional locally because dev/test
+  // suites that don't touch the DB layer must still boot.
+  DATABASE_URL: optStr(z.string().url()),
+  DATABASE_URL_UNPOOLED: optStr(z.string().url()),
 });
 
 export const env = serverSchema.parse(process.env);
