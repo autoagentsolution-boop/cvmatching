@@ -28,7 +28,7 @@ interface NavItem {
 // then admin-only utilities at the bottom. Sidebar renders flat (no groupings).
 const NAV_ITEMS: NavItem[] = [
   { key: 'dashboard', label: 'Dashboard', icon: 'home', href: '/' },
-  { key: 'analyze', label: 'Analyze', icon: 'analytics', href: '/analyze' },
+  { key: 'analyze', label: 'CV Analyze', icon: 'analytics', href: '/analyze' },
   { key: 'jd-matching', label: 'JD Matching', icon: 'compare_arrows', href: '/jd-matching' },
   { key: 'refined-cv', label: 'Refined CV', icon: 'description', href: '/refined-cv' },
   { key: 'career-path', label: 'Career Path', icon: 'psychology', href: '/career-path' },
