@@ -56,13 +56,16 @@ describe('jsonld-itemlist — extractItemListUrls', () => {
 });
 
 describe('topcv — normalizeTopcvSlug', () => {
-  const canonical = 'viec-lam-it-phan-mem-c10026.html';
+  // 2026-06-07: live TopCV listings are bare (no .html) and accept BOTH
+  // viec-lam- and tim-viec-lam- prefixes. Legacy .html stripped.
   it.each([
-    ['viec-lam-it-phan-mem-c10026.html', canonical],
-    ['viec-lam-it-phan-mem-c10026', canonical],
-    ['it-phan-mem-c10026', canonical],
-    ['it-phan-mem-c10026.html', canonical],
-  ])('normalizes %s', (input, expected) => {
+    ['viec-lam-it', 'viec-lam-it'],
+    ['tim-viec-lam-it-phan-mem', 'tim-viec-lam-it-phan-mem'],
+    ['/viec-lam-it', 'viec-lam-it'],
+    ['viec-lam-it.html', 'viec-lam-it'],
+    ['it-phan-mem', 'viec-lam-it-phan-mem'],
+    ['tim-viec-lam-lao-dong-pho-thong-cr1042', 'tim-viec-lam-lao-dong-pho-thong-cr1042'],
+  ])('normalizes %s → %s', (input, expected) => {
     expect(normalizeTopcvSlug(input)).toBe(expected);
   });
 });

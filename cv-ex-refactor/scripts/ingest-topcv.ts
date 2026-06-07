@@ -1,11 +1,18 @@
 // TopCV category-driven ingest. Mirrors `ingest-itviec.ts` shape.
 //
-// Listing URL pattern:  https://www.topcv.vn/{category-slug}
-//   where {category-slug} is e.g. "viec-lam-it-phan-mem-c10026.html".
-//   The script normalizes "viec-lam-…" prefix + ".html" suffix so the
-//   operator can pass any of the natural forms.
-// Pagination:           ?page=N
+// Listing URL pattern (2026-06-07 re-verified):
+//   https://www.topcv.vn/{category-slug}
+//   where {category-slug} is one of:
+//     viec-lam-it                          (broad nav category)
+//     tim-viec-lam-it-phan-mem             (search-style category)
+//     tim-viec-lam-lao-dong-pho-thong-cr1042 (search-style w/ cr-id)
+//   NO ".html" suffix on the new scheme. NO "-c{id}" suffix.
+//   The legacy "viec-lam-{name}-c{id}.html" pattern is dead (404).
+// Pagination:           ?page=N (verify per slug — some categories use
+//                       client-side infinite scroll; page=2 may return
+//                       page=1 content)
 // Detail URL pattern:   https://www.topcv.vn/viec-lam/{slug}-{id}.html
+//                       (detail pages still use .html — only listings changed)
 //
 // Discovery order:
 //   1) JSON-LD ItemList in listing-page <head> (preferred — Google for Jobs)
@@ -49,16 +56,24 @@ function parseArgs(argv: string[]): ParsedArgs {
 
 /**
  * Normalize a CLI-supplied category slug into the actual URL path segment.
- * Accepts any of:
- *   viec-lam-it-phan-mem-c10026.html   (verbatim)
- *   viec-lam-it-phan-mem-c10026        (no .html)
- *   it-phan-mem-c10026                  (no viec-lam- prefix)
- * Returns the canonical "viec-lam-…html" form.
+ * TopCV's live (2026-06-07) listing scheme has no .html suffix and no
+ * forced "viec-lam-" prefix — both "viec-lam-{x}" and "tim-viec-lam-{x}"
+ * are valid first segments. Pass-through if either prefix already present;
+ * otherwise prepend "viec-lam-" as the safest default. Strip any leading
+ * "/" or trailing ".html" the operator might have copy-pasted.
+ *
+ * Accepts:
+ *   viec-lam-it                         (verbatim)
+ *   tim-viec-lam-it-phan-mem            (verbatim)
+ *   /viec-lam-it                        (with slash)
+ *   viec-lam-it.html                    (legacy form — .html stripped)
+ *   it                                  (bare keyword — viec-lam- prepended)
  */
 export function normalizeTopcvSlug(input: string): string {
-  let s = input.trim();
-  if (!s.startsWith('viec-lam-')) s = `viec-lam-${s}`;
-  if (!s.endsWith('.html')) s = `${s}.html`;
+  let s = input.trim().replace(/^\/+/, '').replace(/\.html$/, '');
+  if (!s.startsWith('viec-lam-') && !s.startsWith('tim-viec-lam-')) {
+    s = `viec-lam-${s}`;
+  }
   return s;
 }
 
@@ -146,10 +161,10 @@ export async function run(args: string[]): Promise<void> {
   if (categories.length === 0) {
     console.error(
       '[ingest topcv] Usage: pnpm run ingest topcv <category-slug> [<slug>...] [--pages N] [--dry-run]\n' +
-        '  Example: pnpm run ingest topcv viec-lam-it-phan-mem-c10026 viec-lam-ke-toan-c1 --pages 3\n' +
-        '  Slug forms accepted: with or without "viec-lam-" prefix; with or without ".html" suffix.\n' +
-        '  --dry-run: discover URLs only, skip detail fetch + ingest.\n' +
-        '  Discover slugs from https://www.topcv.vn navigation menu.',
+        '  Example: pnpm run ingest topcv viec-lam-it tim-viec-lam-data-engineer --pages 3\n' +
+        '  Slug forms accepted: "viec-lam-{x}" or "tim-viec-lam-{x}"; .html suffix stripped if present.\n' +
+        '  --dry-run: discover URLs only, skip detail fetch + ingest (no Gemini/KV needed).\n' +
+        '  Discover live slugs from https://www.topcv.vn navigation menu.',
     );
     process.exit(1);
   }

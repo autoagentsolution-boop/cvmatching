@@ -50,6 +50,10 @@ function assertEnv(): void {
   }
 }
 
+// Commands whose --dry-run path performs URL discovery only (curl + parse),
+// with no Gemini embed + no KV/Postgres write. Skip env check in that path.
+const DRY_RUN_CAPABLE = new Set<string>(['topcv', 'vnw']);
+
 async function main(): Promise<void> {
   const [, , cmd, ...args] = process.argv;
 
@@ -64,7 +68,8 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  assertEnv();
+  const isDryRun = DRY_RUN_CAPABLE.has(cmd) && args.includes('--dry-run');
+  if (!isDryRun) assertEnv();
 
   switch (cmd as Command) {
     case 'paste': {
