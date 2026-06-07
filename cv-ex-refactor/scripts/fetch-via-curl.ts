@@ -15,6 +15,12 @@ const execFileP = promisify(execFile);
 const MAX_BUFFER_BYTES = 10 * 1024 * 1024;
 const DEFAULT_TIMEOUT_MS = 15000;
 
+// CF rate-limit: on 429, sleep then retry once. CF's IP rate-limit
+// windows are typically 60-300s; one 60s backoff clears most bursts.
+// If still 429 on retry, surface to caller to decide (abort vs continue).
+const RATE_LIMIT_BACKOFF_MS = 60_000;
+const RATE_LIMIT_MAX_RETRIES = 1;
+
 const DEFAULT_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
@@ -36,8 +42,29 @@ export interface CurlResult {
  *
  * `--write-out` appends the status code on a dedicated last line so we can
  * separate it from the body without spawning a second process.
+ *
+ * On 429: sleeps RATE_LIMIT_BACKOFF_MS then retries once. If still 429,
+ * returns the 429 result for caller to handle (typically: log + bail).
  */
 export async function fetchViaCurl(url: string, opts: CurlOptions = {}): Promise<CurlResult> {
+  let attempt = 0;
+  while (true) {
+    const result = await fetchViaCurlOnce(url, opts);
+    if (result.status !== 429 || attempt >= RATE_LIMIT_MAX_RETRIES) {
+      return result;
+    }
+    attempt++;
+    const host = (() => {
+      try { return new URL(url).hostname; } catch { return 'unknown-host'; }
+    })();
+    console.warn(
+      `[fetchViaCurl] 429 from ${host} — backoff ${RATE_LIMIT_BACKOFF_MS / 1000}s then retry (attempt ${attempt}/${RATE_LIMIT_MAX_RETRIES})`,
+    );
+    await new Promise((r) => setTimeout(r, RATE_LIMIT_BACKOFF_MS));
+  }
+}
+
+async function fetchViaCurlOnce(url: string, opts: CurlOptions = {}): Promise<CurlResult> {
   const ua = opts.ua ?? DEFAULT_UA;
   const acceptLanguage = opts.acceptLanguage ?? 'vi-VN,vi;q=0.9,en;q=0.8';
   const timeoutSec = Math.ceil((opts.timeoutMs ?? DEFAULT_TIMEOUT_MS) / 1000);

@@ -28,8 +28,12 @@ import { fetchViaCurl, assertCurlAvailable } from './fetch-via-curl.js';
 import { extractItemListUrls } from '../src/lib/scrape/jsonld-itemlist.js';
 import type { JobInput } from '../src/lib/jobs/types.js';
 
-const LISTING_DELAY_MS = 1500;
-const DETAIL_DELAY_MS = 1000;
+// Tuned 2026-06-07 PM after operator IP hit CF 429 burst at 1500/1000.
+// 3s/2s = ~20 req/min sustained, which TopCV CF tolerates from a single
+// residential IP. fetch-via-curl additionally retries each 429 once after
+// 60s, so transient flaps don't lose URLs.
+const LISTING_DELAY_MS = 3000;
+const DETAIL_DELAY_MS = 2000;
 const TOPCV_BASE = 'https://www.topcv.vn';
 
 interface ParsedArgs {
@@ -130,7 +134,10 @@ async function discoverUrls(
   for (const cat of categories) {
     let catAdded = 0;
     for (let p = 1; p <= pagesPerCategory; p++) {
-      if (p > 1) await sleep(LISTING_DELAY_MS);
+      // Sleep before EVERY listing (not just p>1). Inter-category transition
+      // was the worst burst before — first page of a new category fired
+      // immediately after previous category's last page.
+      await sleep(LISTING_DELAY_MS);
       const html = await fetchListing(cat, p);
       if (!html) break;
 
@@ -211,7 +218,9 @@ export async function run(args: string[]): Promise<void> {
 
   const entries: JobInput[] = [];
   for (let i = 0; i < urls.length; i++) {
-    if (i > 0) await sleep(DETAIL_DELAY_MS);
+    // Sleep before every detail fetch (including i=0) — first call after
+    // the discover phase is itself a CF-burst risk.
+    await sleep(DETAIL_DELAY_MS);
     const url = urls[i]!;
     console.log(`[ingest topcv] detail [${i + 1}/${urls.length}] ${url}`);
     const input = await urlToJobInput(url);

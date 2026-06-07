@@ -18,8 +18,9 @@ import { fetchViaCurl, assertCurlAvailable } from './fetch-via-curl.js';
 import { extractItemListUrls } from '../src/lib/scrape/jsonld-itemlist.js';
 import type { JobInput } from '../src/lib/jobs/types.js';
 
-const LISTING_DELAY_MS = 1500;
-const DETAIL_DELAY_MS = 1000;
+// See ingest-topcv.ts comment on the same constants — same CF tolerance.
+const LISTING_DELAY_MS = 3000;
+const DETAIL_DELAY_MS = 2000;
 
 interface ParsedArgs {
   categories: string[];
@@ -72,7 +73,9 @@ async function discoverUrls(
   for (const cat of categories) {
     let catAdded = 0;
     for (let p = 1; p <= pagesPerCategory; p++) {
-      if (p > 1) await sleep(LISTING_DELAY_MS);
+      // Sleep before EVERY listing (not just p>1) — inter-category burst is
+      // what flagged CF when delay was 1.5s.
+      await sleep(LISTING_DELAY_MS);
       const html = await fetchListing(cat, p);
       if (!html) break;
       const urls = extractItemListUrls(html);
@@ -129,7 +132,8 @@ export async function run(args: string[]): Promise<void> {
 
   const entries: JobInput[] = [];
   for (let i = 0; i < urls.length; i++) {
-    if (i > 0) await sleep(DETAIL_DELAY_MS);
+    // Sleep before every detail (including i=0).
+    await sleep(DETAIL_DELAY_MS);
     const url = urls[i]!;
     console.log(`[ingest itviec] detail [${i + 1}/${urls.length}] ${url}`);
     const input = await urlToJobInput(url);
