@@ -14,7 +14,14 @@ export const config: VercelConfig = {
   crons: [
     {
       path: '/api/jobs/refresh',
-      schedule: '0 20 * * *', // 20:00 UTC = 03:00 ICT
+      schedule: '0 20 * * *', // 20:00 UTC = 03:00 ICT (daily HEAD-check liveness)
+    },
+    {
+      // Nudges admin to run `pnpm seed-pool` locally. Local ingest because
+      // Cloudflare blocks GH Actions ASN for VN job boards (TopCV/ITviec) —
+      // operator's Bangkok IP passes CF, GH runner does not.
+      path: '/api/cron/ingest-reminder',
+      schedule: '0 19 */3 * *', // 19:00 UTC every 3rd day = 02:00 ICT next day
     },
   ],
 };
