@@ -84,7 +84,13 @@ function buildListingUrl(slug: string, page: number): string {
 
 // Regex fallback when JSON-LD ItemList absent. Captures absolute or relative
 // detail URLs and rewrites relatives to the topcv.vn origin.
-const TOPCV_DETAIL_RE = /href=["'](https?:\/\/(?:www\.)?topcv\.vn)?(\/viec-lam\/[^"'\s]+-\d+\.html)["']/g;
+//
+// TopCV detail URL families (2026-06-07 verified):
+//   /viec-lam/{slug}/{numeric-id}.html        — primary (slash before ID)
+//   /brand/{brand}/tuyen-dung/{slug}-j{id}.html — branded campaign jobs
+// Match-anywhere (no href= prefix) because SSR may render URLs inside
+// script payloads or hydration markers, not just anchors.
+const TOPCV_DETAIL_RE = /(https?:\/\/(?:www\.)?topcv\.vn)?(\/viec-lam\/[^"'\s<>?]+\/\d+\.html|\/brand\/[^"'\s<>?]+\/tuyen-dung\/[^"'\s<>?]+-j\d+\.html)/g;
 
 export function extractTopcvDetailUrls(html: string): string[] {
   const urls = new Set<string>();
@@ -148,9 +154,20 @@ async function discoverUrls(
       console.log(
         `[ingest topcv] discover ${cat} p${p} (${path}): parsed=${urls.length} fresh=${fresh} (cat-total=${catAdded})`,
       );
-      // Tail-detection: TopCV listings render ~20-25 cards. <5 indicates we
-      // ran past the last populated page.
+      // Tail-detection has two signals:
+      //   - urls.length < 5: ran past last populated page (typical tail)
+      //   - fresh === 0 after p1: this slug is client-side paginated
+      //     (broad nav categories like /viec-lam-it). p2 returns p1's
+      //     URLs verbatim — keep fetching wastes time + bandwidth.
+      // Server-paged slugs (tim-viec-lam-{kw}, often with -cr{id} suffix)
+      // continue through pagesPerCategory normally.
       if (urls.length < 5) break;
+      if (p > 1 && fresh === 0) {
+        console.log(
+          `[ingest topcv] discover ${cat}: pagination appears client-side (p${p} = p1). Breaking.`,
+        );
+        break;
+      }
     }
   }
   return [...seen];

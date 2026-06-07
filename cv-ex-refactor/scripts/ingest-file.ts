@@ -1,13 +1,18 @@
 // Batch file ingest: reads a JSON array of partial job objects, deduplicates
-// by sourceUrl against jobs:active, classifies, embeds, and saves each entry.
+// against the active job set, classifies, embeds, and saves each entry.
 // Writes data/ingest-progress.json on SIGINT for resume capability.
+//
+// Writes to Postgres since Phase 4 cutover (JOBFIT_USE_POSTGRES=1). Recommend
+// route serves from PG; ingest must land there too. Legacy KV repo (./repo.js)
+// is awaiting Phase 8 decommission. Companies sidecar (addActiveJob) stays on
+// KV — it's an index, not the source of truth.
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import crypto from 'node:crypto';
 import { classifyVerticalAndSub, classifySeniority } from '../src/lib/jobs/classify.js';
 import { embedText } from '../src/lib/jobs/embed.js';
-import { saveJob, isActiveJob } from '../src/lib/jobs/repo.js';
+import { saveJob, isActiveJob } from '../src/lib/jobs/repo-postgres.js';
 import type { Job, JobInput } from '../src/lib/jobs/types.js';
 import { resolveCompany } from '../src/lib/companies/alias-resolver.js';
 import { addActiveJob } from '../src/lib/companies/kv-client.js';

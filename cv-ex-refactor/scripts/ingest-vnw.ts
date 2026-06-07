@@ -25,14 +25,10 @@
 //
 // Cloudflare-gated → fetchViaCurl, anti-bot delays per ITviec/TopCV.
 
-import { ingestEntries } from './ingest-file.js';
-import { urlToJobInput } from './ingest-urls.js';
 import { fetchViaCurl, assertCurlAvailable } from './fetch-via-curl.js';
 import { extractItemListUrls } from '../src/lib/scrape/jsonld-itemlist.js';
-import type { JobInput } from '../src/lib/jobs/types.js';
 
 const LISTING_DELAY_MS = 1500;
-const DETAIL_DELAY_MS = 1000;
 const VNW_BASE = 'https://www.vietnamworks.com';
 
 interface ParsedArgs {
@@ -253,27 +249,28 @@ export async function run(args: string[]): Promise<void> {
     return;
   }
 
-  const entries: JobInput[] = [];
-  for (let i = 0; i < urls.length; i++) {
-    if (i > 0) await sleep(DETAIL_DELAY_MS);
-    const url = urls[i]!;
-    console.log(`[ingest vnw] detail [${i + 1}/${urls.length}] ${url}`);
-    const input = await urlToJobInput(url);
-    if (input) {
-      console.log(
-        `[ingest vnw] detail [${i + 1}/${urls.length}] ✓ ${input.title} @ ${input.company}`,
-      );
-      entries.push(input);
-    }
-  }
-
-  if (entries.length === 0) {
-    console.error('\n[ingest vnw] No valid JobInput extracted. Nothing to ingest.');
-    process.exit(1);
-  }
-
-  console.log(
-    `\n[ingest vnw] ${entries.length}/${urls.length} URLs parsed. Handing off to ingest pipeline...\n`,
+  // 2026-06-07: VNW detail pages are pure CSR (no JSON-LD JobPosting, no
+  // __NEXT_DATA__, no inline state). og:description is 193-char marketing
+  // boilerplate — too noisy for embeddings. postedAt cannot be extracted.
+  // Until we add a headless-browser path or reverse-engineer the
+  // ms.vietnamworks.com API, discovery is the most VNW can offer.
+  // Discovery + taxonomy SOURCES.vnw remain in place for future re-enable.
+  console.error(
+    '\n[ingest vnw] DETAIL-PAGE PARSER NOT VIABLE.\n' +
+      '  VNW detail pages are fully client-rendered: no JSON-LD JobPosting,\n' +
+      '  no __NEXT_DATA__ payload, only og:title + 193-char meta description\n' +
+      '  (marketing boilerplate). Cannot extract postedAt (freshness ≤3d\n' +
+      '  constraint) or rich description for quality embeddings.\n' +
+      '\n' +
+      '  This runner exits BEFORE detail-fetch + ingest. Discovery (--dry-run)\n' +
+      '  still works and the taxonomy SOURCES.vnw whitelist is preserved.\n' +
+      '\n' +
+      '  Re-enable path: add headless-browser detail fetch (Playwright) OR\n' +
+      '  reverse ms.vietnamworks.com auth flow OR scrape the still-fresh\n' +
+      '  vietnamworks.com app endpoints. None of these are scoped for the\n' +
+      '  2K pilot pool — use TopCV + ITviec + vl24h instead.\n' +
+      '\n' +
+      '  Tracked: plans/reports/recon-260607-1126-topcv-vnw-url-scheme-drift.md\n',
   );
-  await ingestEntries(entries, 'ingest vnw');
+  process.exit(2);
 }

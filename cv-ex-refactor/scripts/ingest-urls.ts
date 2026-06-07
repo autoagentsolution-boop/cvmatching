@@ -11,6 +11,18 @@ import { ingestEntries } from './ingest-file.js';
 import { fetchViaCurl, assertCurlAvailable } from './fetch-via-curl.js';
 import type { Job, JobInput } from '../src/lib/jobs/types.js';
 
+// Freshness cap per project_ingest_freshness_constraint: "every ingested job
+// must be real + currently open + posted ≤3 days ago". Operator override via
+// INGEST_MAX_AGE_DAYS env (rarely needed — pool seeding should respect the
+// cap so Job Fit results stay fresh and prod KV doesn't accumulate stubs).
+const MAX_AGE_DAYS = Number(process.env['INGEST_MAX_AGE_DAYS'] ?? 3);
+
+function isTooOld(datePosted: string, maxAgeDays: number): boolean {
+  const t = Date.parse(datePosted);
+  if (!Number.isFinite(t)) return true; // unparseable → treat as too old
+  return Date.now() - t > maxAgeDays * 24 * 60 * 60 * 1000;
+}
+
 function detectSource(url: string): Job['source'] {
   const u = url.toLowerCase();
   if (u.includes('itviec.com')) return 'itviec';
@@ -84,6 +96,20 @@ export async function urlToJobInput(url: string): Promise<JobInput | null> {
     return null;
   }
 
+  // Freshness gate: reject when datePosted is missing OR older than the cap.
+  // Previously fell back to today's date — silent freshness bypass that would
+  // let stale jobs leak into the active pool. Per
+  // feedback_error_surfacing_no_silent_fallback this now surfaces.
+  const datePostedRaw = (ld.datePosted ?? '').slice(0, 10);
+  if (!datePostedRaw) {
+    console.warn(`[ingest urls] No datePosted in JSON-LD (freshness unverifiable): ${url}`);
+    return null;
+  }
+  if (isTooOld(datePostedRaw, MAX_AGE_DAYS)) {
+    console.warn(`[ingest urls] Too old (datePosted=${datePostedRaw}, cap=${MAX_AGE_DAYS}d): ${url}`);
+    return null;
+  }
+
   const source = detectSource(url);
   const sourceCompanyUrl = ld.hiringOrganization.sameAs;
 
@@ -94,7 +120,7 @@ export async function urlToJobInput(url: string): Promise<JobInput | null> {
     sourceUrl: url,
     source,
     location: flattenLocation(ld.jobLocation) || 'Vietnam',
-    postedAt: (ld.datePosted ?? '').slice(0, 10) || new Date().toISOString().slice(0, 10),
+    postedAt: datePostedRaw,
     ...(sourceCompanyUrl ? { sourceCompanyUrl } : {}),
   };
 }

@@ -71,34 +71,40 @@ describe('topcv — normalizeTopcvSlug', () => {
 });
 
 describe('topcv — extractTopcvDetailUrls', () => {
-  it('captures absolute + relative hrefs', () => {
+  // 2026-06-07: TopCV detail URLs use slash-delimited IDs
+  // (/viec-lam/{slug}/{id}.html) for primary listings and -j{id}.html
+  // for branded campaigns. Match anywhere in body, not just href=.
+  it('captures /viec-lam/{slug}/{id}.html and /brand/.../-j{id}.html', () => {
     const html = `
-      <a href="https://www.topcv.vn/viec-lam/dev-abc-12345.html">A</a>
-      <a href='/viec-lam/qa-tester-99999.html'>B</a>
-      <a href="https://www.topcv.vn/viec-lam/sales-555.html">C</a>
+      <a href="https://www.topcv.vn/viec-lam/dev-abc/12345.html">A</a>
+      <a href='/viec-lam/qa-tester/99999.html'>B</a>
+      "url":"https://www.topcv.vn/viec-lam/sales/555.html"
+      <a href="/brand/sofitel/tuyen-dung/data-engineer-aws-j905982.html">D</a>
     `;
     expect(extractTopcvDetailUrls(html).sort()).toEqual([
-      'https://www.topcv.vn/viec-lam/dev-abc-12345.html',
-      'https://www.topcv.vn/viec-lam/qa-tester-99999.html',
-      'https://www.topcv.vn/viec-lam/sales-555.html',
+      'https://www.topcv.vn/brand/sofitel/tuyen-dung/data-engineer-aws-j905982.html',
+      'https://www.topcv.vn/viec-lam/dev-abc/12345.html',
+      'https://www.topcv.vn/viec-lam/qa-tester/99999.html',
+      'https://www.topcv.vn/viec-lam/sales/555.html',
     ]);
   });
 
   it('dedups duplicates', () => {
     const html = `
-      <a href="/viec-lam/x-1.html">A</a>
-      <a href="/viec-lam/x-1.html">B</a>
+      <a href="/viec-lam/x/1.html">A</a>
+      <a href="/viec-lam/x/1.html">B</a>
     `;
-    expect(extractTopcvDetailUrls(html)).toEqual(['https://www.topcv.vn/viec-lam/x-1.html']);
+    expect(extractTopcvDetailUrls(html)).toEqual(['https://www.topcv.vn/viec-lam/x/1.html']);
   });
 
-  it('rejects non-detail hrefs', () => {
+  it('rejects non-detail URLs', () => {
     const html = `
       <a href="/about">A</a>
-      <a href="/viec-lam/x-no-digits.html">B</a>
-      <a href="/viec-lam/x-1.html">C</a>
+      <a href="/viec-lam/x/no-digits.html">B</a>
+      <a href="/viec-lam-it">C</a>
+      <a href="/viec-lam/x/1.html">D</a>
     `;
-    expect(extractTopcvDetailUrls(html)).toEqual(['https://www.topcv.vn/viec-lam/x-1.html']);
+    expect(extractTopcvDetailUrls(html)).toEqual(['https://www.topcv.vn/viec-lam/x/1.html']);
   });
 });
 
