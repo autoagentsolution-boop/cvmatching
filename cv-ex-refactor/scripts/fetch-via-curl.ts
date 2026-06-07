@@ -15,10 +15,12 @@ const execFileP = promisify(execFile);
 const MAX_BUFFER_BYTES = 10 * 1024 * 1024;
 const DEFAULT_TIMEOUT_MS = 15000;
 
-// CF rate-limit: on 429, sleep then retry once. CF's IP rate-limit
-// windows are typically 60-300s; one 60s backoff clears most bursts.
-// If still 429 on retry, surface to caller to decide (abort vs continue).
-const RATE_LIMIT_BACKOFF_MS = 60_000;
+// CF rate-limit: on 429, sleep then retry once. Operator-tuned to 4min
+// after 60s proved too short on the first run (operator IP got flagged
+// in a way that persisted past 1 minute). CF residential-IP rate-limit
+// windows are usually 1-5min; 4min sits in the middle and clears reliably.
+// Trade-off: per-request worst-case latency = 4 min on a 429 hit.
+const RATE_LIMIT_BACKOFF_MS = 4 * 60_000;
 const RATE_LIMIT_MAX_RETRIES = 1;
 
 const DEFAULT_UA =
