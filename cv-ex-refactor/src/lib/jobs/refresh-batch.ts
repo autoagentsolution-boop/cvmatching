@@ -2,9 +2,10 @@
 // Fetches HEAD (falls back to GET on 405) for each job's sourceUrl.
 // Classifies response: 404/410 → expire, expired-body pattern → expire, 200 → touchVerifiedAt.
 //
-// NOTE: O(N) KV writes on 150 jobs is cheap. At 2000+ jobs, batch with ZSET by verifiedAt (deferred v0.3b).
+// Postgres-backed since pre-2K hardening (2026-06-07). Previously read from
+// KV repo — would have missed every job ingested into PG after Phase 4 cutover.
 
-import { getJob, expireJob, touchVerifiedAt } from './repo';
+import { getJob, expireJob, touchVerifiedAt } from './repo-postgres';
 
 // Matches common Vietnamese + English "job closed" patterns in page body.
 const EXPIRED_BODY_RE =

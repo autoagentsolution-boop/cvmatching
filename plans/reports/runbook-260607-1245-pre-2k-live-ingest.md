@@ -134,3 +134,130 @@ Still gated on 72h Phase 4 observation (started 2026-06-06) → earliest **2026-
 - TopCV broad `/viec-lam-it`: client-side carousel pagination. Don't use `--pages > 2` on broad nav routes; use `tim-viec-lam-*` instead.
 - tech.qa + tech.product-tech: no VNW seeds, limited TopCV seeds. Will be under-represented.
 - ITviec scraper accuracy: existing behavior, no Phase 5 changes.
+
+---
+
+# Periodic refresh — GitHub Actions
+
+After the initial 2K seed, ongoing pool maintenance is automated via `.github/workflows/refresh-jobs.yml`.
+
+## Layers of refresh (3 distinct concerns)
+
+| Cadence | Where | What it does |
+|---|---|---|
+| **Daily 20:00 UTC** | Vercel Cron → `/api/jobs/refresh` | HEAD-checks each active job's `sourceUrl`. 4xx/410/expired-body → mark inactive. Auto-expires `verifiedAt > 21 days`. Now PG-backed. |
+| **Every 3 days 19:00 UTC** | GitHub Actions → `refresh-jobs.yml` | Scrapes new TopCV + ITviec listings + ingests fresh URLs into Postgres + runs `ingest expire` to mark stale jobs. |
+| **On-demand (admin)** | `gh workflow run refresh-jobs.yml` | Same as scheduled. Manual trigger from GitHub UI/CLI. |
+
+The Vercel cron handles *liveness* (is this URL still alive?). The GH workflow handles *growth* (are there new postings?). They complement.
+
+## One-time setup: GitHub secrets
+
+Mirror Vercel env vars to GH Actions secrets. Run from `cv-ex-refactor/` after `vercel env pull .env.local` and pasting `GEMINI_API_KEY` manually:
+
+```powershell
+# Required (workflow fails fast if any is empty)
+gh secret set GEMINI_API_KEY < (Get-Content .env.local | Select-String '^GEMINI_API_KEY=' | ForEach-Object { $_.ToString().Split('=',2)[1].Trim('"') })
+
+# Easier: paste values when prompted
+gh secret set GEMINI_API_KEY
+gh secret set DATABASE_URL
+gh secret set DATABASE_URL_UNPOOLED
+gh secret set KV_REST_API_URL
+gh secret set KV_REST_API_TOKEN
+
+# Optional
+gh secret set EMBED_CACHE_SECRET
+gh secret set ALERT_WEBHOOK_URL
+```
+
+Verify:
+```powershell
+gh secret list
+# Expect: GEMINI_API_KEY, DATABASE_URL, DATABASE_URL_UNPOOLED, KV_REST_API_URL, KV_REST_API_TOKEN minimum
+```
+
+## Admin manual trigger
+
+Three equivalent ways:
+
+```powershell
+# 1. GitHub CLI — default sweep (full tech + non-tech, 3 pages/slug, 3-day freshness)
+gh workflow run refresh-jobs.yml
+
+# 2. GitHub CLI — custom slugs (e.g. catch up a specific vertical)
+gh workflow run refresh-jobs.yml `
+  -f topcv_slugs="tim-viec-lam-data-engineer tim-viec-lam-data-analyst" `
+  -f pages=3 `
+  -f max_age_days=3
+
+# 3. GitHub UI: Actions tab → "Refresh job pool" → Run workflow
+#    Lets you override inputs interactively.
+```
+
+After trigger:
+```powershell
+# Watch live (last run id auto-detected)
+gh run watch
+# Or list recent runs
+gh run list --workflow=refresh-jobs.yml --limit 5
+```
+
+## Schedule tuning (3 vs 7 day cadence)
+
+Default: every 3 days at 19:00 UTC (`cron: '0 19 */3 * *'`).
+
+Change the cron in `.github/workflows/refresh-jobs.yml`:
+- **Every 3 days**: `'0 19 */3 * *'` (current)
+- **Every 5 days**: `'0 19 */5 * *'`
+- **Weekly Mon**: `'0 19 * * 1'`
+- **Twice weekly Mon+Thu**: `'0 19 * * 1,4'`
+
+Trade-off:
+- Tighter cadence (3d) = fresher pool, slightly higher GH Actions minutes + Gemini cost
+- Looser cadence (7d) = older pool, more jobs expire between refreshes → temporary pool dip
+
+Per memory `project_ingest_freshness_constraint` (≤3d posted), staying at 3-day cadence keeps the pool's median age ≤4-5 days.
+
+## Workflow steps (what runs each time)
+
+1. Checkout `main` + setup pnpm/Node 20 + install deps (~2 min)
+2. Materialize `.env.local` from GH secrets (fails fast if required secret empty)
+3. **Pre-refresh stats** — log current pool size + vertical breakdown
+4. **TopCV tech sweep** — 4 slugs × N pages (server-paged, highest yield)
+5. **TopCV non-tech sweep** — 5 slugs × N pages
+6. **ITviec tech sweep** — 4 keywords × N pages (continue-on-error)
+7. **`ingest expire`** — mark `verifiedAt > 21d` as inactive
+8. **Post-refresh stats** — log new pool size
+9. **Summary** — written to GH Actions run summary (visible from run page)
+
+Total wall-clock: 10-25 min depending on yield + Cloudflare patience.
+
+## Manual override for ad-hoc backfill
+
+If a specific vertical is under-represented:
+```powershell
+gh workflow run refresh-jobs.yml `
+  -f topcv_slugs="tim-viec-lam-data-engineer tim-viec-lam-data-analyst tim-viec-lam-business-analyst" `
+  -f pages=3
+```
+
+Only the TopCV step uses the custom slugs; ITviec sweep still runs its default set.
+
+## Monitoring + failure
+
+- **Failure email**: GitHub sends to the repo owner's email on workflow failure (default behavior). Configure noise via GitHub notification settings.
+- **Pool size check**: after each scheduled run, the summary card shows pre/post stats. If post is < 80% of pre, something's wrong (probably TopCV blocked, ITviec down, or DB connection issue).
+- **Vercel logs** for the daily liveness cron: `vercel logs --project resume-refactor --since 24h | grep "refresh"`.
+
+## Rollback / pause schedule
+
+```powershell
+# Disable the scheduled cron (manual trigger still works)
+gh workflow disable refresh-jobs.yml
+
+# Re-enable
+gh workflow enable refresh-jobs.yml
+```
+
+Or comment out the `schedule:` block in `.github/workflows/refresh-jobs.yml` and push.

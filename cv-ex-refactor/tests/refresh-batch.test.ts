@@ -7,7 +7,7 @@ import type { RefreshBatchOpts } from '@/lib/jobs/refresh-batch';
 
 // ── Module mocks ────────────────────────────────────────────────────────────
 
-vi.mock('@/lib/jobs/repo', () => ({
+vi.mock('@/lib/jobs/repo-postgres', () => ({
   getJob: vi.fn(),
   expireJob: vi.fn().mockResolvedValue(undefined),
   touchVerifiedAt: vi.fn().mockResolvedValue(undefined),
@@ -15,7 +15,7 @@ vi.mock('@/lib/jobs/repo', () => ({
 
 // Import after mock registration
 import { refreshBatch } from '@/lib/jobs/refresh-batch';
-import { getJob, expireJob, touchVerifiedAt } from '@/lib/jobs/repo';
+import { getJob, expireJob, touchVerifiedAt } from '@/lib/jobs/repo-postgres';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 

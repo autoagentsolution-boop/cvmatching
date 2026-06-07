@@ -6,7 +6,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv, kvAvailable } from '@/lib/quota/kv-client';
 import { vnDateString } from '@/lib/quota/vn-date';
-import { getJob } from '@/lib/jobs/repo';
+// Postgres-backed since pre-2K hardening. Clicks on PG-ingested jobs
+// would have 404'd against KV-only lookup.
+import { getJob } from '@/lib/jobs/repo-postgres';
 
 // Redirect requires KV to resolve jobId → sourceUrl.
 // Without KV the service is non-functional — return 503 with clear message.

@@ -7,7 +7,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { kv, kvAvailable } from '@/lib/quota/kv-client';
 import { env } from '@/lib/env';
 import { vnDateString } from '@/lib/quota/vn-date';
-import { listActiveIds, getJob, expireJob } from '@/lib/jobs/repo';
+// Postgres-backed since pre-2K hardening. Previously KV-backed → would have
+// skipped HEAD-checks on every PG-ingested job after Phase 4 cutover.
+// `refresh:cursor` + `metrics:refresh:*` stats keys stay on KV — they're
+// metadata, not job data.
+import { listActiveIds, getJob, expireJob } from '@/lib/jobs/repo-postgres';
 import { refreshBatch } from '@/lib/jobs/refresh-batch';
 
 export const runtime = 'nodejs';
