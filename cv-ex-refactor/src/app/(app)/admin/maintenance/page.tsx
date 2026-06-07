@@ -7,6 +7,9 @@ import { LoginFlagToggle } from './login-flag-toggle';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+// Pin to Singapore — KV (Upstash) is in sg-east; default Vercel region
+// US-East adds ~250ms per KV read.
+export const preferredRegion = 'sin1';
 
 export const metadata: Metadata = {
   title: 'Site Controls — Admin',

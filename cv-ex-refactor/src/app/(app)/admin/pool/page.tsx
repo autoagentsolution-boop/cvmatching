@@ -8,6 +8,10 @@ import { PoolTriggerButton } from './pool-trigger-button';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+// Pin to Singapore for Neon Postgres proximity. Default Vercel region is
+// US-East — every SQL query incurs ~200-300ms cross-region RTT, multiplied
+// by the 5 queries this page runs (would be ~1-1.5s extra without pin).
+export const preferredRegion = 'sin1';
 
 export const metadata: Metadata = {
   title: 'Job pool — Admin',
@@ -41,67 +45,55 @@ async function fetchPoolStats(): Promise<{
 }> {
   const db = getDb();
 
-  // Single aggregate query for all the counts we need on the page.
-  // Drizzle's `sql` helper preserves param binding; the casts are safe.
-  const verticalRows = await db.execute<{
-    vertical: string;
-    active: string;
-    inactive: string;
-  }>(sql`
-    SELECT
-      vertical,
-      COUNT(*) FILTER (WHERE active = true) AS active,
-      COUNT(*) FILTER (WHERE active = false) AS inactive
-    FROM ${jobs}
-    GROUP BY vertical
-    ORDER BY active DESC
-  `);
-
-  const sourceRows = await db.execute<{ source: string; active: string }>(sql`
-    SELECT source, COUNT(*) AS active
-    FROM ${jobs}
-    WHERE active = true
-    GROUP BY source
-    ORDER BY active DESC
-  `);
-
-  const seniorityRows = await db.execute<{ seniority: string; active: string }>(sql`
-    SELECT seniority, COUNT(*) AS active
-    FROM ${jobs}
-    WHERE active = true
-    GROUP BY seniority
-    ORDER BY active DESC
-  `);
-
-  // Freshness percentiles via PostgreSQL percentile_cont
-  const freshnessRows = await db.execute<{
-    p50_days: string;
-    p95_days: string;
-    oldest_days: string;
-  }>(sql`
-    SELECT
-      COALESCE(percentile_cont(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM now() - posted_at) / 86400), 0) AS p50_days,
-      COALESCE(percentile_cont(0.95) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM now() - posted_at) / 86400), 0) AS p95_days,
-      COALESCE(MAX(EXTRACT(EPOCH FROM now() - posted_at) / 86400), 0) AS oldest_days
-    FROM ${jobs}
-    WHERE active = true
-  `);
-
-  // 10 most recently verified jobs — sanity check ingest is reaching here.
-  const recentRows = await db
-    .select({
-      id: jobs.id,
-      title: jobs.title,
-      company: jobs.company,
-      vertical: jobs.vertical,
-      source: jobs.source,
-      postedAt: jobs.postedAt,
-      verifiedAt: jobs.verifiedAt,
-    })
-    .from(jobs)
-    .where(sql`${jobs.active} = true`)
-    .orderBy(sql`${jobs.verifiedAt} DESC`)
-    .limit(10);
+  // All 5 queries are independent — fan out in parallel. Sequential await
+  // was 5×RTT (~500ms on sin1, 1-1.5s if cross-region); parallel is 1×RTT.
+  const [verticalRows, sourceRows, seniorityRows, freshnessRows, recentRows] = await Promise.all([
+    db.execute<{ vertical: string; active: string; inactive: string }>(sql`
+      SELECT
+        vertical,
+        COUNT(*) FILTER (WHERE active = true) AS active,
+        COUNT(*) FILTER (WHERE active = false) AS inactive
+      FROM ${jobs}
+      GROUP BY vertical
+      ORDER BY active DESC
+    `),
+    db.execute<{ source: string; active: string }>(sql`
+      SELECT source, COUNT(*) AS active
+      FROM ${jobs}
+      WHERE active = true
+      GROUP BY source
+      ORDER BY active DESC
+    `),
+    db.execute<{ seniority: string; active: string }>(sql`
+      SELECT seniority, COUNT(*) AS active
+      FROM ${jobs}
+      WHERE active = true
+      GROUP BY seniority
+      ORDER BY active DESC
+    `),
+    db.execute<{ p50_days: string; p95_days: string; oldest_days: string }>(sql`
+      SELECT
+        COALESCE(percentile_cont(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM now() - posted_at) / 86400), 0) AS p50_days,
+        COALESCE(percentile_cont(0.95) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM now() - posted_at) / 86400), 0) AS p95_days,
+        COALESCE(MAX(EXTRACT(EPOCH FROM now() - posted_at) / 86400), 0) AS oldest_days
+      FROM ${jobs}
+      WHERE active = true
+    `),
+    db
+      .select({
+        id: jobs.id,
+        title: jobs.title,
+        company: jobs.company,
+        vertical: jobs.vertical,
+        source: jobs.source,
+        postedAt: jobs.postedAt,
+        verifiedAt: jobs.verifiedAt,
+      })
+      .from(jobs)
+      .where(sql`${jobs.active} = true`)
+      .orderBy(sql`${jobs.verifiedAt} DESC`)
+      .limit(10),
+  ]);
 
   const byVertical = (verticalRows.rows ?? verticalRows).map((r) => ({
     vertical: r.vertical,

@@ -11,6 +11,9 @@ import { readActivationDay, ACTIVATION_ACTIONS, type ActivationAction } from '@/
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+// Pin to Singapore — heavy KV fan-out for usage rollups; cross-region
+// RTT (default US-East) would amplify each call.
+export const preferredRegion = 'sin1';
 
 export const metadata: Metadata = {
   title: 'Usage — Admin',
