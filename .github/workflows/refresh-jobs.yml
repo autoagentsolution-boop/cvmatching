@@ -120,11 +120,15 @@ jobs:
         run: |
           set -e
           VERSION="0.6.1"
+          # v0.6.x ships a single unified tarball (no separate -chrome variant).
+          # All chrome/firefox/edge/safari wrappers live inside it.
           TARBALL="curl-impersonate-v${VERSION}.x86_64-linux-gnu.tar.gz"
           INSTALL_DIR="/usr/local/bin/curl-impersonate"
           sudo mkdir -p "$INSTALL_DIR"
-          curl -sSL -o "$TARBALL" \
-            "https://github.com/lwthiker/curl-impersonate/releases/download/v${VERSION}/curl-impersonate-chrome-v${VERSION}.x86_64-linux-gnu.tar.gz"
+          # -f: fail on HTTP errors instead of silently saving the 404 HTML
+          # page (otherwise tar chokes downstream with "not in gzip format").
+          curl -fsSL -o "$TARBALL" \
+            "https://github.com/lwthiker/curl-impersonate/releases/download/v${VERSION}/${TARBALL}"
           sudo tar xzf "$TARBALL" -C "$INSTALL_DIR"
           # Make wrappers executable + add dir to PATH for subsequent steps
           sudo chmod +x "$INSTALL_DIR"/*
