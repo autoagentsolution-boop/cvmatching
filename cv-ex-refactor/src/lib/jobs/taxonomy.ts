@@ -43,7 +43,11 @@ const TECH_TAXONOMY: VerticalTaxonomy = {
       id: 'tech.software',
       vertical: 'tech',
       titlesPositive: /(software (engineer|developer)|backend|back[- ]?end|frontend|front[- ]?end|full[- ]?stack|mobile (developer|engineer)|ios|android|game (developer|programmer)|embedded|developer|programmer|lập trình|kỹ sư phần mềm|chuyên viên triển khai|implementation (engineer|consultant|specialist)|integration engineer|\berp\b|node\.?js|react|vue|angular|java|python|golang|ruby|php|\.net|c\+\+|kotlin|swift)/iu,
-      sourceSlugs: { vl24h: TECH_SLUGS_VL24H },
+      sourceSlugs: {
+        vl24h: TECH_SLUGS_VL24H,
+        topcv: ['viec-lam-it', 'tim-viec-lam-it-phan-mem', 'tim-viec-lam-lap-trinh-vien', 'tim-viec-lam-cong-nghe-thong-tin-cr257'],
+        vnw: ['software-engineer-kv', 'lap-trinh-vien-kv', 'java-developer-kv', 'python-developer-kv', 'android-developer-kv'],
+      },
     },
     {
       id: 'tech.data',
@@ -51,7 +55,11 @@ const TECH_TAXONOMY: VerticalTaxonomy = {
       // Short tokens (\bbi\b, \bba\b, \bdba\b) need word boundaries — bare
       // `bi`/`ba` matched substrings of unrelated words like "specialist".
       titlesPositive: /(data (engineer|analyst|scientist|architect|engineering|consultant)|business analy(?:st|sist)|business intelligence|\bbi\b|\bba\b(?! sale)|\bdba\b|database (admin|engineer)|\betl\b|\bspark\b|airflow|snowflake|bigquery|redshift|chuyên viên phân tích dữ liệu|kỹ sư dữ liệu)/iu,
-      sourceSlugs: { vl24h: ['phan-tich-thong-ke-du-lieu', 'it-phan-mem'] },
+      sourceSlugs: {
+        vl24h: ['phan-tich-thong-ke-du-lieu', 'it-phan-mem'],
+        topcv: ['tim-viec-lam-data-engineer'],
+        vnw: ['data-engineer-kv', 'data-analyst-kv', 'data-scientist-kv', 'business-analyst-kv'],
+      },
     },
     {
       id: 'tech.ml-ai',
@@ -59,25 +67,37 @@ const TECH_TAXONOMY: VerticalTaxonomy = {
       // Short tokens (\bml\b, \bai\b, \bllm\b) need word boundaries — bare
       // `ai` matched substrings like "chAIn" in "supply chain".
       titlesPositive: /(machine learning|\bml\b|\bai\b|artificial intelligence|deep learning|computer vision|cv engineer|\bnlp\b|natural language|\bllm\b|generative ai|chatbot engineer|kỹ sư trí tuệ nhân tạo|kỹ sư máy học)/iu,
-      sourceSlugs: { vl24h: ['it-phan-mem', 'phan-tich-thong-ke-du-lieu'] },
+      sourceSlugs: {
+        vl24h: ['it-phan-mem', 'phan-tich-thong-ke-du-lieu'],
+        vnw: ['machine-learning-kv', 'ai-engineer-kv', 'artificial-intelligence-kv'],
+      },
     },
     {
       id: 'tech.infra',
       vertical: 'tech',
       titlesPositive: /(devops|sre|site reliability|cloud (engineer|architect)|platform engineer|sysadmin|system admin(?:istrator)?|infrastructure engineer|kubernetes|terraform|aws|gcp|azure|kỹ sư hệ thống|kỹ sư cloud|kỹ sư devops|quản trị hệ thống|vận hành hệ thống|chuyên viên quản trị (hệ thống|mạng))/iu,
-      sourceSlugs: { vl24h: ['it-phan-mem', 'it-phan-cung-mang'] },
+      sourceSlugs: {
+        vl24h: ['it-phan-mem', 'it-phan-cung-mang'],
+        vnw: ['quan-tri-he-thong-kv', 'linux-kv'],
+      },
     },
     {
       id: 'tech.security',
       vertical: 'tech',
       titlesPositive: /(security engineer|cyber ?security|infosec|appsec|application security|soc analyst|penetration test|pentest|red team|blue team|it security|security compliance|kỹ sư an toàn thông tin|chuyên viên bảo mật)/iu,
-      sourceSlugs: { vl24h: ['it-phan-mem', 'it-phan-cung-mang'] },
+      sourceSlugs: {
+        vl24h: ['it-phan-mem', 'it-phan-cung-mang'],
+        vnw: ['security-kv'],
+      },
     },
     {
       id: 'tech.architecture',
       vertical: 'tech',
       titlesPositive: /(solution architect|software architect|technical lead|tech lead|engineering manager|em lead|cto|principal engineer|kiến trúc sư phần mềm|\bit (manager|lead|director|head|project manager)\b|head of (it|engineering|cntt)|trưởng phòng (it|cntt)|trưởng bộ phận (it|cntt))/iu,
-      sourceSlugs: { vl24h: ['it-phan-mem'] },
+      sourceSlugs: {
+        vl24h: ['it-phan-mem'],
+        vnw: ['solution-architect-kv', 'cto-kv'],
+      },
     },
     {
       id: 'tech.qa',
@@ -106,19 +126,28 @@ const MARKETING_TAXONOMY: VerticalTaxonomy = {
       id: 'marketing.brand-strategy',
       vertical: 'marketing',
       titlesPositive: /(brand (manager|director|specialist|strategist)|marketing (manager|director|strategist|lead)|chief marketing officer|cmo|trưởng phòng marketing|giám đốc marketing)/iu,
-      sourceSlugs: { vl24h: ['marketing'] },
+      sourceSlugs: {
+        vl24h: ['marketing'],
+        vnw: ['brand-manager-kv', 'marketing-kv'],
+      },
     },
     {
       id: 'marketing.digital',
       vertical: 'marketing',
       titlesPositive: /(digital marketing|performance marketing|seo|sem|programmatic|affiliate|paid media|facebook ads|google ads|tiktok ads|chuyên viên digital|chuyên viên seo)/iu,
-      sourceSlugs: { vl24h: ['marketing'] },
+      sourceSlugs: {
+        vl24h: ['marketing'],
+        vnw: ['digital-marketing-kv'],
+      },
     },
     {
       id: 'marketing.content',
       vertical: 'marketing',
       titlesPositive: /(content (writer|marketing|manager|creator|specialist|editor)|copywriter|copywriting|seo writer|editorial|content strategist|biên tập viên|chuyên viên content|người viết nội dung)/iu,
-      sourceSlugs: { vl24h: ['marketing', 'truyen-hinh-bao-chi-bien-tap'] },
+      sourceSlugs: {
+        vl24h: ['marketing', 'truyen-hinh-bao-chi-bien-tap'],
+        vnw: ['content-marketing-kv'],
+      },
     },
     {
       id: 'marketing.social',
@@ -130,7 +159,10 @@ const MARKETING_TAXONOMY: VerticalTaxonomy = {
       id: 'marketing.creative',
       vertical: 'marketing',
       titlesPositive: /(art director|graphic designer|motion designer|video editor|creative director|illustrator|designer.*creative|thiết kế đồ họa|chuyên viên thiết kế|biên tập video)/iu,
-      sourceSlugs: { vl24h: ['thiet-ke-sang-tao-nghe-thuat'] },
+      sourceSlugs: {
+        vl24h: ['thiet-ke-sang-tao-nghe-thuat'],
+        vnw: ['thiet-ke-do-hoa-kv'],
+      },
     },
     {
       id: 'marketing.pr',
@@ -165,25 +197,25 @@ const FINANCE_TAXONOMY: VerticalTaxonomy = {
       id: 'finance.accounting',
       vertical: 'finance',
       titlesPositive: /(accountant|accounting|kế toán|chief accountant|cost accountant|tax (accountant|specialist|manager)|kế toán (trưởng|tổng hợp|thuế|chi phí|công nợ))/iu,
-      sourceSlugs: { vl24h: ['ke-toan'] },
+      sourceSlugs: { vl24h: ['ke-toan'], vnw: ['ke-toan-kv'] },
     },
     {
       id: 'finance.audit',
       vertical: 'finance',
       titlesPositive: /(auditor|internal audit|external audit|audit (senior|manager|associate)|kiểm toán (viên|nội bộ|độc lập))/iu,
-      sourceSlugs: { vl24h: ['kiem-toan'] },
+      sourceSlugs: { vl24h: ['kiem-toan'], vnw: ['kiem-toan-kv'] },
     },
     {
       id: 'finance.fpa',
       vertical: 'finance',
       titlesPositive: /(financial analyst|fp&a|finance manager|budget analyst|chuyên viên phân tích tài chính|fpna)/iu,
-      sourceSlugs: { vl24h: ['tai-chinh-dau-tu-chung-khoan'] },
+      sourceSlugs: { vl24h: ['tai-chinh-dau-tu-chung-khoan'], vnw: ['tai-chinh-kv'] },
     },
     {
       id: 'finance.banking',
       vertical: 'finance',
       titlesPositive: /(banking|credit analyst|relationship manager|rm corporate|teller|loan officer|chuyên viên (tín dụng|quan hệ khách hàng)|giao dịch viên|nhân viên ngân hàng)/iu,
-      sourceSlugs: { vl24h: ['ngan-hang'] },
+      sourceSlugs: { vl24h: ['ngan-hang'], vnw: ['ngan-hang-kv'] },
     },
     {
       id: 'finance.treasury',
@@ -224,7 +256,10 @@ const SALES_TAXONOMY: VerticalTaxonomy = {
       id: 'sales.field-b2b',
       vertical: 'sales',
       titlesPositive: /(account (executive|manager)|key account|enterprise sales|field sales|sales executive|sales manager|nhân viên kinh doanh|chuyên viên kinh doanh|trưởng phòng kinh doanh|kinh doanh b2b)/iu,
-      sourceSlugs: { vl24h: ['ban-hang-kinh-doanh'] },
+      sourceSlugs: {
+        vl24h: ['ban-hang-kinh-doanh'],
+        vnw: ['nhan-vien-kinh-doanh-kv', 'sales-executive-kv', 'sales-manager-kv', 'account-manager-kv'],
+      },
     },
     {
       id: 'sales.inside-telesales',
@@ -287,19 +322,19 @@ const OPS_TAXONOMY: VerticalTaxonomy = {
       id: 'ops.hr',
       vertical: 'ops',
       titlesPositive: /(hr|human resources|hrbp|talent (acquisition|management)|recruiter|compensation.*benefits|l&d|payroll|nhân sự|tuyển dụng|chuyên viên (nhân sự|đào tạo|lương thưởng))/iu,
-      sourceSlugs: { vl24h: ['nhan-su'] },
+      sourceSlugs: { vl24h: ['nhan-su'], vnw: ['nhan-su-kv', 'hr-kv'] },
     },
     {
       id: 'ops.admin',
       vertical: 'ops',
       titlesPositive: /(office (manager|admin)|receptionist|executive assistant|personal assistant|secretary|administrative|hành chính|thư ký|trợ lý giám đốc|lễ tân văn phòng)/iu,
-      sourceSlugs: { vl24h: ['hanh-chinh-thu-ky'] },
+      sourceSlugs: { vl24h: ['hanh-chinh-thu-ky'], vnw: ['hanh-chinh-kv'] },
     },
     {
       id: 'ops.supply-chain',
       vertical: 'ops',
       titlesPositive: /(supply chain|logistics (coordinator|manager)|warehouse|inventory (analyst|manager)|procurement|buyer|chuỗi cung ứng|quản lý kho|thu mua|chuyên viên mua hàng)/iu,
-      sourceSlugs: { vl24h: ['thu-mua-kho-van-chuoi-cung-ung'] },
+      sourceSlugs: { vl24h: ['thu-mua-kho-van-chuoi-cung-ung'], vnw: ['logistics-kv'] },
     },
     {
       id: 'ops.manufacturing',
@@ -323,7 +358,10 @@ const OPS_TAXONOMY: VerticalTaxonomy = {
       id: 'ops.customer-service',
       vertical: 'ops',
       titlesPositive: /(customer (service|care|support) (representative|officer|specialist)|csr|support specialist|chăm sóc khách hàng|hỗ trợ khách hàng|tổng đài viên)/iu,
-      sourceSlugs: { vl24h: ['cham-soc-khach-hang'] },
+      sourceSlugs: {
+        vl24h: ['cham-soc-khach-hang'],
+        vnw: ['customer-service-kv', 'cham-soc-khach-hang-kv'],
+      },
     },
     {
       id: 'ops.import-export',

@@ -1,18 +1,29 @@
-// VietnamWorks category-driven ingest. Same shape as ingest-itviec / topcv.
+// VietnamWorks keyword-driven ingest (2026-06-07 re-verified).
 //
-// Listing URL pattern:  https://www.vietnamworks.com/{category-slug}
-//   where {category-slug} is e.g. "viec-lam-cong-nghe-thong-tin-k1".
-//   The script tolerates the slug with or without the "viec-lam-" prefix.
-// Pagination:           ?page=N (Next.js boards almost always honor this)
+// Listing URL pattern:  https://www.vietnamworks.com/{keyword}-kv
+//   where {keyword} is a VNW SEO keyword path (e.g. "data-engineer",
+//   "ke-toan", "marketing"). Legacy "viec-lam-{x}-k{id}" scheme is dead
+//   (404 across the board). New scheme is per-keyword SSR pages emitted
+//   from VNW's sitemap (cate_title.xml, 19k entries).
+//
+// Pagination:           NOT supported by VNW SSR. ?page=2 and /trang-2
+//   both return identical bytes to page 1 — pagination is client-side
+//   (infinite scroll). --pages > 1 is silently capped to 1 with a warning.
+//
 // Detail URL pattern:   https://www.vietnamworks.com/{slug}-{id}-jv
 //
-// Discovery order (per research/topcv-vnw-scrape-recon.md):
-//   1) JSON-LD ItemList in listing-page <head>
-//   2) `<script id="__NEXT_DATA__">` JSON traversal — pull jobsByLocation or
-//      similar SSR payload (VNW is Next.js).
-//   3) Regex over <a href="…-{id}-jv"> fallback.
+// Discovery cascade (per recon plans/reports/recon-260607-1126-…):
+//   1) `<script id="__NEXT_DATA__">` JSON traversal (primary path — VNW
+//      is Next.js and the SSR payload carries job objects with `-{id}-jv`
+//      relative URLs).
+//   2) Regex over <a href="…-{id}-jv"> fallback.
+//   (JSON-LD ItemList path retained but VNW emits no ItemList in 2026 —
+//   call returns [] cheaply.)
 //
-// Cloudflare-gated → fetchViaCurl, with the same anti-bot delays as ITviec/TopCV.
+// Yield: ~5 unique jobs per /{keyword}-kv page. 36 verified seed slugs
+// (per taxonomy SOURCES.vnw) ≈ ~150 fresh URLs per ingest cycle.
+//
+// Cloudflare-gated → fetchViaCurl, anti-bot delays per ITviec/TopCV.
 
 import { ingestEntries } from './ingest-file.js';
 import { urlToJobInput } from './ingest-urls.js';
@@ -36,7 +47,15 @@ function parseArgs(argv: string[]): ParsedArgs {
     const a = argv[i]!;
     if (a === '--pages') {
       const n = parseInt(argv[++i] ?? '1', 10);
-      out.pagesPerCategory = Number.isFinite(n) && n > 0 ? n : 1;
+      const wanted = Number.isFinite(n) && n > 0 ? n : 1;
+      // VNW pagination is client-side; silently capping at 1 would hide the
+      // operator's intent. Log so the caller adjusts expectations.
+      if (wanted > 1) {
+        console.warn(
+          `[ingest vnw] --pages ${wanted} requested but VNW pagination is client-side only (page=N returns page-1 content). Capping at 1.`,
+        );
+      }
+      out.pagesPerCategory = 1;
     } else if (a === '--dry-run') {
       out.dryRun = true;
     } else {
@@ -47,24 +66,37 @@ function parseArgs(argv: string[]): ParsedArgs {
 }
 
 /**
- * Normalize a CLI category slug. VNW uses no .html suffix and a "k{id}" tail.
+ * Normalize a CLI keyword slug to the canonical "{keyword}-kv" form.
  * Accepts:
- *   viec-lam-cong-nghe-thong-tin-k1   (verbatim)
- *   cong-nghe-thong-tin-k1            (no viec-lam- prefix)
+ *   data-engineer-kv                  (verbatim — canonical)
+ *   data-engineer                     (append -kv)
+ *   /data-engineer-kv                 (leading slash dropped)
+ *   viec-lam-data-engineer-k1         (legacy form — k{id} stripped, -kv appended)
+ *
+ * Operator should source live slugs from VNW sitemap
+ * https://www.vietnamworks.com/sitemap/cate_title.xml or from
+ * taxonomy.SOURCES.vnw whitelist.
  */
 export function normalizeVnwSlug(input: string): string {
-  let s = input.trim().replace(/^\/+/, '');
-  if (!s.startsWith('viec-lam-')) s = `viec-lam-${s}`;
+  let s = input.trim().replace(/^\/+/, '').replace(/\?.*$/, '');
+  // Strip legacy "viec-lam-…-k{id}" if accidentally pasted
+  s = s.replace(/^viec-lam-/, '').replace(/-k\d+$/, '');
+  if (!s.endsWith('-kv')) s = `${s}-kv`;
   return s;
 }
 
-function buildListingUrl(slug: string, page: number): string {
-  const path = normalizeVnwSlug(slug);
-  return `${VNW_BASE}/${path}${page > 1 ? `?page=${page}` : ''}`;
+function buildListingUrl(slug: string, _page: number): string {
+  // VNW pagination is client-side only — ?page=N returns page-1 content.
+  // Listing URL is page-agnostic; caller caps pages at 1.
+  return `${VNW_BASE}/${normalizeVnwSlug(slug)}`;
 }
 
-// Detail URL regex fallback. VNW slugs end with `-{numeric-id}-jv`.
-const VNW_DETAIL_RE = /href=["'](https?:\/\/(?:www\.)?vietnamworks\.com)?(\/[^"'\s]+-\d+-jv)["']/g;
+// Detail URL regex fallback. VNW URLs end with `-{numeric-id}-jv` and may
+// carry `?utm_*` tracking suffixes; we strip the query string and dedup.
+// Match anywhere in body (not just href= attrs) — VNW SSR embeds the URLs
+// in free-floating JSON within script tags and React-hydration markers,
+// not as canonical anchor hrefs.
+const VNW_DETAIL_RE = /(https?:\/\/(?:www\.)?vietnamworks\.com)?(\/[^"'\s<>?]+-\d+-jv)/g;
 
 export function extractVnwDetailUrls(html: string): string[] {
   const urls = new Set<string>();
@@ -94,12 +126,13 @@ export function extractVnwNextDataUrls(html: string): string[] {
     return [];
   }
   const urls = new Set<string>();
+  // Anchor-less pattern: VNW SSR embeds URLs with `?utm_*` tracking
+  // suffixes after `-jv`, so a `$`-anchored match never fires. We extract
+  // the path portion up to (but excluding) any `?` query string.
+  const rel = /(?:https?:\/\/(?:www\.)?vietnamworks\.com)?(\/[^"'\s?]+-\d+-jv)/;
   const visit = (node: unknown): void => {
     if (!node) return;
     if (typeof node === 'string') {
-      // Same suffix-pattern as the HTML regex; covers absolute + relative
-      // forms emitted in SSR payloads.
-      const rel = /^(?:https?:\/\/(?:www\.)?vietnamworks\.com)?(\/[^"'\s]+-\d+-jv)$/;
       const mm = node.match(rel);
       if (mm) urls.add(`${VNW_BASE}${mm[1]}`);
       return;
@@ -149,17 +182,18 @@ async function discoverUrls(
       const html = await fetchListing(cat, p);
       if (!html) break;
 
-      // Discovery cascade: each layer is independent; we union all hits and
-      // log which path produced URLs so the operator can diagnose drift.
-      let path = 'json-ld';
-      let urls = extractItemListUrls(html);
-      if (urls.length === 0) {
-        urls = extractVnwNextDataUrls(html);
-        path = '__NEXT_DATA__';
-      }
+      // Discovery cascade: __NEXT_DATA__ first (VNW emits no JSON-LD
+      // ItemList in 2026; SSR payload is the primary source). Regex over
+      // anchor hrefs catches anything the SSR walker misses.
+      let path = '__NEXT_DATA__';
+      let urls = extractVnwNextDataUrls(html);
       if (urls.length === 0) {
         urls = extractVnwDetailUrls(html);
         path = 'regex';
+      }
+      if (urls.length === 0) {
+        urls = extractItemListUrls(html);
+        path = 'json-ld';
       }
 
       let fresh = 0;
@@ -173,7 +207,9 @@ async function discoverUrls(
       console.log(
         `[ingest vnw] discover ${cat} p${p} (${path}): parsed=${urls.length} fresh=${fresh} (cat-total=${catAdded})`,
       );
-      if (urls.length < 5) break;
+      // VNW /{kw}-kv pages yield ~5 unique jobs each — lower tail threshold
+      // vs ITviec/TopCV.
+      if (urls.length < 2) break;
     }
   }
   return [...seen];
@@ -183,11 +219,13 @@ export async function run(args: string[]): Promise<void> {
   const { categories, pagesPerCategory, dryRun } = parseArgs(args);
   if (categories.length === 0) {
     console.error(
-      '[ingest vnw] Usage: pnpm run ingest vnw <category-slug> [<slug>...] [--pages N] [--dry-run]\n' +
-        '  Example: pnpm run ingest vnw cong-nghe-thong-tin-k1 ke-toan-kiem-toan-k4 --pages 3\n' +
-        '  Slug forms accepted: with or without "viec-lam-" prefix.\n' +
-        '  --dry-run: discover URLs only, skip detail fetch + ingest.\n' +
-        '  Discover slugs from https://www.vietnamworks.com navigation menu.',
+      '[ingest vnw] Usage: pnpm run ingest vnw <keyword-slug> [<slug>...] [--dry-run]\n' +
+        '  Example: pnpm run ingest vnw data-engineer-kv software-engineer-kv ke-toan-kv\n' +
+        '  Slug forms accepted: "{kw}-kv" (canonical) or bare "{kw}" (suffix appended).\n' +
+        '  --pages N is ignored (capped at 1 — VNW pagination is client-side only).\n' +
+        '  --dry-run: discover URLs only, skip detail fetch + ingest (no Gemini/KV needed).\n' +
+        '  Discover live slugs from taxonomy.SOURCES.vnw or VNW sitemap\n' +
+        '  https://www.vietnamworks.com/sitemap/cate_title.xml',
     );
     process.exit(1);
   }

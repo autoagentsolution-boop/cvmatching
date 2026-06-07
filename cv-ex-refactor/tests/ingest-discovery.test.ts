@@ -103,41 +103,57 @@ describe('topcv — extractTopcvDetailUrls', () => {
 });
 
 describe('vnw — normalizeVnwSlug', () => {
+  // 2026-06-07: VNW canonical slug is "{keyword}-kv". Legacy
+  // "viec-lam-{name}-k{id}" stripped + -kv appended.
   it.each([
-    ['viec-lam-cong-nghe-thong-tin-k1', 'viec-lam-cong-nghe-thong-tin-k1'],
-    ['cong-nghe-thong-tin-k1', 'viec-lam-cong-nghe-thong-tin-k1'],
-    ['/cong-nghe-thong-tin-k1', 'viec-lam-cong-nghe-thong-tin-k1'],
-  ])('normalizes %s', (input, expected) => {
+    ['data-engineer-kv', 'data-engineer-kv'],
+    ['data-engineer', 'data-engineer-kv'],
+    ['/data-engineer-kv', 'data-engineer-kv'],
+    ['data-engineer-kv?utm_source=foo', 'data-engineer-kv'],
+    ['viec-lam-cong-nghe-thong-tin-k1', 'cong-nghe-thong-tin-kv'],
+  ])('normalizes %s → %s', (input, expected) => {
     expect(normalizeVnwSlug(input)).toBe(expected);
   });
 });
 
 describe('vnw — extractVnwDetailUrls', () => {
-  it('captures -{id}-jv suffix variants', () => {
+  it('captures absolute + relative jv URLs from free body (not just hrefs)', () => {
+    // 2026-06-07: VNW SSR no longer wraps detail URLs in href=; they
+    // appear free-floating in script payloads and hydration markers.
     const html = `
-      <a href="https://www.vietnamworks.com/senior-dev-12345-jv">A</a>
+      "url":"https://www.vietnamworks.com/senior-dev-12345-jv"
       <a href='/qa-tester-99999-jv'>B</a>
+      data-href=/inline-dev-55555-jv
     `;
     expect(extractVnwDetailUrls(html).sort()).toEqual([
+      'https://www.vietnamworks.com/inline-dev-55555-jv',
       'https://www.vietnamworks.com/qa-tester-99999-jv',
       'https://www.vietnamworks.com/senior-dev-12345-jv',
     ]);
   });
 
-  it('does NOT capture similar but non-jv hrefs', () => {
+  it('strips ?utm_* tracking suffixes', () => {
+    const html = `"https://www.vietnamworks.com/dev-12345-jv?utm_campaign_navi=12345"`;
+    expect(extractVnwDetailUrls(html)).toEqual([
+      'https://www.vietnamworks.com/dev-12345-jv',
+    ]);
+  });
+
+  it('does NOT capture similar but non-jv URLs', () => {
     const html = `<a href="/senior-dev-12345-job">A</a>`;
     expect(extractVnwDetailUrls(html)).toEqual([]);
   });
 });
 
 describe('vnw — extractVnwNextDataUrls', () => {
-  it('walks __NEXT_DATA__ payload and pulls -jv hits', () => {
+  it('walks __NEXT_DATA__ payload and pulls -jv hits (incl. ?utm suffixes)', () => {
     const payload = {
       props: {
         pageProps: {
           jobs: [
             { alias: '/dev-1-jv', title: 'Dev' },
             { alias: '/qa-2-jv', title: 'QA' },
+            { url: 'https://www.vietnamworks.com/full-3-jv?utm_campaign_navi=3' },
             { unrelated: 'string-without-suffix' },
           ],
         },
@@ -146,6 +162,7 @@ describe('vnw — extractVnwNextDataUrls', () => {
     const html = `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify(payload)}</script>`;
     expect(extractVnwNextDataUrls(html).sort()).toEqual([
       'https://www.vietnamworks.com/dev-1-jv',
+      'https://www.vietnamworks.com/full-3-jv',
       'https://www.vietnamworks.com/qa-2-jv',
     ]);
   });
