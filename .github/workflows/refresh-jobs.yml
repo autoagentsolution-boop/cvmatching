@@ -132,54 +132,21 @@ jobs:
       - name: Pre-refresh stats
         run: pnpm run ingest stats || true
 
-      # ── TopCV: tech sweep (server-paged slugs first, highest yield) ────
-      - name: TopCV — tech sweep
+      # Single DRY entrypoint — same script the operator runs locally.
+      # Each sub-step inside seed-pool runs in its own child process so
+      # one source failure (Cloudflare flap, etc.) doesn't kill the sweep.
+      - name: Full pool sweep
         if: github.event.inputs.topcv_slugs == ''
-        run: |
-          pnpm run ingest topcv \
-            tim-viec-lam-lap-trinh-vien \
-            tim-viec-lam-it-phan-mem \
-            tim-viec-lam-data-engineer \
-            tim-viec-lam-cong-nghe-thong-tin-cr257 \
-            --pages "$PAGES"
+        run: pnpm run seed-pool -- --pages "$PAGES" --max-age-days "$INGEST_MAX_AGE_DAYS"
 
-      - name: TopCV — non-tech sweep
-        if: github.event.inputs.topcv_slugs == ''
-        run: |
-          pnpm run ingest topcv \
-            tim-viec-lam-ke-toan \
-            tim-viec-lam-marketing \
-            tim-viec-lam-nhan-vien-kinh-doanh \
-            tim-viec-lam-hanh-chinh-nhan-su \
-            tim-viec-lam-ngan-hang \
-            --pages "$PAGES"
-
+      # Manual run with custom slugs bypasses seed-pool's curated list.
       - name: TopCV — operator-provided slugs (manual run only)
         if: github.event.inputs.topcv_slugs != ''
         run: |
           # shellcheck disable=SC2086
           pnpm run ingest topcv ${{ github.event.inputs.topcv_slugs }} --pages "$PAGES"
-
-      # ── ITviec — uses existing runner ──────────────────────────────────
-      - name: ITviec — tech keywords
-        continue-on-error: true
-        run: |
-          pnpm run ingest itviec \
-            data-engineer \
-            senior-data-engineer \
-            backend-developer \
-            devops \
-            --pages "$PAGES"
-
-      # ── Expire pass: mark stale jobs as inactive ───────────────────────
-      # Existing `ingest expire` marks verifiedAt > 21d as expired.
-      # Daily Vercel cron at /api/jobs/refresh handles HEAD-check liveness.
-      - name: Expire stale jobs
-        continue-on-error: true
-        run: pnpm run ingest expire
-
-      - name: Post-refresh stats
-        run: pnpm run ingest stats
+          pnpm run ingest expire
+          pnpm run ingest stats
 
       - name: Summary
         if: always()

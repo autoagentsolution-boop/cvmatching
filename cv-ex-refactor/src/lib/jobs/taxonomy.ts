@@ -45,7 +45,20 @@ const TECH_TAXONOMY: VerticalTaxonomy = {
       titlesPositive: /(software (engineer|developer)|backend|back[- ]?end|frontend|front[- ]?end|full[- ]?stack|mobile (developer|engineer)|ios|android|game (developer|programmer)|embedded|developer|programmer|lập trình|kỹ sư phần mềm|chuyên viên triển khai|implementation (engineer|consultant|specialist)|integration engineer|\berp\b|node\.?js|react|vue|angular|java|python|golang|ruby|php|\.net|c\+\+|kotlin|swift)/iu,
       sourceSlugs: {
         vl24h: TECH_SLUGS_VL24H,
-        topcv: ['viec-lam-it', 'tim-viec-lam-it-phan-mem', 'tim-viec-lam-lap-trinh-vien', 'tim-viec-lam-cong-nghe-thong-tin-cr257'],
+        topcv: [
+          'viec-lam-it',
+          'tim-viec-lam-it-phan-mem',
+          'tim-viec-lam-lap-trinh-vien',
+          'tim-viec-lam-cong-nghe-thong-tin-cr257',
+          'tim-viec-lam-backend-developer',
+          'tim-viec-lam-frontend-developer',
+          'tim-viec-lam-mobile-developer',
+          'tim-viec-lam-java',
+          'tim-viec-lam-nodejs',
+          'tim-viec-lam-reactjs',
+          'tim-viec-lam-python',
+          'tim-viec-lam-ios',
+        ],
         vnw: ['software-engineer-kv', 'lap-trinh-vien-kv', 'java-developer-kv', 'python-developer-kv', 'android-developer-kv'],
       },
     },
@@ -57,7 +70,7 @@ const TECH_TAXONOMY: VerticalTaxonomy = {
       titlesPositive: /(data (engineer|analyst|scientist|architect|engineering|consultant)|business analy(?:st|sist)|business intelligence|\bbi\b|\bba\b(?! sale)|\bdba\b|database (admin|engineer)|\betl\b|\bspark\b|airflow|snowflake|bigquery|redshift|chuyên viên phân tích dữ liệu|kỹ sư dữ liệu)/iu,
       sourceSlugs: {
         vl24h: ['phan-tich-thong-ke-du-lieu', 'it-phan-mem'],
-        topcv: ['tim-viec-lam-data-engineer'],
+        topcv: ['tim-viec-lam-data-engineer', 'tim-viec-lam-data-analyst'],
         vnw: ['data-engineer-kv', 'data-analyst-kv', 'data-scientist-kv', 'business-analyst-kv'],
       },
     },
@@ -78,6 +91,7 @@ const TECH_TAXONOMY: VerticalTaxonomy = {
       titlesPositive: /(devops|sre|site reliability|cloud (engineer|architect)|platform engineer|sysadmin|system admin(?:istrator)?|infrastructure engineer|kubernetes|terraform|aws|gcp|azure|kỹ sư hệ thống|kỹ sư cloud|kỹ sư devops|quản trị hệ thống|vận hành hệ thống|chuyên viên quản trị (hệ thống|mạng))/iu,
       sourceSlugs: {
         vl24h: ['it-phan-mem', 'it-phan-cung-mang'],
+        topcv: ['tim-viec-lam-devops'],
         vnw: ['quan-tri-he-thong-kv', 'linux-kv'],
       },
     },
@@ -103,7 +117,10 @@ const TECH_TAXONOMY: VerticalTaxonomy = {
       id: 'tech.qa',
       vertical: 'tech',
       titlesPositive: /(qa (engineer|automation|manual|tester|lead)|test (engineer|automation|lead)|sdet|quality (assurance|engineer) (engineer|software)?|automation tester|performance test|kỹ sư kiểm thử|chuyên viên qa)/iu,
-      sourceSlugs: { vl24h: ['it-phan-mem'] },
+      sourceSlugs: {
+        vl24h: ['it-phan-mem'],
+        topcv: ['tim-viec-lam-tester', 'tim-viec-lam-qa-qc'],
+      },
     },
     {
       id: 'tech.product-tech',

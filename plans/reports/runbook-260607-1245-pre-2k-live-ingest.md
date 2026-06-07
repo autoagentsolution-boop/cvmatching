@@ -1,263 +1,167 @@
-# Runbook — Pre-2K live ingest (operator)
+# Runbook — 2K live ingest + refresh
 
-Date: 2026-06-07 12:45 ICT
-Target: grow active pool from 171 → ≥2,000 jobs across 6 verticals.
-Branch: `main` (commits to push: `53575da`, `f820bb7`, plus today's pre-2K hardening).
+Date: 2026-06-07 14:00 ICT (rev 2)
+Target: pool 171 → ≥2,000 active jobs, with refresh every 3-7 days.
 
-## Prereqs (do once, ≤5 min)
-
-1. **Paste `GEMINI_API_KEY` into `.env.local` MANUALLY.** It's a Sensitive Vercel env var; `vercel env pull` leaves it masked (per memory `feedback_vercel_sensitive_env_pull_masked`). Source value from Google AI Studio (your operator key, NOT a shared app key).
-2. **Confirm `DATABASE_URL` + `DATABASE_URL_UNPOOLED` are present in `.env.local`.** They come down via `vercel env pull` if you ran it recently. If not, `vercel env pull .env.local --environment=production` then re-add the Gemini key.
-3. **Confirm `KV_REST_API_URL` + `KV_REST_API_TOKEN` are present** (needed for company resolver alias cache + companies sidecar).
-4. **Confirm git is on `main` with both 53575da + f820bb7 + the new pre-2K commit applied.**
-5. **Push to main when ready:** the commits land on Vercel auto-deploy in <2 min. Live ingest writes to the same Postgres the prod recommend route reads — no separate environment.
-
-## Hard guards in place (won't bypass silently)
-
-| Constraint | Where | Behavior |
-|---|---|---|
-| Posted ≤3 days ago | `scripts/ingest-urls.ts` → `MAX_AGE_DAYS=3` | Reject; logs `Too old (datePosted=…, cap=3d)` |
-| Missing datePosted | same | Reject; logs `No datePosted in JSON-LD (freshness unverifiable)` |
-| Expired validThrough | same | Reject; logs `Expired (validThrough=…)` |
-| Description <50 chars | same | Reject; logs `Description too short` |
-| Duplicate by sha256(sourceUrl) | `scripts/ingest-file.ts` → `isActiveJob` (Postgres) | Skip; logs `Skip dup: <title>` |
-| Embed throttle | `src/lib/jobs/embed.ts` | 5 rps token bucket |
-| Cloudflare bypass | `scripts/fetch-via-curl.ts` | System curl, Chrome UA + sec-ch-ua |
-
-Override freshness only if you have a clear reason: `INGEST_MAX_AGE_DAYS=7 pnpm run ingest topcv ...`. Do NOT go above 14 — stale jobs degrade Job Fit quality.
-
-## What's in the new pipeline (since 2026-06-07 EOD-6-6 baseline)
-
-- Ingest writes go to **Postgres** (not KV). Recommend route already reads from PG (`JOBFIT_USE_POSTGRES=1`). KV `repo.ts` is deprecated and awaits Phase 8 decommission.
-- Companies sidecar (`companies:active-jobs:{slug}`) stays on KV. Not breaking.
-- VNW runner is **parked** — discovery still works (`--dry-run`) but detail-fetch exits early. VNW detail pages are pure CSR; cannot extract postedAt or rich description without a headless browser. Use TopCV + ITviec + vl24h to hit 2K. See `recon-260607-1126-topcv-vnw-url-scheme-drift.md`.
-
-## Yield estimates (verified live)
-
-| Source | URLs per cycle | Notes |
-|---|---|---|
-| TopCV `tim-viec-lam-*` | ~50/slug/page × server-paged 3 pages | Server-side pagination. `tim-viec-lam-lap-trinh-vien` ≈ 130+ unique URLs in 3 pages. |
-| TopCV `viec-lam-it` (broad) | ~50-90 unique across 3 pages | Carousel rotates; dedup catches overlap. |
-| ITviec | existing — re-run | per current `ingest-itviec.ts` defaults |
-| vl24h | existing — re-run | per current `scrape-vl24h.ts` |
-| VNW | 0 | Parked. |
-
-**Math to 2K (after freshness + dedup ≈ 60% pass rate):**
-- TopCV: 5 slugs × 3 pages × 50 = 750 URLs raw → ≈ 450 ingested.
-- ITviec: 4 keyword runs ≈ 80 URLs raw → ≈ 50 ingested.
-- vl24h: existing scrape ≈ 200-400 URLs raw → ≈ 150-250 ingested.
-- Existing pool: 171 (some may expire on first re-classify).
-- **Total: ~821-921 → run cycle 2x to clear ≥2K, OR add 5-10 more TopCV slugs from `tim-viec-lam-{kw}-cr{id}` form.**
-
-## Execution sequence (run sequentially, monitor each)
+## TL;DR — chỉ 1 lệnh
 
 ```powershell
-# ── Cycle 1: TopCV tech ──────────────────────────────────────────────────
-# Server-paged slugs first (highest yield)
-pnpm run ingest topcv tim-viec-lam-lap-trinh-vien --pages 3
-pnpm run ingest topcv tim-viec-lam-it-phan-mem --pages 3
-pnpm run ingest topcv tim-viec-lam-data-engineer --pages 3
-pnpm run ingest topcv tim-viec-lam-cong-nghe-thong-tin-cr257 --pages 3
-# Broad nav category — carousel pagination, smaller marginal yield
-pnpm run ingest topcv viec-lam-it --pages 2
+# Lần đầu (seed 2K)
+pnpm run seed-pool
 
-# Quick state check
-pnpm run ingest stats
-
-# ── Cycle 2: TopCV non-tech ──────────────────────────────────────────────
-# Use these slugs (verified live) to hit non-tech verticals
-pnpm run ingest topcv tim-viec-lam-ke-toan tim-viec-lam-marketing --pages 3
-pnpm run ingest topcv tim-viec-lam-nhan-vien-kinh-doanh --pages 3
-pnpm run ingest topcv tim-viec-lam-hanh-chinh-nhan-su --pages 3
-pnpm run ingest topcv tim-viec-lam-ngan-hang --pages 3
-
-pnpm run ingest stats
-
-# ── Cycle 3: ITviec + vl24h refresh (existing scrapers) ──────────────────
-pnpm run ingest itviec data-engineer senior-data-engineer backend-developer devops --pages 3
-pnpm tsx scripts/scrape-vl24h.ts --max-age-days 3
-# (vl24h scraper has its own flags; refer to scripts/scrape-vl24h.ts --help)
-
-pnpm run ingest stats
+# Mỗi 3-7 ngày: chạy lại cùng lệnh đó
+pnpm run seed-pool
 ```
 
-Between cycles, check `pnpm run ingest stats` for vertical breakdown. Aim for ≥150/vertical for tech, ≥100 others (matches plan success metric).
+`seed-pool` chạy tuần tự: pre-stats → TopCV tech (15 slugs) → TopCV non-tech (5 slugs) → ITviec tech (5 slugs) → expire → post-stats. ~25-40 phút wall-clock. Mỗi bước chạy ở child process riêng → 1 source lỗi không kill toàn bộ.
 
-## What to watch in the log
+Tùy chỉnh:
+```powershell
+pnpm run seed-pool -- --pages 2              # ít fetch hơn, ~15-20 phút
+pnpm run seed-pool -- --max-age-days 5       # nới freshness lên 5 ngày
+pnpm run seed-pool -- --skip-itviec          # chỉ TopCV
+pnpm run seed-pool -- --help
+```
 
-- `Skip dup: …` — expected on re-runs; means dedup works.
-- `Too old (datePosted=… cap=3d)` — expected; freshness filter at work.
-- `No datePosted in JSON-LD` — unexpected if widespread; probe the URL via curl to see if TopCV started omitting `datePosted` for that listing.
-- `resolveCompany failed for "…"` — proceeds without companyId; common for new companies on cold cache.
-- `Embedding: title @ company` — confirms PG-backed ingest in progress.
+## Prereqs (đã có)
 
-## After ingest cycles complete
+- `GEMINI_API_KEY` trong `.env.local` ✅
+- `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `KV_REST_API_URL`, `KV_REST_API_TOKEN` trong `.env.local` ✅
+- git checkout `main` với 4 commit pre-2K hardening đã push ✅
+- Recommend route đã chạy trên Postgres (`JOBFIT_USE_POSTGRES=1` trên Vercel) ✅
 
-1. **Sanity-check pool size:**
-   ```powershell
-   pnpm run ingest stats
-   ```
-   Expect: `active` ≥2000, balanced across 6 verticals.
+Sau khi seed xong, app tự động pick up jobs mới — không cần redeploy. Recommend route đọc cùng Postgres mà ingest vừa write vào.
 
-2. **Smoke recommend endpoint** (already PG-backed, but verify):
-   ```powershell
-   # Anon (1 tier-B teaser)
-   curl -X POST https://resume-refactor.vercel.app/api/jobs/recommend `
-     -H "Content-Type: application/json" `
-     -d '{"cv":"...","topK":1}'
-   # Authenticated paid (10 jobs, mixed tiers) — needs session cookie
-   ```
+## Yield estimate (đã verify live)
 
-3. **Check vertical distribution:**
-   ```powershell
-   psql $env:DATABASE_URL -c "SELECT vertical, COUNT(*) FROM jobs WHERE active=true GROUP BY vertical ORDER BY 2 DESC;"
-   ```
+| Source | Slugs đã verify | Jobs/slug/page (raw) | After classify+dedup |
+|---|---|---|---|
+| TopCV tech | 15 | ~14-50 | ~8-30 |
+| TopCV non-tech | 5 | ~50 | ~20-30 |
+| ITviec | 5 | ~10-20 | ~5-10 |
 
-4. **Commit + push** the pre-2K hardening commits (53575da + f820bb7 + today's commit).
+Với `--pages 3` mặc định: ~1,000-1,400 fresh jobs/cycle. Pool hiện tại 171 → 1 cycle là ≥1,200, 2 cycles là ≥2K.
 
-## Rollback (if something breaks mid-cycle)
+## Hard guards (không bypass thầm lặng)
 
-- **Interrupt:** Ctrl+C. ingestEntries writes `data/ingest-progress.json` on SIGINT.
-- **Resume:** `pnpm run ingest file data/<last-batch>.json` — dedup re-runs, no duplicate inserts.
-- **Bad ingest landed in PG:** mark active=false for affected `verifiedAt > '<timestamp>'`:
-  ```sql
-  UPDATE jobs SET active=false WHERE verified_at > '2026-06-07 13:00:00';
-  ```
+| Rule | Hành vi |
+|---|---|
+| `postedAt > 3 ngày` | Reject, log `Too old (datePosted=…, cap=3d)` |
+| Thiếu `datePosted` | Reject, log `No datePosted in JSON-LD` |
+| `validThrough` đã hết | Reject, log `Expired (validThrough=…)` |
+| Description < 50 chars | Reject |
+| Duplicate `sha256(sourceUrl)` | Skip, log `Skip dup: <title>` |
+| Embed throttle | 5 rps token bucket |
 
-## Phase 8 KV decommission
+Cần nới freshness? `pnpm run seed-pool -- --max-age-days 7`. Đừng vượt 14 — sẽ làm pool stale.
 
-Still gated on 72h Phase 4 observation (started 2026-06-06) → earliest **2026-06-09**. After successful 2K ingest, Phase 4 + Phase 8 observation windows overlap — count from the LATER of the two.
+## Schedule (chọn 1 trong 3 cách)
 
-## Known limitations (not blocking 2K)
+### Cách 1 — Manual khi nào muốn (đơn giản nhất)
 
-- VNW: parked. Future re-enable needs headless browser or reverse-engineered ms.vietnamworks.com API.
-- TopCV broad `/viec-lam-it`: client-side carousel pagination. Don't use `--pages > 2` on broad nav routes; use `tim-viec-lam-*` instead.
-- tech.qa + tech.product-tech: no VNW seeds, limited TopCV seeds. Will be under-represented.
-- ITviec scraper accuracy: existing behavior, no Phase 5 changes.
+Mở terminal khi cần, chạy `pnpm run seed-pool`. Khỏi setup gì cả.
 
----
-
-# Periodic refresh — GitHub Actions
-
-After the initial 2K seed, ongoing pool maintenance is automated via `.github/workflows/refresh-jobs.yml`.
-
-## Layers of refresh (3 distinct concerns)
-
-| Cadence | Where | What it does |
-|---|---|---|
-| **Daily 20:00 UTC** | Vercel Cron → `/api/jobs/refresh` | HEAD-checks each active job's `sourceUrl`. 4xx/410/expired-body → mark inactive. Auto-expires `verifiedAt > 21 days`. Now PG-backed. |
-| **Every 3 days 19:00 UTC** | GitHub Actions → `refresh-jobs.yml` | Scrapes new TopCV + ITviec listings + ingests fresh URLs into Postgres + runs `ingest expire` to mark stale jobs. |
-| **On-demand (admin)** | `gh workflow run refresh-jobs.yml` | Same as scheduled. Manual trigger from GitHub UI/CLI. |
-
-The Vercel cron handles *liveness* (is this URL still alive?). The GH workflow handles *growth* (are there new postings?). They complement.
-
-## One-time setup: GitHub secrets
-
-Mirror Vercel env vars to GH Actions secrets. Run from `cv-ex-refactor/` after `vercel env pull .env.local` and pasting `GEMINI_API_KEY` manually:
+### Cách 2 — Windows Task Scheduler (nếu muốn auto, máy luôn bật)
 
 ```powershell
-# Required (workflow fails fast if any is empty)
-gh secret set GEMINI_API_KEY < (Get-Content .env.local | Select-String '^GEMINI_API_KEY=' | ForEach-Object { $_.ToString().Split('=',2)[1].Trim('"') })
+# Tạo task chạy mỗi 3 ngày lúc 02:00 sáng
+$action = New-ScheduledTaskAction `
+  -Execute "pwsh.exe" `
+  -Argument "-NoProfile -Command `"cd 'C:\Users\Vincere\Desktop\Claude\CVMatching\cv-ex-refactor'; pnpm run seed-pool *> seed-pool-$(Get-Date -Format yyyyMMdd-HHmm).log`""
 
-# Easier: paste values when prompted
+$trigger = New-ScheduledTaskTrigger -Daily -At 02:00 -DaysInterval 3
+
+Register-ScheduledTask -TaskName "CVMatching-SeedPool" `
+  -Action $action -Trigger $trigger `
+  -Description "Refresh job pool every 3 days"
+```
+
+Đổi cadence: `-DaysInterval 7` cho mỗi tuần.
+
+Xóa task: `Unregister-ScheduledTask -TaskName "CVMatching-SeedPool" -Confirm:$false`
+
+Logs ghi vào `seed-pool-YYYYMMDD-HHMM.log` trong thư mục `cv-ex-refactor/`.
+
+### Cách 3 — GitHub Actions (optional, nếu máy không bật 24/7)
+
+File `.github/workflows/refresh-jobs.yml` đã có. Workflow gọi cùng `pnpm run seed-pool` script — không duplicate logic.
+
+**Setup (~2 phút):**
+```powershell
 gh secret set GEMINI_API_KEY
 gh secret set DATABASE_URL
 gh secret set DATABASE_URL_UNPOOLED
 gh secret set KV_REST_API_URL
 gh secret set KV_REST_API_TOKEN
-
-# Optional
-gh secret set EMBED_CACHE_SECRET
-gh secret set ALERT_WEBHOOK_URL
 ```
 
-Verify:
+Schedule mặc định: cron `0 19 */3 * *` (mỗi 3 ngày 19:00 UTC = 02:00 ICT). Đổi cadence: sửa `schedule.cron` trong workflow YAML.
+
+**Trigger thủ công (admin):**
 ```powershell
-gh secret list
-# Expect: GEMINI_API_KEY, DATABASE_URL, DATABASE_URL_UNPOOLED, KV_REST_API_URL, KV_REST_API_TOKEN minimum
+gh workflow run refresh-jobs.yml                              # full sweep mặc định
+gh workflow run refresh-jobs.yml -f pages=2                   # nhẹ hơn
+gh workflow run refresh-jobs.yml -f topcv_slugs="tim-viec-lam-data-engineer" -f pages=3  # custom slugs
+gh run watch                                                  # xem live
 ```
 
-## Admin manual trigger
+Hoặc: GitHub UI → Actions → "Refresh job pool" → Run workflow.
 
-Three equivalent ways:
-
+**Disable schedule (vẫn cho phép manual trigger):**
 ```powershell
-# 1. GitHub CLI — default sweep (full tech + non-tech, 3 pages/slug, 3-day freshness)
-gh workflow run refresh-jobs.yml
-
-# 2. GitHub CLI — custom slugs (e.g. catch up a specific vertical)
-gh workflow run refresh-jobs.yml `
-  -f topcv_slugs="tim-viec-lam-data-engineer tim-viec-lam-data-analyst" `
-  -f pages=3 `
-  -f max_age_days=3
-
-# 3. GitHub UI: Actions tab → "Refresh job pool" → Run workflow
-#    Lets you override inputs interactively.
-```
-
-After trigger:
-```powershell
-# Watch live (last run id auto-detected)
-gh run watch
-# Or list recent runs
-gh run list --workflow=refresh-jobs.yml --limit 5
-```
-
-## Schedule tuning (3 vs 7 day cadence)
-
-Default: every 3 days at 19:00 UTC (`cron: '0 19 */3 * *'`).
-
-Change the cron in `.github/workflows/refresh-jobs.yml`:
-- **Every 3 days**: `'0 19 */3 * *'` (current)
-- **Every 5 days**: `'0 19 */5 * *'`
-- **Weekly Mon**: `'0 19 * * 1'`
-- **Twice weekly Mon+Thu**: `'0 19 * * 1,4'`
-
-Trade-off:
-- Tighter cadence (3d) = fresher pool, slightly higher GH Actions minutes + Gemini cost
-- Looser cadence (7d) = older pool, more jobs expire between refreshes → temporary pool dip
-
-Per memory `project_ingest_freshness_constraint` (≤3d posted), staying at 3-day cadence keeps the pool's median age ≤4-5 days.
-
-## Workflow steps (what runs each time)
-
-1. Checkout `main` + setup pnpm/Node 20 + install deps (~2 min)
-2. Materialize `.env.local` from GH secrets (fails fast if required secret empty)
-3. **Pre-refresh stats** — log current pool size + vertical breakdown
-4. **TopCV tech sweep** — 4 slugs × N pages (server-paged, highest yield)
-5. **TopCV non-tech sweep** — 5 slugs × N pages
-6. **ITviec tech sweep** — 4 keywords × N pages (continue-on-error)
-7. **`ingest expire`** — mark `verifiedAt > 21d` as inactive
-8. **Post-refresh stats** — log new pool size
-9. **Summary** — written to GH Actions run summary (visible from run page)
-
-Total wall-clock: 10-25 min depending on yield + Cloudflare patience.
-
-## Manual override for ad-hoc backfill
-
-If a specific vertical is under-represented:
-```powershell
-gh workflow run refresh-jobs.yml `
-  -f topcv_slugs="tim-viec-lam-data-engineer tim-viec-lam-data-analyst tim-viec-lam-business-analyst" `
-  -f pages=3
-```
-
-Only the TopCV step uses the custom slugs; ITviec sweep still runs its default set.
-
-## Monitoring + failure
-
-- **Failure email**: GitHub sends to the repo owner's email on workflow failure (default behavior). Configure noise via GitHub notification settings.
-- **Pool size check**: after each scheduled run, the summary card shows pre/post stats. If post is < 80% of pre, something's wrong (probably TopCV blocked, ITviec down, or DB connection issue).
-- **Vercel logs** for the daily liveness cron: `vercel logs --project resume-refactor --since 24h | grep "refresh"`.
-
-## Rollback / pause schedule
-
-```powershell
-# Disable the scheduled cron (manual trigger still works)
 gh workflow disable refresh-jobs.yml
-
-# Re-enable
-gh workflow enable refresh-jobs.yml
 ```
 
-Or comment out the `schedule:` block in `.github/workflows/refresh-jobs.yml` and push.
+## Hai layer refresh chạy cùng lúc
+
+| Layer | Cadence | Làm gì |
+|---|---|---|
+| **Vercel cron** `/api/jobs/refresh` | Hàng ngày 20:00 UTC | HEAD-check sourceUrl của job hiện tại; 404/410 → expire; `verifiedAt > 21d` → expire. Đã wire sẵn, đã PG-backed. |
+| **seed-pool** (manual / Task / GH Actions) | 3-7 ngày | Scrape jobs mới từ TopCV + ITviec; ingest vào Postgres; expire pass. |
+
+Daily cron chăm sóc "URLs đã có còn sống không"; seed-pool chăm sóc "có jobs mới không". Hai concern riêng biệt, không trùng.
+
+## Test app sau khi seed
+
+1. Browser: `https://resume-refactor.vercel.app/job-fit` → upload CV → xem trả 5-10 jobs mix tier.
+2. Refresh trang vài lần — `seenIds` dedup → surface jobs khác mỗi lần.
+3. Vertical breakdown (Neon SQL editor):
+   ```sql
+   SELECT vertical, COUNT(*) FROM jobs WHERE active=true GROUP BY vertical ORDER BY 2 DESC;
+   ```
+   Mục tiêu: tech ≥150, mỗi vertical khác ≥100.
+
+## Log signals khi seed chạy
+
+| Log | Ý nghĩa |
+|---|---|
+| `Embedding: <title> @ <company>` | Đang gọi Gemini + write vào Postgres |
+| `Skip dup: <title>` | URL đã ingest, dedup làm việc |
+| `Too old (datePosted=… cap=3d)` | Freshness gate reject — bình thường |
+| `No datePosted in JSON-LD` | TopCV có thể đổi format — báo lại nếu thấy nhiều |
+| `resolveCompany failed for "…"` | Cache miss, không block — bình thường |
+| `✓ <step> done in N.Ns` | Mỗi step xong |
+| `⚠ <step> exited with code N` | Step lỗi nhưng sweep vẫn tiếp tục |
+
+Nếu Ctrl+C giữa chừng: `data/ingest-progress.json` lưu cursor. Chạy lại bình thường — dedup tự skip jobs đã ingest.
+
+## Câu hỏi đã trả lời
+
+**Q: Tại sao tech ít?**
+A: Slug `viec-lam-it` chứa nhiều non-tech (designer, CNC). Đã thêm 12 slug tech-cụ-thể vào taxonomy + seed-pool: backend-developer, frontend-developer, devops, mobile-developer, data-analyst, tester, qa-qc, java, nodejs, reactjs, python, ios. Mỗi slug 19-50 URLs raw → tech yield tăng ~3-4 lần.
+
+**Q: Tại sao phải làm từng bước, không local script?**
+A: Giờ là 1 lệnh local: `pnpm run seed-pool`. Step-by-step trong runbook cũ là cách thủ công nếu muốn fine-grained control — không bắt buộc.
+
+**Q: Tại sao phải setup GitHub Actions?**
+A: Không bắt buộc. Chọn:
+- Manual khi nào nhớ (đơn giản nhất)
+- Windows Task Scheduler nếu máy hay bật
+- GitHub Actions chỉ khi muốn auto-refresh kể cả máy tắt
+
+## Known limitations
+
+- VNW: parked — detail pages CSR-empty. Discovery vẫn work cho future re-enable.
+- TopCV broad `viec-lam-it`: client-side carousel pagination → đã loại khỏi seed-pool, dùng `tim-viec-lam-*` thay thế.
+- tech.qa: chỉ có `tester` + `qa-qc` slug, độ phủ thấp hơn các sub-domain khác.
+- ITviec scraper: behavior cũ, chưa được verify lại hôm nay.
