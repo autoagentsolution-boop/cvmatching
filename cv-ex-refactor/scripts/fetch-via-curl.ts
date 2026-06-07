@@ -60,7 +60,7 @@ export async function fetchViaCurl(url: string, opts: CurlOptions = {}): Promise
 
   // CURL_BIN override: GH Actions (Ubuntu stock curl) gets Cloudflare-blocked
   // because OpenSSL TLS fingerprint differs from real Chrome. The workflow
-  // installs curl-impersonate and sets CURL_BIN=curl_chrome116, which uses
+  // installs curl-impersonate and sets CURL_BIN=curl_chrome131, which uses
   // Chrome's exact cipher list + TLS extensions and passes the CF check.
   // Local dev keeps using the system curl (Windows ships a Chrome-flavored
   // build that already passes).

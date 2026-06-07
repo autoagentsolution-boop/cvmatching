@@ -71,8 +71,10 @@ jobs:
       FORCE_COLOR: '1'
       # fetch-via-curl reads this to pick a Chrome-fingerprinted curl
       # variant. Ubuntu stock curl + OpenSSL has a TLS fingerprint
-      # Cloudflare flags → blanket 403 on TopCV/ITviec.
-      CURL_BIN: curl_chrome116
+      # Cloudflare flags → blanket 403 on TopCV/ITviec. Chrome 131 (Nov
+      # 2024) is current enough that CF accepts it and stable enough
+      # that the fingerprint isn't a moving target. Bump if CF tightens.
+      CURL_BIN: curl_chrome131
 
     steps:
       - name: Checkout main
@@ -112,39 +114,37 @@ jobs:
       # curl-impersonate Chrome variant uses Chrome's exact cipher list,
       # extensions, and JA3 fingerprint — passes the CF check.
       #
-      # Pinned to v0.6.1 (latest stable as of 2026; curl_chrome116 is the
-      # most recent Chrome variant in that release). Binary is self-contained
-      # and the wrapper script handles TLS args.
+      # Using lexiforest fork (lwthiker's repo froze at v0.6.1 / Chrome 116
+      # in 2023 — too old; CF now flags that fingerprint). lexiforest ships
+      # Chrome 99→146 in v1.5.6; we use Chrome 131.
       - name: Install curl-impersonate
         working-directory: /tmp
         run: |
           set -e
-          VERSION="0.6.1"
-          # v0.6.x ships a single unified tarball (no separate -chrome variant).
-          # All chrome/firefox/edge/safari wrappers live inside it.
+          VERSION="1.5.6"
           TARBALL="curl-impersonate-v${VERSION}.x86_64-linux-gnu.tar.gz"
           INSTALL_DIR="/usr/local/bin/curl-impersonate"
           sudo mkdir -p "$INSTALL_DIR"
           # -f: fail on HTTP errors instead of silently saving the 404 HTML
           # page (otherwise tar chokes downstream with "not in gzip format").
           curl -fsSL -o "$TARBALL" \
-            "https://github.com/lwthiker/curl-impersonate/releases/download/v${VERSION}/${TARBALL}"
+            "https://github.com/lexiforest/curl-impersonate/releases/download/v${VERSION}/${TARBALL}"
           sudo tar xzf "$TARBALL" -C "$INSTALL_DIR"
           # Make wrappers executable + add dir to PATH for subsequent steps
           sudo chmod +x "$INSTALL_DIR"/*
           echo "$INSTALL_DIR" >> "$GITHUB_PATH"
           # Smoke-test the variant we will use
-          "$INSTALL_DIR/curl_chrome116" --version | head -1
+          "$INSTALL_DIR/$CURL_BIN" --version | head -1
           echo "Installed curl-impersonate; CURL_BIN=$CURL_BIN"
 
       - name: Verify curl-impersonate against TopCV (Cloudflare check)
         run: |
           # Quick sanity check: does CF pass for the chrome variant?
           # Fail the workflow early if not (saves the 25-min sweep).
-          STATUS=$(curl_chrome116 -sS -o /dev/null -w "%{http_code}" -A "Mozilla/5.0" https://www.topcv.vn/ || echo "000")
+          STATUS=$("$CURL_BIN" -sS -o /dev/null -w "%{http_code}" -A "Mozilla/5.0" https://www.topcv.vn/ || echo "000")
           echo "TopCV root HTTP: $STATUS"
           if [ "$STATUS" != "200" ]; then
-            echo "::error::curl-impersonate did not pass Cloudflare (HTTP $STATUS). May need a newer chrome variant or curl-impersonate version."
+            echo "::error::curl-impersonate ($CURL_BIN) did not pass Cloudflare (HTTP $STATUS). Try a different chrome variant from lexiforest/curl-impersonate v${VERSION}."
             exit 1
           fi
 
