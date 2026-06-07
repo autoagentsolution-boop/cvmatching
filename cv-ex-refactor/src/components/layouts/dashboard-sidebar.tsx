@@ -12,6 +12,7 @@ export type ActiveNav =
   | 'career-path'
   | 'job-fit'
   | 'admin-usage'
+  | 'admin-pool'
   | 'admin-maintenance';
 
 interface NavItem {
@@ -33,6 +34,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'career-path', label: 'Career Path', icon: 'psychology', href: '/career-path' },
   { key: 'history', label: 'History', icon: 'history', href: '/history' },
   { key: 'admin-usage', label: 'Usage', icon: 'analytics', href: '/admin/usage', adminOnly: true },
+  { key: 'admin-pool', label: 'Job Pool', icon: 'inventory_2', href: '/admin/pool', adminOnly: true },
   { key: 'admin-maintenance', label: 'Site Controls', icon: 'engineering', href: '/admin/maintenance', adminOnly: true },
   // Job Fit & Study is admin-only during the v0.3 KV-seed pilot.
   { key: 'job-fit', label: 'Job Fit & Study (test)', icon: 'work', href: '/job-fit', adminOnly: true },
