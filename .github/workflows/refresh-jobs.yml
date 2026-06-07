@@ -79,7 +79,11 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          # Match local (operator runs pnpm 11.3.0). pnpm 9 errors on
+          # `pnpm-workspace.yaml` that has only config (allowBuilds,
+          # ignoredBuiltDependencies) and no `packages:` field — pnpm 10+
+          # treats it as a config-only file (lenient mode).
+          version: 11
 
       - name: Setup Node
         uses: actions/setup-node@v4
