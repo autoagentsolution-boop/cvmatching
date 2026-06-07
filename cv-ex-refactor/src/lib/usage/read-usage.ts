@@ -164,12 +164,10 @@ export async function getUsageSnapshot(ym: string, dailyDays = 30): Promise<Usag
     };
   }
 
+  // Pre-compute date list (no I/O) so the daily fetch can fan out
+  // alongside the user roster and byok-anon fetch instead of waiting
+  // for them. Was 3 sequential KV rounds; now 2 (smembers → fan-out).
   const userIds = (await kv.smembers(`usage:users:${ym}`)) ?? [];
-
-  const userRows = await Promise.all(userIds.map((uid) => readUserRow(String(uid), ym)));
-  userRows.sort((a, b) => b.costMicroUsd - a.costMicroUsd || b.analyze + b.generateCv - (a.analyze + a.generateCv));
-
-  const byokAnon = await readByokAnon(ym);
 
   const now = new Date();
   const dates: string[] = [];
@@ -178,7 +176,16 @@ export async function getUsageSnapshot(ym: string, dailyDays = 30): Promise<Usag
     d.setUTCDate(d.getUTCDate() - i);
     dates.push(ymdOf(d));
   }
-  const daily = await Promise.all(dates.map(readDailyRow));
+
+  const [userRowsRaw, byokAnon, daily] = await Promise.all([
+    Promise.all(userIds.map((uid) => readUserRow(String(uid), ym))),
+    readByokAnon(ym),
+    Promise.all(dates.map(readDailyRow)),
+  ]);
+
+  const userRows = [...userRowsRaw].sort(
+    (a, b) => b.costMicroUsd - a.costMicroUsd || b.analyze + b.generateCv - (a.analyze + a.generateCv),
+  );
 
   return { month: ym, users: userRows, byokAnon, daily };
 }

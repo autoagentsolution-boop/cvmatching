@@ -56,9 +56,12 @@ export default async function AdminUsagePage({
   const month = parseMonth(sp.month);
   const days = parseDays(sp.days);
 
-  const snapshot = await getUsageSnapshot(month, days);
+  // Fan-out everything in one Promise.all — snapshot was previously
+  // awaited before the rest, blocking ~150-300ms of KV-time that could
+  // overlap with the others.
   const todayYmd = vnDateString();
-  const [jobFitStats, visitStats, dailyVisits, bucketStatus, activationToday] = await Promise.all([
+  const [snapshot, jobFitStats, visitStats, dailyVisits, bucketStatus, activationToday] = await Promise.all([
+    getUsageSnapshot(month, days),
     getJobFitStats(todayYmd),
     readVisitStats(),
     readDailyVisits(days),

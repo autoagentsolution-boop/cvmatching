@@ -148,14 +148,36 @@ jobs:
           pnpm run ingest expire
           pnpm run ingest stats
 
-      - name: Summary
-        if: always()
+      # Only run stats if previous steps succeeded — running `pnpm run ingest`
+      # in a half-installed environment (e.g. after fail-fast on missing
+      # secrets) produces noisy pnpm errors in the summary.
+      - name: Summary (success)
+        if: success()
         run: |
-          echo "## Refresh complete" >> "$GITHUB_STEP_SUMMARY"
-          echo "Triggered by: ${{ github.event_name }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "Max age cap: $INGEST_MAX_AGE_DAYS days" >> "$GITHUB_STEP_SUMMARY"
-          echo "Pages per slug: $PAGES" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo '\`\`\`' >> "$GITHUB_STEP_SUMMARY"
-          pnpm run ingest stats 2>&1 | tail -40 >> "$GITHUB_STEP_SUMMARY" || true
-          echo '\`\`\`' >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## Refresh complete"
+            echo ""
+            echo "Triggered by: ${{ github.event_name }}"
+            echo "Max age cap: ${INGEST_MAX_AGE_DAYS} days"
+            echo "Pages per slug: ${PAGES}"
+            echo ""
+            echo '```'
+            pnpm run ingest stats 2>&1 | tail -40 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Summary (failure)
+        if: failure()
+        run: |
+          {
+            echo "## Refresh failed"
+            echo ""
+            echo "Trigger: ${{ github.event_name }}"
+            echo ""
+            echo "Common causes:"
+            echo "- Missing GH Actions secrets (GEMINI_API_KEY, DATABASE_URL, etc.)"
+            echo "  Fix: run \`powershell -ExecutionPolicy Bypass -File scripts/sync-gh-secrets.ps1\` locally,"
+            echo "  then re-trigger this workflow."
+            echo "- TopCV/ITviec Cloudflare flap — re-trigger usually fixes it."
+            echo "- See individual step logs above for the actual error."
+          } >> "$GITHUB_STEP_SUMMARY"
