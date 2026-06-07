@@ -94,7 +94,13 @@ jobs:
           cache-dependency-path: cv-ex-refactor/pnpm-lock.yaml
 
       - name: Install deps
-        run: pnpm install --frozen-lockfile
+        # --ignore-scripts: pnpm 11 errors on packages with un-approved
+        # install scripts (@parcel/watcher, @swc/core, sharp). None of
+        # these are needed at runtime for the ingest CLI (no Next build,
+        # no image processing, no dev watcher). Skipping their postinstall
+        # hooks keeps CI hermetic and avoids the manual approve-builds
+        # dance that's interactive-only.
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Verify curl available (Cloudflare bypass)
         run: curl --version
