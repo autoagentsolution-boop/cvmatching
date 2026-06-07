@@ -6,8 +6,12 @@
 #   - The terminal does NOT echo the value back
 #   - gh requires the value via stdin so no -Body flag with literal needed
 #
+# Compatible with Windows PowerShell 5.1 (default `powershell.exe`) and
+# PowerShell 7+ (`pwsh`).
+#
 # Usage (from cv-ex-refactor/):
-#   pwsh scripts/sync-gh-secrets.ps1
+#   powershell -ExecutionPolicy Bypass -File scripts/sync-gh-secrets.ps1
+#   (or `pwsh scripts/sync-gh-secrets.ps1` if you have PS7)
 #
 # Prereqs:
 #   - .env.local exists and contains the 5 keys
@@ -15,7 +19,9 @@
 
 $ErrorActionPreference = 'Stop'
 
-$envPath = Join-Path $PSScriptRoot '..' '.env.local'
+# Resolve .env.local relative to this script (parent of scripts/).
+# PS 5.1's Join-Path only accepts 2 args, so use Split-Path to walk up.
+$envPath = Join-Path (Split-Path $PSScriptRoot -Parent) '.env.local'
 if (-not (Test-Path $envPath)) {
   Write-Host "ERROR: .env.local not found at $envPath" -ForegroundColor Red
   exit 1
