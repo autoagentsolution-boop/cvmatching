@@ -69,6 +69,10 @@ jobs:
       PAGES: ${{ github.event.inputs.pages || '3' }}
       # Force colored logs even on a non-TTY runner
       FORCE_COLOR: '1'
+      # fetch-via-curl reads this to pick a Chrome-fingerprinted curl
+      # variant. Ubuntu stock curl + OpenSSL has a TLS fingerprint
+      # Cloudflare flags → blanket 403 on TopCV/ITviec.
+      CURL_BIN: curl_chrome116
 
     steps:
       - name: Checkout main
@@ -102,8 +106,43 @@ jobs:
         # dance that's interactive-only.
         run: pnpm install --frozen-lockfile --ignore-scripts
 
-      - name: Verify curl available (Cloudflare bypass)
-        run: curl --version
+      # ── Cloudflare bypass: curl-impersonate (Chrome TLS fingerprint) ──
+      # Ubuntu stock curl 8.5.0 + OpenSSL 3.0 gets blanket 403 from TopCV
+      # and ITviec (Cloudflare flags the non-Chrome TLS handshake). The
+      # curl-impersonate Chrome variant uses Chrome's exact cipher list,
+      # extensions, and JA3 fingerprint — passes the CF check.
+      #
+      # Pinned to v0.6.1 (latest stable as of 2026; curl_chrome116 is the
+      # most recent Chrome variant in that release). Binary is self-contained
+      # and the wrapper script handles TLS args.
+      - name: Install curl-impersonate
+        working-directory: /tmp
+        run: |
+          set -e
+          VERSION="0.6.1"
+          TARBALL="curl-impersonate-v${VERSION}.x86_64-linux-gnu.tar.gz"
+          INSTALL_DIR="/usr/local/bin/curl-impersonate"
+          sudo mkdir -p "$INSTALL_DIR"
+          curl -sSL -o "$TARBALL" \
+            "https://github.com/lwthiker/curl-impersonate/releases/download/v${VERSION}/curl-impersonate-chrome-v${VERSION}.x86_64-linux-gnu.tar.gz"
+          sudo tar xzf "$TARBALL" -C "$INSTALL_DIR"
+          # Make wrappers executable + add dir to PATH for subsequent steps
+          sudo chmod +x "$INSTALL_DIR"/*
+          echo "$INSTALL_DIR" >> "$GITHUB_PATH"
+          # Smoke-test the variant we will use
+          "$INSTALL_DIR/curl_chrome116" --version | head -1
+          echo "Installed curl-impersonate; CURL_BIN=$CURL_BIN"
+
+      - name: Verify curl-impersonate against TopCV (Cloudflare check)
+        run: |
+          # Quick sanity check: does CF pass for the chrome variant?
+          # Fail the workflow early if not (saves the 25-min sweep).
+          STATUS=$(curl_chrome116 -sS -o /dev/null -w "%{http_code}" -A "Mozilla/5.0" https://www.topcv.vn/ || echo "000")
+          echo "TopCV root HTTP: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "::error::curl-impersonate did not pass Cloudflare (HTTP $STATUS). May need a newer chrome variant or curl-impersonate version."
+            exit 1
+          fi
 
       # Materialize .env.local from secrets — `pnpm run ingest` uses
       # `tsx --env-file=.env.local` and expects this file to exist.

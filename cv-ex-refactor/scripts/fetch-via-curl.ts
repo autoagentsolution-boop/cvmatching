@@ -58,7 +58,14 @@ export async function fetchViaCurl(url: string, opts: CurlOptions = {}): Promise
     url,
   ];
 
-  const { stdout } = await execFileP('curl', args, {
+  // CURL_BIN override: GH Actions (Ubuntu stock curl) gets Cloudflare-blocked
+  // because OpenSSL TLS fingerprint differs from real Chrome. The workflow
+  // installs curl-impersonate and sets CURL_BIN=curl_chrome116, which uses
+  // Chrome's exact cipher list + TLS extensions and passes the CF check.
+  // Local dev keeps using the system curl (Windows ships a Chrome-flavored
+  // build that already passes).
+  const curlBin = process.env['CURL_BIN'] || 'curl';
+  const { stdout } = await execFileP(curlBin, args, {
     maxBuffer: MAX_BUFFER_BYTES,
     windowsHide: true,
   });
@@ -78,11 +85,13 @@ export async function fetchViaCurl(url: string, opts: CurlOptions = {}): Promise
  * clear error instead of a subprocess ENOENT mid-loop.
  */
 export async function assertCurlAvailable(): Promise<void> {
+  const curlBin = process.env['CURL_BIN'] || 'curl';
   try {
-    await execFileP('curl', ['--version'], { windowsHide: true });
+    await execFileP(curlBin, ['--version'], { windowsHide: true });
   } catch {
     throw new Error(
-      'system `curl` not found on PATH. Install curl (Windows 10+ ships it by default; on Linux: apt install curl).',
+      `\`${curlBin}\` not found on PATH. Install curl (Windows 10+ ships it; Linux: apt install curl). ` +
+        `If CURL_BIN env is set, verify the binary exists.`,
     );
   }
 }
