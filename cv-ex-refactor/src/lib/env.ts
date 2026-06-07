@@ -68,6 +68,16 @@ const serverSchema = z.object({
   SEPAY_BANK_NAME: optStr(z.string()),
   PAID_PLAN_PRICE_VND: optStr(z.string().regex(/^\d+$/)),
   MONETIZATION_ENABLED: optStr(z.string()),
+
+  // Fine-grained GitHub PAT used by /api/admin/pool/trigger to dispatch
+  // refresh-jobs.yml. Scope: Actions read+write on this repo only.
+  // Sensitive — never logged, never echoed to clients. Optional: if unset,
+  // trigger endpoint returns 503 with actionable message.
+  GITHUB_DISPATCH_TOKEN: optStr(z.string().min(20)),
+  // Public repo coordinates for the dispatch URL. Default matches the live
+  // remote so deploys don't break when GITHUB_REPO is unset; override only
+  // for forks/staging.
+  GITHUB_REPO: optStr(z.string().regex(/^[^/]+\/[^/]+$/)),
 });
 
 export const env = serverSchema.parse(process.env);

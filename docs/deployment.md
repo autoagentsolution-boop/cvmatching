@@ -562,3 +562,115 @@ All three controls have CLI wrappers and read `.env.local` for KV creds:
 
 The maintenance toggle is the heaviest — use only for true outages, not
 budget control.
+
+---
+
+## 18. Job pool — admin UI + GitHub Actions dispatch
+
+Shipped 2026-06-07. Lets the admin watch pool state + trigger a refresh
+without opening a terminal.
+
+### Routes
+
+- `/admin/pool` — read-only stats page (active count, vertical/source/seniority
+  breakdown, freshness percentiles, 10 most-recent verified jobs, last UI
+  dispatch timestamp).
+- `POST /api/admin/pool/trigger` — auth-gated dispatch endpoint. Calls
+  GitHub REST `POST /repos/{repo}/actions/workflows/refresh-jobs.yml/dispatches`
+  with a Fine-grained PAT. Returns 204-equivalent + `runsUrl`.
+
+### One-time PAT setup
+
+1. **Create the PAT** at https://github.com/settings/personal-access-tokens/new
+   - Token name: `cvmatching-dispatch`
+   - Expiration: 1 year (max for fine-grained)
+   - Repository access: **Only select repositories** → pick `cvmatching`
+   - Permissions → Repository permissions → **Actions: Read and write**
+   - No account/org permissions needed.
+2. **Set on Vercel** as a Sensitive env var named `GITHUB_DISPATCH_TOKEN`:
+   ```powershell
+   vercel env add GITHUB_DISPATCH_TOKEN production
+   # paste the PAT when prompted; mark as Sensitive
+   ```
+3. Optional: set `GITHUB_REPO` if the repo slug differs from the default
+   `autoagentsolution-boop/cvmatching`.
+4. Redeploy (Vercel does this automatically on env change).
+5. Verify: open `/admin/pool` → "Refresh now" button should be enabled
+   (not the "Chưa setup" warning).
+
+### What the token CAN'T do
+
+- Read code (token has no `contents` scope).
+- Modify workflows (no `workflows` scope — only Actions runtime).
+- Touch other repos in the org.
+- Issue tokens for further GitHub calls.
+
+If the PAT leaks, blast radius = an attacker can dispatch the workflow
+repeatedly. Revoke at https://github.com/settings/personal-access-tokens
+and rotate.
+
+### Security guarantees in the endpoint
+
+- Admin auth via `isAdminUser(session?.user)` — same gate as the rest of
+  `/admin/*`.
+- PAT NEVER appears in response bodies (only `runsUrl` is returned).
+- GitHub error responses are truncated to 200 chars + `Bearer \S+` masked
+  before being echoed in the error JSON (defense-in-depth for the case
+  GitHub ever reflects the auth header in their error body).
+- KV write of "last dispatch" stamp uses non-sensitive fields only (timestamp,
+  user email).
+
+### Key rotation matrix
+
+Shared keys (used by Vercel runtime + local CLI + GH Actions runner):
+
+| Key | `.env.local` (operator) | Vercel env | GH Actions secret |
+|---|---|---|---|
+| `GEMINI_API_KEY` | ✓ | ✓ | ✓ |
+| `DATABASE_URL` / `DATABASE_URL_UNPOOLED` | ✓ | ✓ | ✓ |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | ✓ | ✓ | ✓ |
+| `EMBED_CACHE_SECRET` | (optional) | ✓ | (optional) |
+| `ALERT_WEBHOOK_URL` | (optional) | ✓ | (optional) |
+
+Single-host keys:
+
+| Key | Where only |
+|---|---|
+| `GITHUB_DISPATCH_TOKEN` | Vercel env only |
+| `CRON_SECRET` | Vercel env only (auto-injected by Vercel cron) |
+| `AUTH_SECRET` / `GOOGLE_CLIENT_*` / `SEPAY_*` | Vercel env only |
+
+Rotation procedure (for any shared key, e.g. when Gemini key is suspect):
+
+```powershell
+# 1. Get new value from upstream (Gemini console / Neon dashboard / Upstash console)
+$NEW = "ya29.new-token-here"
+
+# 2. Update Vercel (production)
+vercel env rm GEMINI_API_KEY production  # if it was Sensitive type, NOT recoverable
+vercel env add GEMINI_API_KEY production
+# paste $NEW
+
+# 3. Update GH Actions
+echo $NEW | gh secret set GEMINI_API_KEY
+
+# 4. Update local
+# Open .env.local in editor, replace the GEMINI_API_KEY= line
+
+# 5. Verify
+pnpm run ingest stats  # local — should not error on Gemini
+# Trigger workflow once from admin UI — should succeed
+```
+
+**Caveat from memory `feedback_vercel_sensitive_env_pull_masked`:** `vercel env pull` returns Sensitive values as empty strings. After rotation, NEVER rely on `vercel env pull` to populate `.env.local` for sensitive keys — paste manually from the source.
+
+### Manual fallback if the trigger endpoint is down
+
+The same workflow can be dispatched without going through Vercel:
+
+```powershell
+gh workflow run refresh-jobs.yml                            # default sweep
+gh workflow run refresh-jobs.yml -f pages=2 -f max_age_days=5
+```
+
+And of course `pnpm run seed-pool` locally still works for everything.
