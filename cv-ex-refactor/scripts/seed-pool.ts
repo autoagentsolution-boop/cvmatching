@@ -101,13 +101,18 @@ function banner(label: string): void {
 // sweep can continue.
 function runIngest(args: string[], extraEnv: Record<string, string> = {}): Promise<number> {
   return new Promise((resolve) => {
+    // shell: true on Windows — Node 20.12.2+ refuses to spawn .cmd shims
+    // (CVE-2024-27980 mitigation) without shell mode, surfacing as EINVAL.
+    // All args here are hardcoded (slug names + flags, no spaces / no user
+    // input), so command-injection surface is nil.
+    const isWin = process.platform === 'win32';
     const child = spawn(
-      process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm',
+      isWin ? 'pnpm.cmd' : 'pnpm',
       ['run', 'ingest', ...args],
       {
         stdio: 'inherit',
         env: { ...process.env, ...extraEnv },
-        shell: false,
+        shell: isWin,
       },
     );
     child.on('close', (code) => resolve(code ?? 1));
