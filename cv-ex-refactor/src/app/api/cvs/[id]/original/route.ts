@@ -38,6 +38,10 @@ export async function GET(
       // Caching: bytes are immutable per CV id (re-upload would be a new id),
       // but the CV row itself is mutable (rename), so leave private + short.
       'Cache-Control': 'private, max-age=60',
+      // Explicit SAMEORIGIN so the response can be embedded in our own page
+      // (Vercel platform may otherwise default to DENY on API routes which
+      // surfaces as "refused to connect" inside <iframe>/<embed>).
+      'X-Frame-Options': 'SAMEORIGIN',
     },
   });
 }

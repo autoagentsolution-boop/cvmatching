@@ -168,14 +168,14 @@ export function SourceDocumentCard({
         {/* Body */}
         <div className="flex-1 overflow-auto bg-surface-container-low p-3">
           {useOriginalEmbed ? (
-            // Browser-native PDF viewer. Inherits zoom/scroll from the
-            // embedded reader; the card's zoom buttons no longer apply but
-            // the user can use the embed's own controls.
-            <embed
+            // Browser-native PDF viewer via <iframe> (more reliable than
+            // <embed> in Chromium; both gated by different CSP directives —
+            // iframe uses frame-src, embed uses object-src). The endpoint
+            // also sets X-Frame-Options: SAMEORIGIN to allow framing.
+            <iframe
               src={originalUrl}
-              type="application/pdf"
               className="block h-full min-h-[60vh] w-full rounded-lg border border-outline-variant bg-white"
-              aria-label={`${KIND_LABEL[kind]} original PDF`}
+              title={`${KIND_LABEL[kind]} original PDF`}
             />
           ) : hasContent ? (
             <SourceDocumentPage content={content} kind={kind} zoom={zoom} />
@@ -226,11 +226,10 @@ export function SourceDocumentCard({
           )}
         </div>
         {useOriginalEmbed ? (
-          <embed
+          <iframe
             src={originalUrl}
-            type="application/pdf"
             className="block h-[80vh] w-full rounded-lg border border-outline-variant bg-white"
-            aria-label={`${KIND_LABEL[kind]} original PDF`}
+            title={`${KIND_LABEL[kind]} original PDF (fullscreen)`}
           />
         ) : (
           <SourceDocumentPage content={content} kind={kind} zoom={zoom} />
