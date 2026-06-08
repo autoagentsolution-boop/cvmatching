@@ -61,4 +61,8 @@ export type { TextareaProps } from './textarea';
 export { Checkbox } from './checkbox';
 export type { CheckboxProps } from './checkbox';
 
-// Phase 2+ reserved: Table, Pagination
+export { ChevronStepper } from './chevron-stepper';
+export type { ChevronStepperProps, ChevronStep } from './chevron-stepper';
+
+export { CvPickerChip } from './cv-picker-chip';
+export type { CvPickerChipProps } from './cv-picker-chip';

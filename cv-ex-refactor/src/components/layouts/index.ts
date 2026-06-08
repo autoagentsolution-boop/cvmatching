@@ -10,4 +10,8 @@ export type { DetailPanelLayoutProps } from './detail-panel-layout';
 export { AuthLayout } from './auth-layout';
 export type { AuthLayoutProps } from './auth-layout';
 
-// Phase 2+ reserved: AdminPageLayout, ListPageLayout
+export { WorkflowLayout } from './workflow-layout';
+export type { WorkflowLayoutProps, WorkflowType } from './workflow-layout';
+
+export { WorkflowSidebar } from './workflow-sidebar';
+export type { WorkflowSidebarProps, WorkflowNavKey } from './workflow-sidebar';
