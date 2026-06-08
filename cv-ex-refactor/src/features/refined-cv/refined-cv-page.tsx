@@ -1,36 +1,29 @@
 import { DetailPanelLayout } from '@/components/layouts';
 import { PageHeader } from '@/components/ui';
 import { DownloadActions } from './download-actions';
-import { KeyEnhancementsBlock } from './key-enhancements-block';
 import { RefineToolsBlock } from './refine-tools-block';
 import { RefinedCvView } from './refined-cv-view';
-import { MatchScoreBlockAside } from './match-score-block-aside';
+import { RefinedCvAsideGate } from './refined-cv-aside-gate';
 import { JobFitCtaSection } from './job-fit-cta-section';
 
 export type WorkflowMode = 'cv-solo' | 'jd-context';
 
 export interface RefinedCvPageProps {
-  /**
-   * Workflow context — derived from which step route invoked the page.
-   *   cv-analyze/[cvId]/refined  → 'cv-solo'
-   *   jd-matching/[cvId]/refined → 'jd-context'
-   * When undefined, downstream blocks fall back to analysis-store's
-   * `activeResultSource` (set by whichever entry step ran).
-   */
   mode?: WorkflowMode;
 }
 
 /**
- * RSC — composes DetailPanelLayout for the /refined-cv route.
- * Auth check omitted: BYOK guests must access their generated CV without auth.
+ * RSC — composes DetailPanelLayout for /refined-cv and the workflow
+ * step routes.
  *
- * v0.4: JobFitCtaSection unlocked for all users. The Analyze → Refined CV
- * → Job Fit chain is the canonical CV-solo flow; the admin gate from v0.3
- * (KV-seed pilot caution) no longer applies now that the job pool is live.
- *
- * Phase 6: `mode` prop documents the workflow entry. Currently passthrough —
- * downstream still reads from analysis-store. Wire when a divergent mode-
- * specific UI surface is needed.
+ * Aside content (Phase 6 user-feedback cleanup):
+ *  - Overall Score + Key Enhancements removed — already on the CV Analyze
+ *    page, the chevron stepper means the user just left them on the
+ *    previous step.
+ *  - Refine Tools rendered only when an analyze result is in the store;
+ *    otherwise the aside shows a redirect CTA back to CV Analyze.
+ *  - That gating runs inside the client component so the aside can read
+ *    analysis-store; the page itself stays a server component.
  */
 export function RefinedCvPage({ mode }: RefinedCvPageProps = {}) {
   void mode;
@@ -43,13 +36,7 @@ export function RefinedCvPage({ mode }: RefinedCvPageProps = {}) {
           action={<DownloadActions />}
         />
       }
-      asideSlot={
-        <div className="flex flex-col gap-4">
-          <MatchScoreBlockAside />
-          <KeyEnhancementsBlock />
-          <RefineToolsBlock />
-        </div>
-      }
+      asideSlot={<RefinedCvAsideGate refineTools={<RefineToolsBlock />} />}
       asideWidth="md"
     >
       <RefinedCvView />

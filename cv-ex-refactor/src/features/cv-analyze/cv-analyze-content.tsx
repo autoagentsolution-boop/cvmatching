@@ -336,8 +336,10 @@ function CvAnalyzeRender({
           caption={result.summary}
           className="border-0 bg-transparent p-0"
           cta={
+            // ?from=analyze keeps use-source-resolver pointing at the analyze
+            // slot so the Refined CV view picks up the right result/weights.
             <a
-              href={`/cv-analyze/${cvId}/refined`}
+              href={`/cv-analyze/${cvId}/refined?from=analyze`}
               className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-primary px-5 py-2.5 text-label-md font-semibold text-on-primary hover:bg-primary/90 transition-colors"
             >
               Refined CV →
