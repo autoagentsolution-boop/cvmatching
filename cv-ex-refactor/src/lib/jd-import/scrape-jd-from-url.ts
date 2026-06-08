@@ -19,8 +19,12 @@
 
 import { parseJobPostingLd } from '@/lib/scrape/vl24h-parser';
 import { fetchHtml } from '@/lib/scrape/fetch-html';
-import { Readability } from '@mozilla/readability';
-import { JSDOM } from 'jsdom';
+
+// NOTE: jsdom + @mozilla/readability are dynamic-imported below.
+// Loading them at module-init breaks Vercel serverless cold start (jsdom
+// pulls Node-native deps that misbundle under Turbopack) — symptom is a
+// 500 HTML page for ALL modes of the parent route, even ones that never
+// invoke the fallback path. Keep them lazy.
 
 export interface ScrapedJd {
   title?: string | undefined;
@@ -93,6 +97,11 @@ export async function scrapeJdFromUrl(rawUrl: string): Promise<ScrapedJd> {
   }
 
   // Fallback: Readability main-content extraction — works for any HTML page.
+  // Dynamic-import to keep cold-start light (see top-of-file note).
+  const [{ JSDOM }, { Readability }] = await Promise.all([
+    import('jsdom'),
+    import('@mozilla/readability'),
+  ]);
   const dom = new JSDOM(html, { url: rawUrl });
   const reader = new Readability(dom.window.document);
   const article = reader.parse();
