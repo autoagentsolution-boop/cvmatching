@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { ChevronStepper } from '@/components/ui/chevron-stepper';
 import { CvPickerChip } from '@/components/ui/cv-picker-chip';
+import { SettingsDrawerTrigger } from '@/features/analyze/settings-drawer-trigger';
 import { WorkflowSidebar } from './workflow-sidebar';
 import type { WorkflowNavKey } from './workflow-sidebar';
 import type { UserCvRow } from '@/lib/cvs/repo';
@@ -105,12 +106,15 @@ export function WorkflowLayout({
             </span>
           </div>
 
-          <CvPickerChip
-            currentCvId={currentCvId}
-            cvs={cvs}
-            onSwitchCv={handleSwitchCv}
-            onCreateNew={() => setShowImportDrawer(true)}
-          />
+          <div className="flex items-center gap-2">
+            <SettingsDrawerTrigger isAuthed={isAuthed} />
+            <CvPickerChip
+              currentCvId={currentCvId}
+              cvs={cvs}
+              onSwitchCv={handleSwitchCv}
+              onCreateNew={() => setShowImportDrawer(true)}
+            />
+          </div>
         </header>
 
         {/* Chevron stepper */}
