@@ -15,10 +15,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { detectFileType } from '@/lib/parsers/detect-file-type';
-import { parsePdf } from '@/lib/parsers/parse-pdf';
-import { parseDocx } from '@/lib/parsers/parse-docx';
 import { normalizeText } from '@/lib/parsers/normalize-text';
 import { createUserCv } from '@/lib/cvs/repo';
+
+// IMPORTANT: parse-pdf (unpdf) + parse-docx (mammoth) are dynamic-imported
+// inside the branch that needs them. Static imports at route top crash
+// module-init at Vercel cold-start → 500 on every request before any code
+// in POST runs. See memory feedback_vercel_serverless_jsdom_dynamic_import
+// + precedent fix commit ed7319c (jd-import route).
 
 export const runtime = 'nodejs';
 export const maxDuration = 15;
@@ -58,10 +62,12 @@ export async function POST(req: NextRequest) {
 
   try {
     if (kind === 'pdf') {
+      const { parsePdf } = await import('@/lib/parsers/parse-pdf');
       const r = await parsePdf(buf);
       raw = r.text;
       pages = r.pages;
     } else if (kind === 'docx') {
+      const { parseDocx } = await import('@/lib/parsers/parse-docx');
       const r = await parseDocx(buf);
       raw = r.text;
     } else if (kind === 'txt') {
@@ -100,11 +106,27 @@ export async function POST(req: NextRequest) {
       const cv = await createUserCv(session.user.id, { name, content: text });
       savedCvId = cv.id;
     } catch (e) {
+      // Surface the raw error to the authed caller — endpoint already auth-gated
+      // and the underlying DB exception is the fastest diagnostic. Vercel log UI
+      // truncates the message field so we cannot rely on logs alone.
+      const errMessage = e instanceof Error ? e.message : String(e);
+      const errStack = e instanceof Error ? e.stack : undefined;
       console.error('[api/import/cv] save_failed', {
         userId: session.user.id,
-        message: e instanceof Error ? e.message : String(e),
+        message: errMessage,
+        stack: errStack?.slice(0, 1500),
       });
-      return errRes('parse_failed', 'Text extracted but failed to save to library.', 500);
+      return NextResponse.json(
+        {
+          ok: false,
+          error: {
+            code: 'save_failed',
+            message: 'Text extracted but failed to save to library.',
+            detail: errMessage,
+          },
+        },
+        { status: 500 },
+      );
     }
   }
 
