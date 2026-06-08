@@ -52,6 +52,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 h1 { font-size: 24px; font-weight: 700; margin: 0 0 12px; }
 p { font-size: 16px; line-height: 1.5; margin: 8px 0; opacity: 0.8; }
 .eta { font-size: 14px; opacity: 0.6; margin-top: 24px; }
+.admin { display: inline-block; margin-top: 20px; padding: 8px 14px; font-size: 13px; color: inherit; text-decoration: none; border: 1px solid currentColor; border-radius: 8px; opacity: 0.4; transition: opacity 0.15s; }
+.admin:hover { opacity: 0.85; }
 </style>
 </head>
 <body>
@@ -61,6 +63,7 @@ p { font-size: 16px; line-height: 1.5; margin: 8px 0; opacity: 0.8; }
 <p>Hệ thống tạm thời ngưng phục vụ để nâng cấp tính năng và cập nhật dữ liệu job.</p>
 <p>Vui lòng quay lại sau ít phút.</p>
 <p class="eta">Cập nhật mới nhất: ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC</p>
+<a class="admin" href="/sign-in" rel="nofollow">Admin sign-in →</a>
 </div>
 </body>
 </html>`;
