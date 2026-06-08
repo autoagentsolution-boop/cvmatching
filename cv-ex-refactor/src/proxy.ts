@@ -11,12 +11,17 @@ import { isAdminId, isAdminEmail } from '@/lib/usage/admin-auth';
 //   site is locked down. The NextAuth signIn callback (see auth.ts) gates
 //   per identity post-OAuth, so non-admin users hitting these paths still
 //   cannot complete auth — they bounce with ?error=AccessDenied.
+// - /admin: admin layout already returns notFound() for non-admin; bypass
+//   so signed-in admin can always reach the maintenance toggle without the
+//   proxy's per-request JWT decode getting in the way (cookie parsing
+//   failures, secret rotations, etc. would otherwise lock admin out).
 const MAINTENANCE_BYPASS_PREFIXES = [
   '/api/whoami',
   '/api/health',
   '/maintenance-ok',
   '/sign-in',
   '/api/auth',
+  '/admin',
 ];
 
 function shouldBypassMaintenance(request: NextRequest): boolean {
