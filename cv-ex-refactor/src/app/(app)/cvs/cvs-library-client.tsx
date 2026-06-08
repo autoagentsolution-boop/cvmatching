@@ -352,7 +352,7 @@ export function CvsLibraryClient({ initialCvs }: CvsLibraryClientProps) {
         {/* Name field */}
         <div className="mb-3">
           <label htmlFor="import-cv-name" className="mb-1.5 block text-label-sm font-semibold text-on-surface">
-            Name <span className="font-normal text-on-surface-variant">(optional)</span>
+            Name <span className="font-normal text-on-surface-variant">(auto-filled from filename, editable)</span>
           </label>
           <input
             id="import-cv-name"
@@ -401,7 +401,16 @@ export function CvsLibraryClient({ initialCvs }: CvsLibraryClientProps) {
               type="file"
               accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
               className="sr-only"
-              onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null;
+                setImportFile(file);
+                // Auto-prefill the Name input with the filename (sans extension)
+                // so the saved CV inherits the document name. User can still
+                // edit the input before submit.
+                if (file) {
+                  setImportName(file.name.replace(/\.[^.]+$/, ''));
+                }
+              }}
             />
           </div>
         )}
