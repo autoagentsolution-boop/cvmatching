@@ -16,6 +16,7 @@ import { useSettings } from '@/features/analyze/settings-store';
 import { callAnalyze } from '@/features/analyze/api-client';
 import { callJdInsights } from './api-client';
 import { aggregateRoleFit, classifyFit } from '@/lib/scoring/role-fit-aggregate';
+import { isTransientLlmError } from '@/lib/llm/humanize-error';
 import type {
   AnalyzeRequest,
   AnalyzeRequestLLM,
@@ -107,8 +108,9 @@ export function JdMatchingContent({ cvContent, cvId }: JdMatchingContentProps) {
     }
   }
 
-  // Single ErrorState wrapper — replaces multi-block error duplication.
-  if (error && !isAnalyzing) {
+  // Transient (5xx/429/timeout) → soft retry card. Hard → full ErrorState.
+  const transient = error ? isTransientLlmError(error) : false;
+  if (error && !isAnalyzing && !transient) {
     return (
       <ErrorState
         title="JD Matching failed"
@@ -155,7 +157,24 @@ export function JdMatchingContent({ cvContent, cvId }: JdMatchingContentProps) {
     );
   }
 
-  return <JdMatchingResults result={result} insights={insights} cvId={cvId} />;
+  return (
+    <>
+      {error && transient && (
+        <div className="mb-4 flex items-start gap-3 rounded-xl border border-tertiary-container bg-tertiary-container/40 px-4 py-3">
+          <span className="material-symbols-outlined text-tertiary text-[20px] mt-0.5" aria-hidden="true">info</span>
+          <div className="flex-1 text-body-sm text-on-tertiary-container">{error}</div>
+          <button
+            type="button"
+            onClick={() => setField('error', null)}
+            className="text-label-sm font-semibold text-on-tertiary-container/70 hover:text-on-tertiary-container"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+      <JdMatchingResults result={result} insights={insights} cvId={cvId} />
+    </>
+  );
 }
 
 function JdMatchingResults({

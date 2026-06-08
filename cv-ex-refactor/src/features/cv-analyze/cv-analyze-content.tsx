@@ -15,6 +15,7 @@ import { useSettings } from '@/features/analyze/settings-store';
 import { callAnalyzeV3, isNeedsRoleConfirm } from '@/features/analyze/api-client';
 import { hydrateWeightsFromResult } from '@/lib/scoring/recompute-overall';
 import { aggregateRoleFit, classifyFit } from '@/lib/scoring/role-fit-aggregate';
+import { isTransientLlmError } from '@/lib/llm/humanize-error';
 import type { AnalyzeRequestLLM, AnalysisResult } from '@/features/analyze/types';
 
 const NINE_DIM_LABELS: Record<string, string> = {
@@ -95,8 +96,12 @@ export function CvAnalyzeContent({ cvContent, cvId }: CvAnalyzeContentProps) {
     }
   }
 
-  // Single ErrorState wrapper — replaces multi-block error duplication (bug #4).
-  if (error && !isAnalyzing) {
+  // Two error tiers — soft banner for transient (provider overload / rate
+  // limit / network blip) so the page chrome stays usable, hard ErrorState
+  // for non-recoverable failures. When a previous result is cached we keep
+  // it on screen + show a dismissible banner on top.
+  const transient = error ? isTransientLlmError(error) : false;
+  if (error && !isAnalyzing && !transient) {
     return (
       <ErrorState
         title="Analysis failed"
@@ -111,6 +116,15 @@ export function CvAnalyzeContent({ cvContent, cvId }: CvAnalyzeContentProps) {
   }
 
   if (!result) {
+    if (error && transient) {
+      // Transient error without any cached result — friendly retry card.
+      return (
+        <section className="flex flex-col items-center gap-3 rounded-2xl border border-tertiary-container bg-tertiary-container/30 p-8 text-center">
+          <p className="text-body-md text-on-tertiary-container">{error}</p>
+          <Button variant="primary" size="md" onClick={runAnalyze}>Try again</Button>
+        </section>
+      );
+    }
     return (
       <section className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-outline-variant bg-surface-container-lowest p-12 text-center">
         <div>
@@ -133,7 +147,24 @@ export function CvAnalyzeContent({ cvContent, cvId }: CvAnalyzeContentProps) {
   }
 
   const inferredRoleLabel = inferredRole?.canonical ?? null;
-  return <CvAnalyzeResults result={result} inferredRole={inferredRoleLabel} targetRole={targetRoleConfirmed} cvId={cvId} />;
+  return (
+    <>
+      {error && transient && (
+        <div className="mb-4 flex items-start gap-3 rounded-xl border border-tertiary-container bg-tertiary-container/40 px-4 py-3">
+          <span className="material-symbols-outlined text-tertiary text-[20px] mt-0.5" aria-hidden="true">info</span>
+          <div className="flex-1 text-body-sm text-on-tertiary-container">{error}</div>
+          <button
+            type="button"
+            onClick={() => setField('error', null)}
+            className="text-label-sm font-semibold text-on-tertiary-container/70 hover:text-on-tertiary-container"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+      <CvAnalyzeResults result={result} inferredRole={inferredRoleLabel} targetRole={targetRoleConfirmed} cvId={cvId} />
+    </>
+  );
 }
 
 function CvAnalyzeResults({

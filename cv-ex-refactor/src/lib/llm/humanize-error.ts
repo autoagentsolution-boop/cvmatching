@@ -23,7 +23,28 @@ const PASSTHROUGH_CODES = new Set([
   'parse_failed',
   'scrape_failed',
   'network_failed',
+  'llm_transient',
 ]);
+
+/**
+ * Transient LLM failure — model overload, rate limit, timeout, network.
+ * Caller should retry in 1-2 min vs treating as a hard error.
+ * Recognises BOTH raw provider strings ("Gemini 503", "RESOURCE_EXHAUSTED")
+ * AND humanized output ("đang quá tải", "thử lại sau") so clients can
+ * classify after the message has already been routed through humanize.
+ */
+export function isTransientLlmError(raw: string): boolean {
+  const m = raw.toLowerCase();
+  if (m.includes('timeout') || m.includes('abort') || m.includes('etimedout') || m.includes('timed out')) return true;
+  if (m.includes('fetch failed') || m.includes('network') || m.includes('econnreset')) return true;
+  if (/\b429\b/.test(raw) || m.includes('rate limit') || m.includes('quota') || m.includes('resource_exhausted')) return true;
+  if (/\b5\d\d\b/.test(raw) || m.includes('overload') || m.includes('unavailable') || m.includes('high demand')) return true;
+  if (m.includes('truncate') || m.includes('json bị cắt')) return true;
+  // Humanized Vietnamese surfaces — match patterns emitted by humanizeLlmError.
+  if (m.includes('đang quá tải') || m.includes('thử lại sau') || m.includes('đợi vài phút')) return true;
+  if (m.includes('mất quá nhiều thời gian') || m.includes('không kết nối được')) return true;
+  return false;
+}
 
 function extractModelName(raw: string): string {
   const m = raw.match(/model[s]?\s+['"`]?([\w.\-/:]+)/i);

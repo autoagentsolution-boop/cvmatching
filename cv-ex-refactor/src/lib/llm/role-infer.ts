@@ -42,7 +42,7 @@ export interface InferRoleSuccess {
 export interface InferRoleFailure {
   ok: false;
   status: number;
-  code: 'role_infer_parse_failed' | 'role_infer_invalid_shape' | 'role_infer_provider_error';
+  code: 'role_infer_parse_failed' | 'role_infer_invalid_shape' | 'role_infer_provider_error' | 'llm_transient';
   message: string;
   rawHead?: string;
 }
@@ -125,12 +125,19 @@ export async function inferRoleFromCv(inputs: InferRoleInputs): Promise<InferRol
       disableThinking: true,
     });
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
+    const rawMessage = e instanceof Error ? e.message : String(e);
+    // humanize before surfacing — friendly Vietnamese text instead of raw
+    // "Gemini 503: {...}" JSON dump that users can't action on.
+    const { humanizeLlmError, isTransientLlmError } = await import('./humanize-error');
+    const humanized = humanizeLlmError(rawMessage);
     return {
       ok: false,
+      // Transient (5xx/429/timeout) keeps 502 so client renders soft retry UX;
+      // hard provider errors (401/403/invalid key) still 502 but message routes
+      // to a different banner. transient flag carried in the code.
       status: 502,
-      code: 'role_infer_provider_error',
-      message: `Lỗi LLM khi nhận diện vai trò: ${message.slice(0, 200)}`,
+      code: isTransientLlmError(rawMessage) ? 'llm_transient' : 'role_infer_provider_error',
+      message: humanized,
     };
   }
 

@@ -214,6 +214,8 @@ export async function handleAnalyzeV3(
       inputChars,
       error: message.slice(0, 200),
     });
-    return err('llm_provider_error', `LLM lỗi: ${message.slice(0, 200)}`, 502);
+    const { humanizeLlmError, isTransientLlmError } = await import('@/lib/llm/humanize-error');
+    const code = isTransientLlmError(message) ? 'llm_transient' : 'llm_provider_error';
+    return err(code, humanizeLlmError(message), 502);
   }
 }
