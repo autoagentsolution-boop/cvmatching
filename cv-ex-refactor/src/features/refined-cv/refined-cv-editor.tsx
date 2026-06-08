@@ -221,9 +221,12 @@ export function RefinedCvEditor({
         </ToolbarButton>
       </div>
 
-      {/* Editor surface — white sheet with print-friendly serif font so it
-          looks document-y like the Source CV view. */}
-      <div className="rounded-lg border border-outline-variant bg-white px-6 py-5 text-neutral-900 shadow-soft-lg" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+      {/* Editor surface — Arial for full Vietnamese coverage + matches the
+          read-view sheet. */}
+      <div
+        className="rounded-lg border border-outline-variant bg-white px-6 py-5 text-neutral-900 shadow-soft-lg"
+        style={{ fontFamily: 'Arial, "Helvetica Neue", Helvetica, sans-serif' }}
+      >
         <EditorContent editor={editor} />
       </div>
     </div>

@@ -124,8 +124,12 @@ export function RefinedCvView() {
         ) : (
           <div className="flex justify-center">
             <article
+              // Arial: universally installed on every OS + full Vietnamese
+              // glyph coverage (Georgia / Times have incomplete VN diacritic
+              // support and render glyphs like ấ / ậ / ẫ / ằ / ẳ broken).
+              // Predictable document look without webfont load.
               className="w-full max-w-[8.5in] rounded-lg bg-white text-neutral-900 shadow-soft-lg ring-1 ring-black/5 px-[0.75in] py-[0.75in]"
-              style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+              style={{ fontFamily: 'Arial, "Helvetica Neue", Helvetica, sans-serif' }}
             >
               <MarkdownView markdown={matchedCv} variant="document" />
             </article>

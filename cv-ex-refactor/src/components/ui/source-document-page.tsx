@@ -177,12 +177,12 @@ export function SourceDocumentPage({
         className={cn(
           'w-full max-w-[8.5in] bg-white text-neutral-900',
           'shadow-soft-lg ring-1 ring-black/5',
-          'px-[0.75in] py-[0.75in] font-[var(--font-inter,inherit)]',
+          'px-[0.75in] py-[0.75in]',
           'text-[12px] leading-[1.55]',
         )}
-        // Force a stable serif-leaning stack so the page reads "documenty"
-        // regardless of brand fonts loaded in app shell.
-        style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+        // Arial — universal across OSes + full VN diacritic coverage.
+        // Georgia/Times render ấ/ậ/ẫ/ằ/ẳ broken.
+        style={{ fontFamily: 'Arial, "Helvetica Neue", Helvetica, sans-serif' }}
       >
         {titleLine && (
           <header className="mb-4 border-b border-neutral-300 pb-3 text-center">
