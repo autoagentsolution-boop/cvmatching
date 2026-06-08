@@ -4,9 +4,20 @@ import { recordVisit } from '@/lib/analytics/visit-counter';
 import { isMaintenanceMode, maintenanceHtml } from '@/lib/maintenance/maintenance-mode';
 import { isAdminId, isAdminEmail } from '@/lib/usage/admin-auth';
 
-// Path prefixes that admins (and the maintenance toggle) need accessible
-// while the rest of the site is locked down.
-const MAINTENANCE_BYPASS_PREFIXES = ['/api/whoami', '/api/health', '/maintenance-ok'];
+// Path prefixes that stay accessible during maintenance mode.
+// - whoami / health: ops diagnostics
+// - maintenance-ok: signal that the toggle UI is healthy
+// - sign-in + /api/auth: admin must be able to OAuth back in even when the
+//   site is locked down. The NextAuth signIn callback (see auth.ts) gates
+//   per identity post-OAuth, so non-admin users hitting these paths still
+//   cannot complete auth — they bounce with ?error=AccessDenied.
+const MAINTENANCE_BYPASS_PREFIXES = [
+  '/api/whoami',
+  '/api/health',
+  '/maintenance-ok',
+  '/sign-in',
+  '/api/auth',
+];
 
 function shouldBypassMaintenance(request: NextRequest): boolean {
   const pathname = request.nextUrl.pathname;
