@@ -21,25 +21,25 @@ export interface CriticalRefactorListProps {
   className?: string;
 }
 
-const SEVERITY_META: Record<Severity, { color: string; bg: string; ring: string; icon: typeof MdWarningAmber; label: string }> = {
+// Severity is surfaced via a small icon + accent ring on the LEFT edge —
+// not by saturating the whole card background. Heavy backgrounds dominate
+// the page visually and crush text contrast; keep cards on neutral surface.
+const SEVERITY_META: Record<Severity, { color: string; iconBg: string; icon: typeof MdWarningAmber; label: string }> = {
   critical: {
     color: 'text-error',
-    bg: 'bg-error-container',
-    ring: 'ring-error/30',
+    iconBg: 'bg-error/10',
     icon: MdErrorOutline,
     label: 'Critical',
   },
   moderate: {
     color: 'text-tertiary',
-    bg: 'bg-tertiary-container',
-    ring: 'ring-tertiary/30',
+    iconBg: 'bg-tertiary/10',
     icon: MdWarningAmber,
     label: 'Moderate',
   },
   minor: {
     color: 'text-primary',
-    bg: 'bg-secondary-container',
-    ring: 'ring-secondary/30',
+    iconBg: 'bg-primary/10',
     icon: MdInfoOutline,
     label: 'Minor',
   },
@@ -85,13 +85,11 @@ export function CriticalRefactorList({
             return (
               <li
                 key={item.id}
-                className={cn(
-                  'flex items-start gap-3 rounded-xl p-3 ring-1',
-                  meta.bg,
-                  meta.ring,
-                )}
+                className="flex items-start gap-3 rounded-xl border border-outline-variant bg-surface-container-low p-3"
               >
-                <Icon className={cn('mt-0.5 shrink-0', meta.color)} size={20} aria-hidden="true" />
+                <span className={cn('mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', meta.iconBg)}>
+                  <Icon className={meta.color} size={18} aria-hidden="true" />
+                </span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline justify-between gap-2">
                     <p className="text-label-md font-semibold text-on-surface">{item.title}</p>

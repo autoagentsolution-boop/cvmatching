@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Button,
   ErrorState,
@@ -213,48 +213,113 @@ function CvAnalyzeResults({
     return items;
   }, [result]);
 
+  return <CvAnalyzeRender result={result} roleFit={roleFit} overall={overall} tier={tier} tierLabel={tierLabel} roleLabel={roleLabel} refactorItems={refactorItems} cvId={cvId} />;
+}
+
+function CvAnalyzeRender({
+  result,
+  roleFit,
+  overall,
+  tier,
+  tierLabel,
+  roleLabel,
+  refactorItems,
+  cvId,
+}: {
+  result: AnalysisResult;
+  roleFit: ReturnType<typeof aggregateRoleFit>;
+  overall: number;
+  tier: ReturnType<typeof classifyFit>['tier'];
+  tierLabel: string;
+  roleLabel: string | undefined;
+  refactorItems: CriticalRefactorItem[];
+  cvId: string;
+}) {
+  const [showDeepDive, setShowDeepDive] = useState(false);
+
   return (
-    <div className="flex flex-col gap-5">
-      <RoleFitGauge
-        score={overall}
-        tier={tier}
-        tierLabel={tierLabel}
-        {...(roleLabel ? { roleLabel } : {})}
-        caption={result.summary}
-        cta={
-          <a
-            href={`/cv-analyze/${cvId}/refined`}
-            className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-label-md font-semibold text-on-primary hover:bg-primary/90 transition-colors"
-          >
-            Improve Fit →
-          </a>
-        }
-      />
-
-      <section className="grid gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest p-5 sm:grid-cols-3">
-        <MetricBar label="Role" value={roleFit.role} accent="role" />
-        <MetricBar label="Keyword Match" value={roleFit.keywordMatch} accent="keyword" />
-        <MetricBar label="Experience" value={roleFit.experience} accent="experience" />
-      </section>
-
-      <section className="flex flex-col gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest p-5">
-        <header className="flex items-baseline justify-between">
-          <h3 className="font-display text-title-md font-semibold text-on-surface">9-Dim Deep Dive</h3>
-          <span className="text-label-sm text-on-surface-variant">Recruiter rubric</span>
-        </header>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {result.metrics.map((m) => (
-            <MetricBar
-              key={m.name}
-              label={NINE_DIM_LABELS[m.name] ?? m.name}
-              value={m.score}
-              reason={m.reason}
-            />
-          ))}
+    <div className="flex flex-col gap-4">
+      {/* Hero score block — compact header + gauge + caption + CTA */}
+      <section className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest px-5 py-6">
+        <div className="flex w-full items-center justify-between">
+          <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
+            Overall Role Fit
+          </span>
+          {roleLabel && (
+            <span className="rounded-full bg-surface-container-low px-2.5 py-0.5 text-label-sm font-medium text-on-surface">
+              {roleLabel}
+            </span>
+          )}
         </div>
+        <RoleFitGauge
+          score={overall}
+          tier={tier}
+          tierLabel={tierLabel}
+          caption={result.summary}
+          className="border-0 bg-transparent p-0"
+          cta={
+            <a
+              href={`/cv-analyze/${cvId}/refined`}
+              className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-primary px-5 py-2.5 text-label-md font-semibold text-on-primary hover:bg-primary/90 transition-colors"
+            >
+              Improve Fit →
+            </a>
+          }
+        />
       </section>
 
+      {/* 3 role-fit metrics — each in own card with subtle bg + clear hierarchy */}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4">
+          <MetricBar label="Role" value={roleFit.role} accent="role" />
+        </div>
+        <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4">
+          <MetricBar label="Keyword Match" value={roleFit.keywordMatch} accent="keyword" />
+        </div>
+        <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4">
+          <MetricBar label="Experience" value={roleFit.experience} accent="experience" />
+        </div>
+      </div>
+
+      {/* Critical Refactors — neutral cards, severity via icon only */}
       <CriticalRefactorList items={refactorItems} />
+
+      {/* 9-dim deep dive — collapsed by default so it doesn't dominate the page */}
+      <section className="flex flex-col gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest p-4">
+        <button
+          type="button"
+          onClick={() => setShowDeepDive((v) => !v)}
+          className="flex w-full items-center justify-between gap-2 text-left"
+          aria-expanded={showDeepDive}
+        >
+          <div className="flex flex-col">
+            <span className="font-display text-title-md font-semibold text-on-surface">
+              9-Dimension Deep Dive
+            </span>
+            <span className="text-label-sm text-on-surface-variant">
+              Recruiter rubric breakdown — {showDeepDive ? 'click to hide' : 'click to show'}
+            </span>
+          </div>
+          <span
+            className={`material-symbols-outlined text-on-surface-variant transition-transform ${showDeepDive ? 'rotate-180' : ''}`}
+            aria-hidden="true"
+          >
+            expand_more
+          </span>
+        </button>
+        {showDeepDive && (
+          <div className="grid gap-3 pt-2 sm:grid-cols-2">
+            {result.metrics.map((m) => (
+              <MetricBar
+                key={m.name}
+                label={NINE_DIM_LABELS[m.name] ?? m.name}
+                value={m.score}
+                reason={m.reason}
+              />
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
