@@ -26,13 +26,17 @@ const JD_MATCHING_STEPS = [
   { id: 'jobfit', label: 'Job Fit', href: '' },
 ];
 
-function buildSteps(workflow: WorkflowType, cvId: string) {
+function buildSteps(workflow: WorkflowType, cvId: string, isAdmin: boolean) {
   const base = workflow === 'cv-analyze' ? CV_ANALYZE_STEPS : JD_MATCHING_STEPS;
   const prefix = workflow === 'cv-analyze' ? '/cv-analyze' : '/jd-matching';
-  return base.map((s) => ({
-    ...s,
-    href: `${prefix}/${cvId}/${s.id}`,
-  }));
+  // Job Fit stays admin-only during pilot (job pool gating in /api/jobs/recommend).
+  // Hide the chevron for non-admin to avoid dead-clicks into the 404 state.
+  return base
+    .filter((s) => isAdmin || s.id !== 'jobfit')
+    .map((s) => ({
+      ...s,
+      href: `${prefix}/${cvId}/${s.id}`,
+    }));
 }
 
 export interface WorkflowLayoutProps {
@@ -73,7 +77,7 @@ export function WorkflowLayout({
 }: WorkflowLayoutProps) {
   const router = useRouter();
   const [showImportDrawer, setShowImportDrawer] = useState(false);
-  const steps = buildSteps(workflow, currentCvId);
+  const steps = buildSteps(workflow, currentCvId, isAdmin);
   const activeNav: WorkflowNavKey = workflow === 'cv-analyze' ? 'cv-analyze' : 'jd-matching';
 
   function handleSwitchCv(cvId: string) {
