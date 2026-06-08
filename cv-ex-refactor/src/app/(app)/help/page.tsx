@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Help — ResumeRefine',
-  description: 'Hướng dẫn sử dụng ResumeRefine.',
+  title: 'Help — Resume Refactor',
+  description: 'Hướng dẫn sử dụng Resume Refactor.',
 };
 
 export default function HelpPage() {
@@ -11,7 +11,7 @@ export default function HelpPage() {
       <header className="mb-8">
         <h1 className="font-display text-display-sm font-bold text-primary">Help</h1>
         <p className="text-body-md text-on-surface-variant">
-          Hướng dẫn sử dụng ResumeRefine — từ phân tích CV đến viết lại CV phù hợp với JD.
+          Hướng dẫn sử dụng Resume Refactor — từ phân tích CV đến viết lại CV phù hợp với JD.
         </p>
       </header>
 

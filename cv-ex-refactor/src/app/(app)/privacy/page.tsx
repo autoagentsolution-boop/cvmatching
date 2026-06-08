@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Privacy Notice — ResumeRefine',
-  description: 'How ResumeRefine handles your CV and JD data.',
+  title: 'Privacy Notice — Resume Refactor',
+  description: 'How Resume Refactor handles your CV and JD data.',
 };
 
 const LAST_UPDATED = '2026-05-27';
@@ -174,7 +174,7 @@ export default function PrivacyPage() {
             >
               myaccount.google.com/permissions
             </a>{' '}
-            → tìm ResumeRefine → Remove access.
+            → tìm Resume Refactor → Remove access.
           </li>
           <li>
             <strong>Xóa data tại nhà cung cấp AI:</strong> liên hệ Google/OpenAI theo mục 2.

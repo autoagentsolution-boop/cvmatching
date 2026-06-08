@@ -40,7 +40,7 @@ export function maintenanceHtml(): string {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bảo trì hệ thống — ResumeRefine</title>
+<title>Bảo trì hệ thống — Resume Refactor</title>
 <meta name="robots" content="noindex">
 <style>
 :root { color-scheme: light dark; }

@@ -6,7 +6,7 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'sw
 const jakarta = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-jakarta', display: 'swap' });
 
 export const metadata: Metadata = {
-  title: 'ResumeRefine',
+  title: 'Resume Refactor',
   description: 'Match your CV to your dream role with LLM-powered scoring and refinement.',
 };
 

@@ -12,7 +12,7 @@ export function SignInForm() {
           <MdAutoAwesome size={28} aria-hidden="true" />
         </div>
         <h1 className="text-center font-display text-headline-lg text-primary">
-          Welcome to ResumeRefine
+          Welcome to Resume Refactor
         </h1>
         <p className="text-center text-body-md text-on-surface-variant">
           Your AI-powered career assistant
