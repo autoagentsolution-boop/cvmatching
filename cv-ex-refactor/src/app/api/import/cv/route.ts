@@ -106,15 +106,31 @@ export async function POST(req: NextRequest) {
       const cv = await createUserCv(session.user.id, { name, content: text });
       savedCvId = cv.id;
     } catch (e) {
-      // Surface the raw error to the authed caller — endpoint already auth-gated
-      // and the underlying DB exception is the fastest diagnostic. Vercel log UI
-      // truncates the message field so we cannot rely on logs alone.
+      // Drizzle wraps the Postgres error; surface cause + neon-driver fields too.
       const errMessage = e instanceof Error ? e.message : String(e);
-      const errStack = e instanceof Error ? e.stack : undefined;
+      const errCause = e instanceof Error && (e as { cause?: unknown }).cause;
+      const causeMessage =
+        errCause instanceof Error ? errCause.message : errCause ? String(errCause) : undefined;
+      // NeonDbError fields (.code, .detail, .table, .column, .constraint, .severity)
+      const driverFields: Record<string, unknown> = {};
+      if (typeof e === 'object' && e !== null) {
+        for (const k of ['code', 'detail', 'hint', 'table', 'column', 'constraint', 'severity', 'where', 'routine']) {
+          const v = (e as Record<string, unknown>)[k];
+          if (v !== undefined) driverFields[k] = v;
+        }
+        const cause = (e as { cause?: unknown }).cause;
+        if (cause && typeof cause === 'object') {
+          for (const k of ['code', 'detail', 'hint', 'table', 'column', 'constraint', 'severity']) {
+            const v = (cause as Record<string, unknown>)[k];
+            if (v !== undefined) driverFields[`cause.${k}`] = v;
+          }
+        }
+      }
       console.error('[api/import/cv] save_failed', {
         userId: session.user.id,
-        message: errMessage,
-        stack: errStack?.slice(0, 1500),
+        message: errMessage.slice(0, 500),
+        causeMessage,
+        driverFields,
       });
       return NextResponse.json(
         {
@@ -122,7 +138,9 @@ export async function POST(req: NextRequest) {
           error: {
             code: 'save_failed',
             message: 'Text extracted but failed to save to library.',
-            detail: errMessage,
+            detail: errMessage.slice(0, 500),
+            cause: causeMessage,
+            driver: driverFields,
           },
         },
         { status: 500 },
