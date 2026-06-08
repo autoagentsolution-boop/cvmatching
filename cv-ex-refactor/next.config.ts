@@ -24,6 +24,17 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+
+  // Static redirects for legacy top-level routes.
+  // Routes requiring a dynamic cvId (analyze, jd-matching, career-path,
+  // refined-cv, job-fit) are handled by server-component redirect() in the
+  // old page files — those need to look up the user's default CV first.
+  async redirects() {
+    return [
+      // /cvs is the canonical library page — no legacy alias needed.
+      // Dashboard is handled by root (app)/page.tsx server redirect.
+    ];
+  },
 };
 
 export default nextConfig;

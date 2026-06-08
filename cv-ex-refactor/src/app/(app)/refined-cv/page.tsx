@@ -1,13 +1,23 @@
-import { RefinedCvPage } from '@/features/refined-cv/refined-cv-page';
+import { redirect } from 'next/navigation';
+import { getSession } from '@/lib/get-session';
+import { getDefaultCvId } from '@/lib/cvs/get-default-cv-id';
 
-// Opt out of static prerender. The page is 100% client-state-driven
-// (analysis-store + ?from=/?jobId= URL params via useSearchParams in
-// useSourceData). Prerender has no value AND triggers Next.js's
-// "missing-suspense-with-csr-bailout" error since the resolver hook is
-// now reached by many child components. Force-dynamic skips the prerender
-// step entirely — page still SSRs at request time, just not at build.
-export const dynamic = 'force-dynamic';
+/**
+ * Legacy /refined-cv route — redirects to /cv-analyze/[id]/refined.
+ * DO NOT delete — Phase 6 removes this after full content migration.
+ */
+export default async function RefinedCvRedirectPage() {
+  let session = null;
+  try {
+    session = await getSession();
+  } catch {
+    // dev — no auth configured
+  }
 
-export default async function Page() {
-  return <RefinedCvPage />;
+  if (!session?.user?.id) redirect('/sign-in');
+
+  const defaultCvId = await getDefaultCvId(session.user.id);
+  if (!defaultCvId) redirect('/dashboard');
+
+  redirect(`/cv-analyze/${defaultCvId}/refined`);
 }
