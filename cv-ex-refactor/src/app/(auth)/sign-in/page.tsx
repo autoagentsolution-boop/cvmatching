@@ -1,9 +1,8 @@
-import { notFound, redirect } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { AuthLayout } from '@/components/layouts';
 import { Badge } from '@/components/ui';
 import { SignInForm } from '@/features/auth/sign-in-form';
 import { getSession } from '@/lib/get-session';
-import { isLoginEnabled } from '@/lib/maintenance/login-flag';
 
 export default async function SignInPage() {
   let session = null;
@@ -15,16 +14,13 @@ export default async function SignInPage() {
 
   if (session) redirect('/');
 
-  // Anyone reaching this code path is a guest (the redirect above caught any
-  // authed user). Gate behind the login:enabled KV flag — when off, return
-  // notFound() so URL probers see a response identical to a non-existent route.
-  // Admin testing flow: toggle the flag ON via /admin/maintenance, sign out,
-  // then visit /sign-in to exercise the public OAuth path.
-  const enabled = await isLoginEnabled();
-  if (!enabled) {
-    notFound();
-  }
-
+  // Page is publicly reachable so a signed-out admin can still OAuth back in.
+  // The actual login:enabled gate moved to the NextAuth signIn callback:
+  // non-admin emails are rejected post-OAuth when the flag is off. Net effect:
+  //   - normal user → Google login → callback rejects → bounced to /sign-in
+  //   - admin user  → Google login → callback allows → in
+  // Trade-off vs prior notFound(): /sign-in now reveals it exists, but OAuth
+  // is the real security boundary so nothing exploitable is leaked.
   return (
     <AuthLayout
       badgeSlot={

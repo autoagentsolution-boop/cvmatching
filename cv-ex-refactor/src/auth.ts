@@ -1,6 +1,8 @@
 import NextAuth from 'next-auth';
 import Google from 'next-auth/providers/google';
 import { env } from '@/lib/env';
+import { isAdminEmail, isAdminId } from '@/lib/usage/admin-auth';
+import { isLoginEnabled } from '@/lib/maintenance/login-flag';
 
 const isProduction = process.env.NODE_ENV === 'production';
 const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
@@ -28,6 +30,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: env.AUTH_SECRET ?? 'dev-only-secret-replace-via-AUTH_SECRET-env',
   pages: { signIn: '/sign-in' },
   callbacks: {
+    // Gate: when public login is disabled (KV `login:enabled` flag off), only
+    // admin emails/IDs may complete sign-in. Returning false here cancels the
+    // OAuth flow — NextAuth bounces user back to /sign-in with ?error.
+    // Admin always allowed regardless of flag so operator can recover the site
+    // from a fully-locked state without poking KV directly.
+    async signIn({ user }) {
+      const adminBypass = isAdminId(user.id) || isAdminEmail(user.email);
+      if (adminBypass) return true;
+      try {
+        return await isLoginEnabled();
+      } catch {
+        // Fail-closed: KV error during sign-in must reject non-admins to keep
+        // the lockdown invariant. Admin already short-circuited above.
+        return false;
+      }
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id ?? user.email ?? '';
