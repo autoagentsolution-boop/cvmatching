@@ -24,7 +24,10 @@ const NAV_ITEMS: WorkflowNavItem[] = [
   { key: 'cvs', label: 'My CVs', icon: 'description', href: '/cvs' },
   { key: 'cv-analyze', label: 'CV Analyze', icon: 'analytics', href: '/analyze' },
   { key: 'jd-matching', label: 'JD Matching', icon: 'compare_arrows', href: '/jd-matching' },
-  { key: 'history', label: 'History', icon: 'history', href: '/history' },
+  // History exposes the legacy v0.3 standalone surface — hidden from normal
+  // users (sub-steps inside each workflow cover the same ground). Admin sees
+  // it for QA against the cached analysis log.
+  { key: 'history', label: 'History', icon: 'history', href: '/history', adminOnly: true },
   { key: 'admin-usage', label: 'Usage', icon: 'bar_chart', href: '/admin/usage', adminOnly: true },
   { key: 'admin-pool', label: 'Job Pool', icon: 'inventory_2', href: '/admin/pool', adminOnly: true },
   { key: 'admin-maintenance', label: 'Site Controls', icon: 'engineering', href: '/admin/maintenance', adminOnly: true },

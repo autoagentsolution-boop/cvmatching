@@ -24,19 +24,20 @@ interface NavItem {
   adminOnly?: boolean;
 }
 
-// Order is the user workflow order — Analyze (start), output pages it feeds,
-// then admin-only utilities at the bottom. Sidebar renders flat (no groupings).
+// Normal users see only the entry workflows (CV Analyze, JD Matching) —
+// downstream surfaces (Refined CV, Career Path, Job Fit, History) are
+// sub-steps inside those workflows and would confuse users if surfaced as
+// standalone nav entries. Admin sees everything for QA.
 const NAV_ITEMS: NavItem[] = [
   { key: 'dashboard', label: 'Dashboard', icon: 'home', href: '/' },
   { key: 'analyze', label: 'CV Analyze', icon: 'analytics', href: '/analyze' },
   { key: 'jd-matching', label: 'JD Matching', icon: 'compare_arrows', href: '/jd-matching' },
-  { key: 'refined-cv', label: 'Refined CV', icon: 'description', href: '/refined-cv' },
-  { key: 'career-path', label: 'Career Path', icon: 'psychology', href: '/career-path' },
-  { key: 'history', label: 'History', icon: 'history', href: '/history' },
+  { key: 'refined-cv', label: 'Refined CV', icon: 'description', href: '/refined-cv', adminOnly: true },
+  { key: 'career-path', label: 'Career Path', icon: 'psychology', href: '/career-path', adminOnly: true },
+  { key: 'history', label: 'History', icon: 'history', href: '/history', adminOnly: true },
   { key: 'admin-usage', label: 'Usage', icon: 'analytics', href: '/admin/usage', adminOnly: true },
   { key: 'admin-pool', label: 'Job Pool', icon: 'inventory_2', href: '/admin/pool', adminOnly: true },
   { key: 'admin-maintenance', label: 'Site Controls', icon: 'engineering', href: '/admin/maintenance', adminOnly: true },
-  // Job Fit & Study is admin-only during the v0.3 KV-seed pilot.
   { key: 'job-fit', label: 'Job Fit & Study (test)', icon: 'work', href: '/job-fit', adminOnly: true },
 ];
 
