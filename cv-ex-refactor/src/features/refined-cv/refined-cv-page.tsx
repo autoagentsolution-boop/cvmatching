@@ -1,9 +1,7 @@
-import { DetailPanelLayout } from '@/components/layouts';
+import { FormPageLayout } from '@/components/layouts';
 import { PageHeader } from '@/components/ui';
 import { DownloadActions } from './download-actions';
-import { RefineToolsBlock } from './refine-tools-block';
 import { RefinedCvView } from './refined-cv-view';
-import { RefinedCvAsideGate } from './refined-cv-aside-gate';
 import { JobFitCtaSection } from './job-fit-cta-section';
 
 export type WorkflowMode = 'cv-solo' | 'jd-context';
@@ -28,7 +26,8 @@ export interface RefinedCvPageProps {
 export function RefinedCvPage({ mode }: RefinedCvPageProps = {}) {
   void mode;
   return (
-    <DetailPanelLayout
+    <FormPageLayout
+      className="max-w-[1180px]"
       header={
         <PageHeader
           title="Refined CV"
@@ -36,11 +35,9 @@ export function RefinedCvPage({ mode }: RefinedCvPageProps = {}) {
           action={<DownloadActions />}
         />
       }
-      asideSlot={<RefinedCvAsideGate refineTools={<RefineToolsBlock />} />}
-      asideWidth="md"
     >
       <RefinedCvView />
       <JobFitCtaSection />
-    </DetailPanelLayout>
+    </FormPageLayout>
   );
 }

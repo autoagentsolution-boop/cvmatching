@@ -119,3 +119,22 @@
   --shadow-soft-lg: 0 20px 40px -15px rgba(15, 23, 42, 0.06);
   --shadow-ghost-border: 0 0 0 1px #c6c6cd;
 }
+
+/* Refined CV "Save as PDF" via window.print(). Hide app chrome + show only
+ * the rendered CV page sheet so the print canvas lines up with letter / A4. */
+@media print {
+  body { background: white !important; }
+  body > *:not(:has(.refined-cv-print-target)) { display: none !important; }
+  .print\:hidden { display: none !important; }
+  .refined-cv-print-target {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .refined-cv-print-target article {
+    box-shadow: none !important;
+    --tw-ring-shadow: 0 0 transparent !important;
+    max-width: none !important;
+    width: 100% !important;
+  }
+}
