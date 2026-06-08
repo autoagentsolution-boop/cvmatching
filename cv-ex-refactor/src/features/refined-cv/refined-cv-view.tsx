@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { Suspense, useEffect, useRef, useState } from 'react';
-import { Button, Card, MarkdownView, Textarea } from '@/components/ui';
+import { Button, Card, MarkdownView } from '@/components/ui';
 import { useAnalysis } from '@/features/analyze/analysis-store';
 import { useSourceData, useSourceSetters } from './use-source-resolver';
 import { RedFlagsBanner } from './red-flags-banner';
 import { RefinedCvModeBanner } from './refined-cv-mode-banner';
 import { RefineToolsBlock } from './refine-tools-block';
+import { RefinedCvEditor } from './refined-cv-editor';
 
 /**
  * RefinedCvView — single-column orchestrator.
@@ -87,11 +88,13 @@ export function RefinedCvView() {
 
   // State 3 — generated CV in hand.
   function handleEnterEdit(): void {
+    // Seed draft with current markdown so Save without any edit is a no-op.
     setDraft(matchedCv ?? '');
     setEditMode(true);
   }
   function handleSaveEdit(): void {
-    setMatchedCv(draft);
+    // Trim trailing blank lines turndown may leave behind.
+    setMatchedCv(draft.replace(/\n{3,}/g, '\n\n').trimEnd());
     setEditMode(false);
   }
   function handleCancelEdit(): void {
@@ -108,19 +111,16 @@ export function RefinedCvView() {
           textarea; Save writes back to the store. */}
       <div className="refined-cv-print-target">
         {editMode ? (
-          <Card padding="md" className="flex flex-col gap-3">
-            <Textarea
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              rows={28}
-              aria-label="Edit Refined CV markdown"
-              className="font-mono text-body-sm"
+          <div className="flex flex-col gap-3 print:hidden">
+            <RefinedCvEditor
+              initialMarkdown={matchedCv}
+              onMarkdownChange={(md) => setDraft(md)}
             />
             <div className="flex justify-end gap-2">
               <Button variant="ghost" size="sm" onClick={handleCancelEdit}>Cancel</Button>
               <Button variant="primary" size="sm" onClick={handleSaveEdit}>Save</Button>
             </div>
-          </Card>
+          </div>
         ) : (
           <div className="flex justify-center">
             <article
