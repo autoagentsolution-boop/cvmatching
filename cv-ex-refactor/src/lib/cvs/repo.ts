@@ -7,8 +7,8 @@
 // This prevents the partial-unique index violation that would arise from a
 // plain UPDATE on the new row before clearing the old default.
 
-import { and, desc, eq } from 'drizzle-orm';
-import { getDb, userCvs } from '@/db';
+import { and, desc, eq, sql } from 'drizzle-orm';
+import { getDb, userCvs, users } from '@/db';
 import type { UserCvRow, NewUserCvRow } from '@/db';
 
 // Re-export types so consumers don't need to import from @/db directly.
@@ -52,6 +52,24 @@ export interface CreateCvInput {
 }
 
 /**
+ * Idempotent users-row provisioning. NextAuth uses JWT-only sessions (no DB
+ * adapter), so users rows are never created at sign-in. Any FK-bound insert
+ * (user_cvs, future tables) must call this first or the insert fails with
+ * 23503 fk violation. Cheap — ON CONFLICT DO NOTHING is a single round-trip.
+ *
+ * Long-term fix: move this to a NextAuth `signIn` callback so the row exists
+ * before any business code touches it. Until then, every FK-bound write path
+ * calls ensureUserRow defensively.
+ */
+export async function ensureUserRow(userId: string, email?: string | null | undefined): Promise<void> {
+  const db = getDb();
+  await db
+    .insert(users)
+    .values({ id: userId, email: email ?? null })
+    .onConflictDoNothing({ target: users.id });
+}
+
+/**
  * Insert a new CV for the user.
  * When isDefault = true the existing default (if any) is cleared first
  * inside a single transaction to satisfy the partial-unique constraint.
@@ -61,6 +79,8 @@ export async function createUserCv(
   input: CreateCvInput,
 ): Promise<UserCvRow> {
   const db = getDb();
+  // Defensive — JWT-only auth means the FK target may not exist yet.
+  await ensureUserRow(userId);
   const id = crypto.randomUUID();
   const now = new Date();
 

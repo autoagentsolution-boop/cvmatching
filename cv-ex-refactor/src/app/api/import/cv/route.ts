@@ -16,7 +16,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { detectFileType } from '@/lib/parsers/detect-file-type';
 import { normalizeText } from '@/lib/parsers/normalize-text';
-import { createUserCv } from '@/lib/cvs/repo';
+import { createUserCv, ensureUserRow } from '@/lib/cvs/repo';
 
 // IMPORTANT: parse-pdf (unpdf) + parse-docx (mammoth) are dynamic-imported
 // inside the branch that needs them. Static imports at route top crash
@@ -103,6 +103,9 @@ export async function POST(req: NextRequest) {
     const name = nameParam || file.name.replace(/\.[^.]+$/, '') || 'Imported CV';
 
     try {
+      // Pass the email so the users row carries it (createUserCv's internal
+      // ensureUserRow defaults to null when called via repo directly).
+      await ensureUserRow(session.user.id, session.user.email);
       const cv = await createUserCv(session.user.id, { name, content: text });
       savedCvId = cv.id;
     } catch (e) {
