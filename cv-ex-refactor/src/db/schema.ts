@@ -180,3 +180,39 @@ export const orders = pgTable(
 
 export type OrderRow = typeof orders.$inferSelect;
 export type NewOrderRow = typeof orders.$inferInsert;
+
+// ---------- user_cvs ----------------------------------------------------------
+//
+// Multi-CV library: each authenticated user may store up to N parsed CV texts.
+// `content` holds the normalized plain-text output of parse-pdf / parse-docx.
+// `is_default` marks the CV pre-selected when entering a workflow; at most one
+// row per user may have is_default = true (enforced by partial unique index).
+
+export const userCvs = pgTable(
+  'user_cvs',
+  {
+    id: text('id').primaryKey(), // crypto.randomUUID()
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(), // user-facing label, e.g. "Senior Backend — Apr 2026"
+    content: text('content').notNull(), // parsed CV text
+    isDefault: boolean('is_default').notNull().default(false),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index('user_cvs_user_id_idx').on(t.userId, t.updatedAt),
+    // Partial unique: enforce at most one default CV per user.
+    uniqueIndex('user_cvs_one_default_per_user')
+      .on(t.userId)
+      .where(sql`is_default = true`),
+  ],
+);
+
+export type UserCvRow = typeof userCvs.$inferSelect;
+export type NewUserCvRow = typeof userCvs.$inferInsert;

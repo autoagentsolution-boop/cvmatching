@@ -8,6 +8,13 @@
       "when": 1780734816696,
       "tag": "0000_dapper_manta",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1780904138791,
+      "tag": "0001_condemned_malcolm_colcord",
+      "breakpoints": true
     }
   ]
 }
