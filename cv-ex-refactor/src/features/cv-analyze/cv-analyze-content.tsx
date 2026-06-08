@@ -249,11 +249,18 @@ function CvAnalyzeResults({
     setField('analyzeWeights', { ...weights, [key]: value });
   }
 
+  // Restore the LLM's per-dim scores. Lets the user undo slider tweaks
+  // without re-running Analyze.
+  function resetWeights() {
+    setField('analyzeWeights', hydrateWeightsFromResult(result));
+  }
+
   return (
     <CvAnalyzeRender
       result={result}
       weights={weights}
       onWeightChange={setWeight}
+      onResetWeights={resetWeights}
       roleFit={roleFit}
       overall={overall}
       tier={tier}
@@ -269,6 +276,7 @@ function CvAnalyzeRender({
   result,
   weights,
   onWeightChange,
+  onResetWeights,
   roleFit,
   overall,
   tier,
@@ -280,6 +288,7 @@ function CvAnalyzeRender({
   result: AnalysisResult;
   weights: Weights;
   onWeightChange: (key: keyof Weights, value: number) => void;
+  onResetWeights: () => void;
   roleFit: ReturnType<typeof aggregateRoleFit>;
   overall: number;
   tier: ReturnType<typeof classifyFit>['tier'];
@@ -361,8 +370,73 @@ function CvAnalyzeRender({
         </div>
       </div>
 
-      {/* Critical Refactors — restored 3-tab split (Strengths / Gaps / Recs).
-          Gaps default since that's the actionable view recruiters look at. */}
+      {/* 9-dim deep dive — adjustable sliders (collapsed by default).
+          Sits above Critical Refactors because the score is the primary
+          number the user iterates on; refactors are the next-step action. */}
+      <section className="flex flex-col gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest p-4">
+        <div className="flex w-full items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => setShowDeepDive((v) => !v)}
+            className="flex flex-1 items-center justify-between gap-2 text-left"
+            aria-expanded={showDeepDive}
+          >
+            <div className="flex flex-col">
+              <span className="font-display text-title-md font-semibold text-on-surface">
+                9-Dimension Deep Dive
+              </span>
+              <span className="text-label-sm text-on-surface-variant">
+                Adjust per-dim scores — overall recomputes live (gaps / recs stay frozen)
+              </span>
+            </div>
+            <span
+              className={`material-symbols-outlined text-on-surface-variant transition-transform ${showDeepDive ? 'rotate-180' : ''}`}
+              aria-hidden="true"
+            >
+              expand_more
+            </span>
+          </button>
+          {showDeepDive && (
+            <button
+              type="button"
+              onClick={onResetWeights}
+              className="ml-2 inline-flex items-center gap-1 rounded-md border border-outline-variant px-2.5 py-1 text-label-sm font-medium text-on-surface-variant hover:bg-surface-container transition-colors"
+              title="Reset all sliders to the AI's original per-dim scores"
+            >
+              <span className="material-symbols-outlined text-[14px]" aria-hidden="true">restart_alt</span>
+              Reset to AI score
+            </button>
+          )}
+        </div>
+        {showDeepDive && (
+          <div className="grid gap-4 pt-2 sm:grid-cols-2">
+            {NINE_DIM_KEYS.map((key) => {
+              const reason = result.metrics.find((m) => m.name === key)?.reason ?? '';
+              return (
+                <div key={key} className="flex flex-col gap-2 rounded-xl bg-surface-container-low p-3">
+                  <Slider
+                    label={NINE_DIM_LABELS[key] ?? key}
+                    value={[weights[key]]}
+                    onValueChange={(v) => onWeightChange(key, v[0] ?? 0)}
+                    min={0}
+                    max={100}
+                    step={1}
+                  />
+                  {reason && (
+                    <p className="text-body-sm text-on-surface-variant leading-snug line-clamp-2">
+                      {reason}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* Critical Refactors — 3-tab split (Strengths / Gaps / Recs).
+          Sits after 9-dim because the score is the primary number; refactors
+          are the suggested next actions. */}
       <section className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4">
         <Tabs
           tabs={[
@@ -399,55 +473,6 @@ function CvAnalyzeRender({
             />
           )}
         </Tabs>
-      </section>
-
-      {/* 9-dim deep dive — adjustable sliders (collapsed by default) */}
-      <section className="flex flex-col gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest p-4">
-        <button
-          type="button"
-          onClick={() => setShowDeepDive((v) => !v)}
-          className="flex w-full items-center justify-between gap-2 text-left"
-          aria-expanded={showDeepDive}
-        >
-          <div className="flex flex-col">
-            <span className="font-display text-title-md font-semibold text-on-surface">
-              9-Dimension Deep Dive
-            </span>
-            <span className="text-label-sm text-on-surface-variant">
-              Adjust per-dim scores — overall recomputes live (gaps / recs stay frozen)
-            </span>
-          </div>
-          <span
-            className={`material-symbols-outlined text-on-surface-variant transition-transform ${showDeepDive ? 'rotate-180' : ''}`}
-            aria-hidden="true"
-          >
-            expand_more
-          </span>
-        </button>
-        {showDeepDive && (
-          <div className="grid gap-4 pt-2 sm:grid-cols-2">
-            {NINE_DIM_KEYS.map((key) => {
-              const reason = result.metrics.find((m) => m.name === key)?.reason ?? '';
-              return (
-                <div key={key} className="flex flex-col gap-2 rounded-xl bg-surface-container-low p-3">
-                  <Slider
-                    label={NINE_DIM_LABELS[key] ?? key}
-                    value={[weights[key]]}
-                    onValueChange={(v) => onWeightChange(key, v[0] ?? 0)}
-                    min={0}
-                    max={100}
-                    step={1}
-                  />
-                  {reason && (
-                    <p className="text-body-sm text-on-surface-variant leading-snug line-clamp-2">
-                      {reason}
-                    </p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
       </section>
     </div>
   );

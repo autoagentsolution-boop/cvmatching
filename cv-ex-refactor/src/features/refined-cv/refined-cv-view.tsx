@@ -39,12 +39,24 @@ export function RefinedCvView() {
   }
 
   if (!matchedCv) {
+    // Two empty-state branches — the user already has scoring vs nothing yet.
+    if (result) {
+      return (
+        <div className="flex flex-col gap-4">
+          {modeBanner}
+          <EmptyState
+            title="Sẵn sàng tạo Refined CV"
+            description="Phân tích đã có. Mở Refine Controls bên phải, chọn tone + length + mode rồi bấm Generate để tạo phiên bản tinh chỉnh."
+          />
+        </div>
+      );
+    }
     return (
       <div className="flex flex-col gap-4">
         {modeBanner}
         <EmptyState
           title="Chưa có Refined CV"
-          description="Refined CV là CV của bạn được tinh chỉnh — làm nổi bật điểm mạnh, sửa cách diễn đạt yếu, và tối ưu cho vai trò bạn nhắm tới. Hãy chạy Analyze (chỉ cần paste CV), sau đó bấm Generate refined CV trên trang kết quả."
+          description="Refined CV là CV của bạn được tinh chỉnh — làm nổi bật điểm mạnh, sửa cách diễn đạt yếu, và tối ưu cho vai trò bạn nhắm tới. Hãy chạy Analyze (chỉ cần paste CV) trước."
           action={
             <Button asChild variant="primary">
               <Link href="/analyze">Bắt đầu ở Analyze →</Link>

@@ -17,17 +17,24 @@ export function buildV3Findings(
   suggestedSummaryLine?: string;
   weakDimensions: string[];
 } {
+  // Server schema caps each entry at 400 chars (AnalyzeFindings in
+  // lib/schemas/llm-request.ts). LLM responses regularly produce longer
+  // recommendation strings — truncate at the boundary so Regenerate doesn't
+  // 422 with 'Too big: expected string to have <=400 characters'.
+  const MAX = 400;
+  const clip = (s: string): string => (s.length > MAX ? s.slice(0, MAX - 1).trimEnd() + '…' : s);
+
   const strengths = result.strengths
-    .map((s) => [s.title, s.evidence].filter(Boolean).join(' — '))
+    .map((s) => clip([s.title, s.evidence].filter(Boolean).join(' — ')))
     .filter((s) => s.length > 0)
     .slice(0, 8);
   const wordingGaps = result.gaps
     .filter((g) => g.type === 'wording')
-    .map((g) => [g.title, g.recommendation, g.fixAction].filter(Boolean).join(' — '))
+    .map((g) => clip([g.title, g.recommendation, g.fixAction].filter(Boolean).join(' — ')))
     .filter((s) => s.length > 0)
     .slice(0, 8);
   const recommendations = result.recommendations
-    .map((r) => [r.title, r.action].filter(Boolean).join(' — '))
+    .map((r) => clip([r.title, r.action].filter(Boolean).join(' — ')))
     .filter((s) => s.length > 0)
     .slice(0, 8);
   const weakDimensions = result.metrics
