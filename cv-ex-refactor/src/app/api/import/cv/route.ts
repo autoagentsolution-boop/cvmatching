@@ -55,6 +55,12 @@ export async function POST(req: NextRequest) {
   }
 
   const buf = await file.arrayBuffer();
+  // Persist a stable Buffer copy BEFORE parsing. unpdf / mammoth may detach
+  // the underlying ArrayBuffer (transfers to a worker, zero-copy slicing,
+  // etc.). After detach any later read — including Buffer.from(buf) for
+  // user_cvs.original_bytes — throws "Cannot perform Construct on a
+  // detached ArrayBuffer". Copy once up front so storage is independent.
+  const originalBuffer = Buffer.from(new Uint8Array(buf));
   const kind = detectFileType(buf);
 
   let raw: string;
@@ -63,15 +69,25 @@ export async function POST(req: NextRequest) {
   try {
     if (kind === 'pdf') {
       const { parsePdf } = await import('@/lib/parsers/parse-pdf');
-      const r = await parsePdf(buf);
+      // Hand the parser a fresh ArrayBuffer slice so the detach can't reach
+      // our persistent copy.
+      const parseAb = originalBuffer.buffer.slice(
+        originalBuffer.byteOffset,
+        originalBuffer.byteOffset + originalBuffer.byteLength,
+      );
+      const r = await parsePdf(parseAb);
       raw = r.text;
       pages = r.pages;
     } else if (kind === 'docx') {
       const { parseDocx } = await import('@/lib/parsers/parse-docx');
-      const r = await parseDocx(buf);
+      const parseAb = originalBuffer.buffer.slice(
+        originalBuffer.byteOffset,
+        originalBuffer.byteOffset + originalBuffer.byteLength,
+      );
+      const r = await parseDocx(parseAb);
       raw = r.text;
     } else if (kind === 'txt') {
-      raw = new TextDecoder('utf-8', { fatal: false }).decode(buf);
+      raw = new TextDecoder('utf-8', { fatal: false }).decode(originalBuffer);
     } else {
       return errRes('unsupported_format', 'Unsupported format. Only PDF, DOCX, and TXT are accepted.', 415);
     }
@@ -116,7 +132,7 @@ export async function POST(req: NextRequest) {
       const cv = await createUserCv(session.user.id, {
         name,
         content: text,
-        ...(mime ? { originalBytes: Buffer.from(buf), originalMime: mime } : {}),
+        ...(mime ? { originalBytes: originalBuffer, originalMime: mime } : {}),
       });
       savedCvId = cv.id;
     } catch (e) {
