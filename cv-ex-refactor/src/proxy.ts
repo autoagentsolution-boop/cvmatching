@@ -83,7 +83,9 @@ function buildCsp(nonce: string): string {
     `frame-ancestors 'none'`,
     `form-action 'self' https://accounts.google.com`,
     `base-uri 'self'`,
-    `object-src 'none'`,
+    // 'self' (not 'none') so SourceDocumentCard can embed same-origin PDFs via
+    // /api/cvs/[id]/original. <embed> + <object> are gated by object-src.
+    `object-src 'self'`,
     `upgrade-insecure-requests`,
     `report-uri /api/csp-report`,
   ].join('; ');
