@@ -56,7 +56,13 @@ export default async function JdMatchingStepPage({
   // import affordance.
   const sourceDocuments = (
     <div className="flex flex-col gap-3">
-      <SourceDocumentCard content={cv.content} kind="cv" defaultZoom={0.75} />
+      <SourceDocumentCard
+        content={cv.content}
+        kind="cv"
+        defaultZoom={0.75}
+        originalUrl={`/api/cvs/${cvId}/original`}
+        {...(cv.originalMime ? { originalMime: cv.originalMime } : {})}
+      />
       <SourceDocumentCard
         content=""
         kind="jd"

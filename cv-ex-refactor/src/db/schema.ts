@@ -15,6 +15,7 @@
 import { sql } from 'drizzle-orm';
 import {
   boolean,
+  customType,
   index,
   integer,
   jsonb,
@@ -185,6 +186,12 @@ export type NewOrderRow = typeof orders.$inferInsert;
 //
 // Multi-CV library: each authenticated user may store up to N parsed CV texts.
 // `content` holds the normalized plain-text output of parse-pdf / parse-docx.
+// `original_bytes` + `original_mime` (Phase 3 add-on) preserve the uploaded file
+// so SourceDocumentCard can render the real PDF/Word view via `<embed>` or
+// mammoth-to-HTML instead of a styled plain-text approximation. Bytes are
+// capped at 5 MB by the import route — Postgres TOAST handles large rows.
+// Nullable to keep existing rows valid; UI falls back to styled-text render
+// when original_bytes is null.
 // `is_default` marks the CV pre-selected when entering a workflow; at most one
 // row per user may have is_default = true (enforced by partial unique index).
 
@@ -197,6 +204,12 @@ export const userCvs = pgTable(
       .references(() => users.id, { onDelete: 'cascade' }),
     name: text('name').notNull(), // user-facing label, e.g. "Senior Backend — Apr 2026"
     content: text('content').notNull(), // parsed CV text
+    originalBytes: customType<{ data: Buffer; notNull: false; default: false }>({
+      dataType() {
+        return 'bytea';
+      },
+    })('original_bytes'),
+    originalMime: text('original_mime'),
     isDefault: boolean('is_default').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .notNull()

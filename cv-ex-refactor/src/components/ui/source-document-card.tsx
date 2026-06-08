@@ -24,6 +24,16 @@ export interface SourceDocumentCardProps {
   className?: string;
   /** Optional ribbon shown in the empty state to suggest a paste/upload action. */
   emptyHint?: ReactNode;
+  /**
+   * URL serving the original file bytes (e.g. /api/cvs/[id]/original).
+   * When provided + originalMime resolves to PDF, the card renders the real
+   * document via <embed>. When the MIME isn't PDF, falls back to the styled
+   * parsed-text view (still readable but not bit-identical).
+   * Omit for unsaved JD inputs or legacy CVs without stored bytes.
+   */
+  originalUrl?: string;
+  /** MIME of the original file. Drives the viewer branch. */
+  originalMime?: string;
 }
 
 const KIND_LABEL: Record<SourceDocumentKind, string> = {
@@ -77,7 +87,15 @@ export function SourceDocumentCard({
   onEdit,
   className,
   emptyHint,
+  originalUrl,
+  originalMime,
 }: SourceDocumentCardProps) {
+  const isPdf = !!originalUrl && originalMime === 'application/pdf';
+  // Browser-native viewer only handles PDF reliably. For DOCX/TXT we still
+  // need a styled render — DOCX would need a JS converter (mammoth) at
+  // render time, which we defer to a follow-up. TXT is readable enough as
+  // the styled view today.
+  const useOriginalEmbed = isPdf;
   const [zoom, setZoom] = useState<ZoomLevel>(defaultZoom);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -149,7 +167,17 @@ export function SourceDocumentCard({
 
         {/* Body */}
         <div className="flex-1 overflow-auto bg-surface-container-low p-3">
-          {hasContent ? (
+          {useOriginalEmbed ? (
+            // Browser-native PDF viewer. Inherits zoom/scroll from the
+            // embedded reader; the card's zoom buttons no longer apply but
+            // the user can use the embed's own controls.
+            <embed
+              src={originalUrl}
+              type="application/pdf"
+              className="block h-full min-h-[60vh] w-full rounded-lg border border-outline-variant bg-white"
+              aria-label={`${KIND_LABEL[kind]} original PDF`}
+            />
+          ) : hasContent ? (
             <SourceDocumentPage content={content} kind={kind} zoom={zoom} />
           ) : (
             <div className="flex h-full min-h-[200px] flex-col items-center justify-center gap-3 px-4 py-8 text-center">
@@ -183,27 +211,30 @@ export function SourceDocumentCard({
           <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
             {KIND_LABEL[kind]}
           </span>
-          <div className="flex items-center gap-0.5">
-            <ToolbarIconButton
-              onClick={handleZoomOut}
-              label="Zoom out"
-              disabled={!canZoomOut}
-            >
-              <MdZoomOut size={16} aria-hidden="true" />
-            </ToolbarIconButton>
-            <span className="px-1 text-[10px] tabular-nums text-on-surface-variant/70 min-w-[2.5rem] text-center">
-              {Math.round(zoom * 100)}%
-            </span>
-            <ToolbarIconButton
-              onClick={handleZoomIn}
-              label="Zoom in"
-              disabled={!canZoomIn}
-            >
-              <MdZoomIn size={16} aria-hidden="true" />
-            </ToolbarIconButton>
-          </div>
+          {!useOriginalEmbed && (
+            <div className="flex items-center gap-0.5">
+              <ToolbarIconButton onClick={handleZoomOut} label="Zoom out" disabled={!canZoomOut}>
+                <MdZoomOut size={16} aria-hidden="true" />
+              </ToolbarIconButton>
+              <span className="px-1 text-[10px] tabular-nums text-on-surface-variant/70 min-w-[2.5rem] text-center">
+                {Math.round(zoom * 100)}%
+              </span>
+              <ToolbarIconButton onClick={handleZoomIn} label="Zoom in" disabled={!canZoomIn}>
+                <MdZoomIn size={16} aria-hidden="true" />
+              </ToolbarIconButton>
+            </div>
+          )}
         </div>
-        <SourceDocumentPage content={content} kind={kind} zoom={zoom} />
+        {useOriginalEmbed ? (
+          <embed
+            src={originalUrl}
+            type="application/pdf"
+            className="block h-[80vh] w-full rounded-lg border border-outline-variant bg-white"
+            aria-label={`${KIND_LABEL[kind]} original PDF`}
+          />
+        ) : (
+          <SourceDocumentPage content={content} kind={kind} zoom={zoom} />
+        )}
       </Modal>
     </>
   );

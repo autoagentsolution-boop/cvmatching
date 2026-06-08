@@ -106,7 +106,18 @@ export async function POST(req: NextRequest) {
       // Pass the email so the users row carries it (createUserCv's internal
       // ensureUserRow defaults to null when called via repo directly).
       await ensureUserRow(session.user.id, session.user.email);
-      const cv = await createUserCv(session.user.id, { name, content: text });
+      // Persist original bytes + MIME so the Source viewer can render the
+      // real PDF/Word (Phase 3 fidelity). MIME comes from detectFileType.
+      const mime =
+        kind === 'pdf' ? 'application/pdf'
+        : kind === 'docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        : kind === 'txt' ? 'text/plain'
+        : undefined;
+      const cv = await createUserCv(session.user.id, {
+        name,
+        content: text,
+        ...(mime ? { originalBytes: Buffer.from(buf), originalMime: mime } : {}),
+      });
       savedCvId = cv.id;
     } catch (e) {
       // Drizzle wraps the Postgres error; surface cause + neon-driver fields too.

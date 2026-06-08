@@ -60,6 +60,8 @@ export default async function CvAnalyzeStepPage({
       content={cv.content}
       kind="cv"
       className="h-full min-h-[400px]"
+      originalUrl={`/api/cvs/${cvId}/original`}
+      {...(cv.originalMime ? { originalMime: cv.originalMime } : {})}
     />
   );
 

@@ -15,6 +15,13 @@
       "when": 1780904138791,
       "tag": "0001_condemned_malcolm_colcord",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780914701216,
+      "tag": "0002_familiar_tarantula",
+      "breakpoints": true
     }
   ]
 }

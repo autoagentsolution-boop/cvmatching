@@ -9,18 +9,47 @@
 
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { getDb, userCvs, users } from '@/db';
-import type { UserCvRow, NewUserCvRow } from '@/db';
+import type { NewUserCvRow } from '@/db';
 
-// Re-export types so consumers don't need to import from @/db directly.
-export type { UserCvRow, NewUserCvRow };
+export type { NewUserCvRow };
+
+// Columns to project for the "lightweight" reads. EXCLUDES original_bytes
+// because that column can hit 5 MB per row; pulling it on every list / get
+// would tank dashboard latency. Use getUserCvOriginal() to fetch bytes.
+const LITE_COLS = {
+  id: userCvs.id,
+  userId: userCvs.userId,
+  name: userCvs.name,
+  content: userCvs.content,
+  originalMime: userCvs.originalMime,
+  isDefault: userCvs.isDefault,
+  createdAt: userCvs.createdAt,
+  updatedAt: userCvs.updatedAt,
+} as const;
+
+/**
+ * Lightweight row shape used by all UI consumers. original_bytes is
+ * intentionally omitted (heavy, only served via /api/cvs/[id]/original).
+ * Exported as UserCvRow so callers don't accidentally pull bytea.
+ */
+export type UserCvRow = {
+  id: string;
+  userId: string;
+  name: string;
+  content: string;
+  originalMime: string | null;
+  isDefault: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 // ─── List ──────────────────────────────────────────────────────────────────
 
-/** Return all CVs for a user, newest first. */
+/** Return all CVs for a user, newest first. Omits original_bytes (heavy). */
 export async function listUserCvs(userId: string): Promise<UserCvRow[]> {
   const db = getDb();
   return db
-    .select()
+    .select(LITE_COLS)
     .from(userCvs)
     .where(eq(userCvs.userId, userId))
     .orderBy(desc(userCvs.updatedAt));
@@ -29,18 +58,38 @@ export async function listUserCvs(userId: string): Promise<UserCvRow[]> {
 // ─── Get one ──────────────────────────────────────────────────────────────
 
 /**
- * Fetch a single CV row, enforcing userId ownership.
+ * Fetch a single CV row (lite — no original_bytes), enforcing userId ownership.
  * Returns null when not found OR when the row belongs to a different user
  * (no info leak — 404 not 403 policy).
  */
 export async function getUserCv(userId: string, cvId: string): Promise<UserCvRow | null> {
   const db = getDb();
   const rows = await db
-    .select()
+    .select(LITE_COLS)
     .from(userCvs)
     .where(and(eq(userCvs.id, cvId), eq(userCvs.userId, userId)))
     .limit(1);
   return rows[0] ?? null;
+}
+
+/**
+ * Fetch original_bytes + original_mime for serving via /api/cvs/[id]/original.
+ * Enforces userId ownership. Returns null when row missing, wrong owner, or
+ * the row has no original (legacy CV imported before Phase 3 storage landed).
+ */
+export async function getUserCvOriginal(
+  userId: string,
+  cvId: string,
+): Promise<{ bytes: Buffer; mime: string } | null> {
+  const db = getDb();
+  const rows = await db
+    .select({ bytes: userCvs.originalBytes, mime: userCvs.originalMime })
+    .from(userCvs)
+    .where(and(eq(userCvs.id, cvId), eq(userCvs.userId, userId)))
+    .limit(1);
+  const row = rows[0];
+  if (!row || !row.bytes || !row.mime) return null;
+  return { bytes: row.bytes, mime: row.mime };
 }
 
 // ─── Create ───────────────────────────────────────────────────────────────
@@ -49,6 +98,10 @@ export interface CreateCvInput {
   name: string;
   content: string;
   isDefault?: boolean | undefined;
+  /** Original uploaded file bytes for fidelity-preserving Source render. */
+  originalBytes?: Buffer | undefined;
+  /** MIME of the original file — drives Source viewer branch (PDF/DOCX/TXT). */
+  originalMime?: string | undefined;
 }
 
 /**
@@ -105,6 +158,8 @@ export async function createUserCv(
       userId,
       name: input.name,
       content: input.content,
+      ...(input.originalBytes !== undefined ? { originalBytes: input.originalBytes } : {}),
+      ...(input.originalMime !== undefined ? { originalMime: input.originalMime } : {}),
       isDefault: input.isDefault ?? false,
       createdAt: now,
       updatedAt: now,
