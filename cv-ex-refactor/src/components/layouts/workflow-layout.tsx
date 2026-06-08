@@ -122,7 +122,10 @@ export function WorkflowLayout({
         <main
           className={cn(
             'flex flex-1 gap-0',
-            optionalRightRail ? 'xl:grid xl:grid-cols-[minmax(300px,1fr)_minmax(0,2fr)_minmax(240px,320px)]' : 'lg:grid lg:grid-cols-[minmax(280px,380px)_minmax(0,1fr)]',
+            // 50/50 split when no right rail. With right rail keep Source at
+            // 1fr but compress the 3-col layout. User explicitly asked for
+            // wider Source panel so PDF / Word original render is readable.
+            optionalRightRail ? 'xl:grid xl:grid-cols-[minmax(360px,1fr)_minmax(0,1.5fr)_minmax(240px,320px)]' : 'lg:grid lg:grid-cols-[minmax(360px,1fr)_minmax(0,1fr)]',
           )}
         >
           {/* Left: Source Document panel */}
