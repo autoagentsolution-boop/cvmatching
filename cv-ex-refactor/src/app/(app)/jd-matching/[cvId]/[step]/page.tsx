@@ -5,7 +5,8 @@ import { getSession } from '@/lib/get-session';
 import { getUserCv, listUserCvs } from '@/lib/cvs/repo';
 import { isAdminUser } from '@/lib/usage/admin-auth';
 import { WorkflowLayout } from '@/components/layouts/workflow-layout';
-import { JdMatchingPage } from '@/features/analyze/jd-matching-page';
+import { SourceDocumentCard } from '@/components/ui/source-document-card';
+import { JdMatchingContent } from '@/features/jd-matching/jd-matching-content';
 import { RefinedCvPage } from '@/features/refined-cv/refined-cv-page';
 import { CareerPathPage } from '@/features/career-path/career-path-page';
 import { JobFitListPage } from '@/features/job-fit/job-fit-list-page';
@@ -50,26 +51,22 @@ export default async function JdMatchingStepPage({
   const cvs = await listUserCvs(session.user.id);
   const isAdmin = isAdminUser(session.user);
 
-  // Source documents: CV + JD placeholder (JD panel is Phase 3/5 territory)
-  const sourceDocPlaceholder = (
+  // JD content lives in client state during JD Matching — Phase 5 will wire
+  // import flow. For now we render an empty Source JD card so users can see the
+  // import affordance.
+  const sourceDocuments = (
     <div className="flex flex-col gap-3">
-      <div className="rounded-xl border border-dashed border-outline-variant p-4 text-body-sm text-on-surface-variant">
-        <p className="font-semibold text-on-surface mb-1 text-[10px] uppercase tracking-widest">
-          Source CV
-        </p>
-        <p className="line-clamp-5 text-[12px] leading-relaxed whitespace-pre-wrap">
-          {cv.content.slice(0, 300)}
-          {cv.content.length > 300 ? '…' : ''}
-        </p>
-      </div>
-      <div className="rounded-xl border border-dashed border-outline-variant p-4 text-body-sm text-on-surface-variant">
-        <p className="font-semibold text-on-surface mb-1 text-[10px] uppercase tracking-widest">
-          Source JD
-        </p>
-        <p className="text-[12px] text-on-surface-variant/70">
-          Paste or import a job description — Phase 3
-        </p>
-      </div>
+      <SourceDocumentCard content={cv.content} kind="cv" defaultZoom={0.75} />
+      <SourceDocumentCard
+        content=""
+        kind="jd"
+        defaultZoom={0.75}
+        emptyHint={
+          <p className="text-[11px] text-on-surface-variant/70">
+            Upload PDF/Word or paste a job posting URL.
+          </p>
+        }
+      />
     </div>
   );
 
@@ -79,28 +76,28 @@ export default async function JdMatchingStepPage({
       currentCvId={cvId}
       currentStepId={step}
       cvs={cvs}
-      sourceDocuments={sourceDocPlaceholder}
+      sourceDocuments={sourceDocuments}
       isAdmin={isAdmin}
       isAuthed
     >
-      <StepContent step={step} />
+      <StepContent step={step} cvContent={cv.content} cvId={cvId} />
     </WorkflowLayout>
   );
 }
 
-function StepContent({ step }: { step: JdMatchingStep }) {
+function StepContent({ step, cvContent, cvId }: { step: JdMatchingStep; cvContent: string; cvId: string }) {
   switch (step) {
     case 'match':
-      return <JdMatchingPage />;
+      return <JdMatchingContent cvContent={cvContent} cvId={cvId} />;
     case 'refined':
-      return <RefinedCvPage />;
+      return <RefinedCvPage mode="jd-context" />;
     case 'roadmap':
       return (
         <Suspense fallback={null}>
-          <CareerPathPage />
+          <CareerPathPage mode="jd-context" />
         </Suspense>
       );
     case 'jobfit':
-      return <JobFitListPage />;
+      return <JobFitListPage mode="jd-context" />;
   }
 }

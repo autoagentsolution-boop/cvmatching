@@ -131,6 +131,15 @@ export const ExtractMustHavesBody = z.object({
   language: LanguageEnum.default('auto'),
 });
 
+export const JdInsightsBody = z.object({
+  llm: LlmConfig,
+  cvText: z.string().min(50).max(MAX_TEXT),
+  jdText: z.string().min(50).max(MAX_TEXT),
+  analyzeSummary: z.string().max(2000).optional(),
+  language: LanguageEnum.default('auto'),
+});
+export type JdInsightsBodyT = z.infer<typeof JdInsightsBody>;
+
 export const HorizonYearsEnum = z.union([z.literal(1), z.literal(3), z.literal(5)]);
 
 export const FocusAreaEnum = z.enum([

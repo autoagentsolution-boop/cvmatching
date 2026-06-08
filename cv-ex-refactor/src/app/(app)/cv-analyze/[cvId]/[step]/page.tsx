@@ -5,7 +5,8 @@ import { getSession } from '@/lib/get-session';
 import { getUserCv, listUserCvs } from '@/lib/cvs/repo';
 import { isAdminUser } from '@/lib/usage/admin-auth';
 import { WorkflowLayout } from '@/components/layouts/workflow-layout';
-import { AnalyzePage } from '@/features/analyze/analyze-page';
+import { SourceDocumentCard } from '@/components/ui/source-document-card';
+import { CvAnalyzeContent } from '@/features/cv-analyze/cv-analyze-content';
 import { RefinedCvPage } from '@/features/refined-cv/refined-cv-page';
 import { CareerPathPage } from '@/features/career-path/career-path-page';
 import { JobFitListPage } from '@/features/job-fit/job-fit-list-page';
@@ -54,17 +55,12 @@ export default async function CvAnalyzeStepPage({
   const cvs = await listUserCvs(session.user.id);
   const isAdmin = isAdminUser(session.user);
 
-  const sourceDocPlaceholder = (
-    <div className="rounded-xl border border-dashed border-outline-variant p-4 text-body-sm text-on-surface-variant">
-      <p className="font-semibold text-on-surface mb-1">Source CV</p>
-      <p className="line-clamp-6 text-[12px] leading-relaxed whitespace-pre-wrap">
-        {cv.content.slice(0, 400)}
-        {cv.content.length > 400 ? '…' : ''}
-      </p>
-      <p className="mt-3 text-label-sm text-on-surface-variant/70">
-        Full source document render — Phase 3
-      </p>
-    </div>
+  const sourceDocuments = (
+    <SourceDocumentCard
+      content={cv.content}
+      kind="cv"
+      className="h-full min-h-[400px]"
+    />
   );
 
   return (
@@ -73,28 +69,28 @@ export default async function CvAnalyzeStepPage({
       currentCvId={cvId}
       currentStepId={step}
       cvs={cvs}
-      sourceDocuments={sourceDocPlaceholder}
+      sourceDocuments={sourceDocuments}
       isAdmin={isAdmin}
       isAuthed
     >
-      <StepContent step={step} />
+      <StepContent step={step} cvContent={cv.content} cvId={cvId} />
     </WorkflowLayout>
   );
 }
 
-function StepContent({ step }: { step: CvAnalyzeStep }) {
+function StepContent({ step, cvContent, cvId }: { step: CvAnalyzeStep; cvContent: string; cvId: string }) {
   switch (step) {
     case 'score':
-      return <AnalyzePage />;
+      return <CvAnalyzeContent cvContent={cvContent} cvId={cvId} />;
     case 'refined':
-      return <RefinedCvPage />;
+      return <RefinedCvPage mode="cv-solo" />;
     case 'roadmap':
       return (
         <Suspense fallback={null}>
-          <CareerPathPage />
+          <CareerPathPage mode="cv-solo" />
         </Suspense>
       );
     case 'jobfit':
-      return <JobFitListPage />;
+      return <JobFitListPage mode="cv-solo" />;
   }
 }

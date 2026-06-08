@@ -48,7 +48,15 @@ function readCvText(): string | null {
  * every page revisit once the 6h cache expired, which surprised users and
  * burned shared-key budget.
  */
-export function JobFitListPage() {
+export type WorkflowMode = 'cv-solo' | 'jd-context';
+
+export interface JobFitListPageProps {
+  /** Phase 6: workflow-context hint. Currently passthrough. */
+  mode?: WorkflowMode;
+}
+
+export function JobFitListPage({ mode }: JobFitListPageProps = {}) {
+  void mode;
   // Per-field selectors only — see feedback_zustand_object_literal_selector.
   const jobs = useJobFit((s) => s.jobs);
   const status = useJobFit((s) => s.status);

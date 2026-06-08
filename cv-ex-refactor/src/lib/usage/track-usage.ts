@@ -9,7 +9,8 @@ export type UsageAction =
   | 'extract-must-haves'
   | 'career-path'
   | 'career-path-suggest'
-  | 'job-recommend';
+  | 'job-recommend'
+  | 'jd-insights';
 export type UsageStatus = 'ok' | 'error';
 
 /**

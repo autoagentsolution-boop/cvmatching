@@ -31,7 +31,8 @@ export type QuotaAction =
   | QuotaKind
   | 'extract-must-haves'
   | 'career-path-suggest'
-  | 'company-enrich';
+  | 'company-enrich'
+  | 'jd-insights';
 
 export interface QuotaResult {
   ok: boolean;

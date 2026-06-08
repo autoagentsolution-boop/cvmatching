@@ -8,7 +8,8 @@ export type CostBucket =
   | 'generate-cv'
   | 'generate-cover-letter'
   | 'extract-must-haves'
-  | 'company-enrich';
+  | 'company-enrich'
+  | 'jd-insights';
 
 export const COST_BUCKETS: readonly CostBucket[] = [
   'job-recommend',
@@ -19,4 +20,5 @@ export const COST_BUCKETS: readonly CostBucket[] = [
   'generate-cover-letter',
   'extract-must-haves',
   'company-enrich',
+  'jd-insights',
 ] as const;

@@ -66,3 +66,18 @@ export type { ChevronStepperProps, ChevronStep } from './chevron-stepper';
 
 export { CvPickerChip } from './cv-picker-chip';
 export type { CvPickerChipProps } from './cv-picker-chip';
+
+export { SourceDocumentCard } from './source-document-card';
+export type { SourceDocumentCardProps } from './source-document-card';
+
+export { SourceDocumentPage } from './source-document-page';
+export type { SourceDocumentPageProps, SourceDocumentKind } from './source-document-page';
+
+export { RoleFitGauge } from './role-fit-gauge';
+export type { RoleFitGaugeProps } from './role-fit-gauge';
+
+export { MetricBar } from './metric-bar';
+export type { MetricBarProps } from './metric-bar';
+
+export { CriticalRefactorList } from './critical-refactor-list';
+export type { CriticalRefactorListProps, CriticalRefactorItem } from './critical-refactor-list';

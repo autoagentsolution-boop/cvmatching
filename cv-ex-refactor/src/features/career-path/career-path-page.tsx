@@ -22,7 +22,16 @@ import { SkillGapsBlock } from './skill-gaps-block';
 import { AlternativePathsBlock } from './alternative-paths-block';
 import { QuickWinsBlock } from './quick-wins-block';
 
-export function CareerPathPage() {
+export type WorkflowMode = 'cv-solo' | 'jd-context';
+
+export interface CareerPathPageProps {
+  /** Phase 6: workflow-context hint. Currently passthrough — downstream reads
+   *  from analysis-store. */
+  mode?: WorkflowMode;
+}
+
+export function CareerPathPage({ mode }: CareerPathPageProps = {}) {
+  void mode;
   // Source-aware (per `?from=`) CV + analysis result. See use-career-source.
   const { cvText, analysisResult } = useCareerSource();
   const language = useAnalysis((s) => s.language);
