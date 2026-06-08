@@ -8,15 +8,21 @@ import {
   RoleFitGauge,
   MetricBar,
   CriticalRefactorList,
+  Slider,
+  Tabs,
   type CriticalRefactorItem,
 } from '@/components/ui';
 import { useAnalysis } from '@/features/analyze/analysis-store';
 import { useSettings } from '@/features/analyze/settings-store';
 import { callAnalyzeV3, isNeedsRoleConfirm } from '@/features/analyze/api-client';
-import { hydrateWeightsFromResult } from '@/lib/scoring/recompute-overall';
+import { hydrateWeightsFromResult, recomputeOverall } from '@/lib/scoring/recompute-overall';
 import { aggregateRoleFit, classifyFit } from '@/lib/scoring/role-fit-aggregate';
 import { isTransientLlmError } from '@/lib/llm/humanize-error';
-import type { AnalyzeRequestLLM, AnalysisResult } from '@/features/analyze/types';
+import type { AnalyzeRequestLLM, AnalysisResult, Weights } from '@/features/analyze/types';
+
+const NINE_DIM_KEYS: (keyof Weights)[] = [
+  'coreSkill', 'tool', 'scope', 'production', 'domain', 'evidence', 'seniority', 'impact', 'communication',
+];
 
 const NINE_DIM_LABELS: Record<string, string> = {
   coreSkill: 'Core Skills',
@@ -178,15 +184,41 @@ function CvAnalyzeResults({
   targetRole: string | null;
   cvId: string;
 }) {
+  // Weights live in the store so slider overrides persist + drive recompute.
+  const weights = useAnalysis((s) => s.analyzeWeights);
+  const setField = useAnalysis((s) => s.setField);
+
+  // recomputeOverall(weights) is the SOURCE OF TRUTH for the displayed score.
+  // result.overallScore alone is the LLM's initial reading; once user nudges
+  // a slider the displayed score must reflect their override.
+  // Per memory feedback_scoring_ux_model: sliders ARE the LLM scores; user
+  // can override → overall recomputes → strengths/gaps stay frozen.
+  const recomputed = useMemo(() => recomputeOverall(weights), [weights]);
+  const overall = recomputed.overallScore;
+
+  // Build a synthetic metrics list off the live weights so the role-fit
+  // aggregator and 3 hero metric cards reflect slider changes too.
+  const liveMetrics = useMemo(
+    () => NINE_DIM_KEYS.map((k) => {
+      const original = result.metrics.find((m) => m.name === k);
+      return {
+        name: k as string,
+        score: weights[k],
+        weight: 100,
+        reason: original?.reason ?? '',
+      };
+    }),
+    [weights, result.metrics],
+  );
+
   const roleFit = useMemo(
     () => aggregateRoleFit({
-      metrics: result.metrics,
+      metrics: liveMetrics,
       atsKeyword: result.atsKeyword,
       keywordCoverage: result.keywordCoverage,
     }),
-    [result],
+    [liveMetrics, result.atsKeyword, result.keywordCoverage],
   );
-  const overall = result.overallScore;
   const { tier, label: tierLabel } = classifyFit(overall);
   const roleLabel = result.detectedRole || targetRole || inferredRole || undefined;
 
@@ -213,11 +245,30 @@ function CvAnalyzeResults({
     return items;
   }, [result]);
 
-  return <CvAnalyzeRender result={result} roleFit={roleFit} overall={overall} tier={tier} tierLabel={tierLabel} roleLabel={roleLabel} refactorItems={refactorItems} cvId={cvId} />;
+  function setWeight(key: keyof Weights, value: number) {
+    setField('analyzeWeights', { ...weights, [key]: value });
+  }
+
+  return (
+    <CvAnalyzeRender
+      result={result}
+      weights={weights}
+      onWeightChange={setWeight}
+      roleFit={roleFit}
+      overall={overall}
+      tier={tier}
+      tierLabel={tierLabel}
+      roleLabel={roleLabel}
+      refactorItems={refactorItems}
+      cvId={cvId}
+    />
+  );
 }
 
 function CvAnalyzeRender({
   result,
+  weights,
+  onWeightChange,
   roleFit,
   overall,
   tier,
@@ -227,6 +278,8 @@ function CvAnalyzeRender({
   cvId,
 }: {
   result: AnalysisResult;
+  weights: Weights;
+  onWeightChange: (key: keyof Weights, value: number) => void;
   roleFit: ReturnType<typeof aggregateRoleFit>;
   overall: number;
   tier: ReturnType<typeof classifyFit>['tier'];
@@ -236,10 +289,35 @@ function CvAnalyzeRender({
   cvId: string;
 }) {
   const [showDeepDive, setShowDeepDive] = useState(false);
+  const [activeRefactorTab, setActiveRefactorTab] = useState<'strengths' | 'gaps' | 'recs'>('gaps');
+
+  // Build separate items per tab from the FROZEN LLM output (user slider
+  // overrides recompute the score but never alter strengths/gaps/recs).
+  const strengthItems: CriticalRefactorItem[] = result.strengths.map((s, i) => ({
+    id: `str-${i}`,
+    title: s.title,
+    description: s.evidence || s.jdSignal || '',
+    severity: 'minor',
+  }));
+  const gapItems: CriticalRefactorItem[] = result.gaps.map((g, i) => ({
+    id: `gap-${i}`,
+    title: g.title,
+    description: g.recommendation || g.fixAction || '',
+    severity: g.severity,
+  }));
+  const recItems: CriticalRefactorItem[] = result.recommendations.map((r, i) => ({
+    id: `rec-${i}`,
+    title: r.title,
+    description: r.action,
+    severity: r.priority === 'high' ? 'critical' : r.priority === 'medium' ? 'moderate' : 'minor',
+  }));
+
+  // refactorItems prop unused by render (3 tabs replace single list).
+  void refactorItems;
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Hero score block — compact header + gauge + caption + CTA */}
+      {/* Hero score block */}
       <section className="flex flex-col items-center gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest px-5 py-6">
         <div className="flex w-full items-center justify-between">
           <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
@@ -262,13 +340,13 @@ function CvAnalyzeRender({
               href={`/cv-analyze/${cvId}/refined`}
               className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-primary px-5 py-2.5 text-label-md font-semibold text-on-primary hover:bg-primary/90 transition-colors"
             >
-              Improve Fit →
+              Refined CV →
             </a>
           }
         />
       </section>
 
-      {/* 3 role-fit metrics — each in own card with subtle bg + clear hierarchy */}
+      {/* 3 role-fit metrics */}
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4">
           <MetricBar label="Role" value={roleFit.role} accent="role" />
@@ -281,10 +359,47 @@ function CvAnalyzeRender({
         </div>
       </div>
 
-      {/* Critical Refactors — neutral cards, severity via icon only */}
-      <CriticalRefactorList items={refactorItems} />
+      {/* Critical Refactors — restored 3-tab split (Strengths / Gaps / Recs).
+          Gaps default since that's the actionable view recruiters look at. */}
+      <section className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4">
+        <Tabs
+          tabs={[
+            { id: 'strengths', label: `Strengths (${strengthItems.length})` },
+            { id: 'gaps', label: `Gaps (${gapItems.length})` },
+            { id: 'recs', label: `Recommendations (${recItems.length})` },
+          ]}
+          activeId={activeRefactorTab}
+          onChange={(id) => setActiveRefactorTab(id as typeof activeRefactorTab)}
+          variant="underline"
+        >
+          {activeRefactorTab === 'strengths' && (
+            <CriticalRefactorList
+              items={strengthItems}
+              heading=""
+              emptyMessage="No standout strengths surfaced — push for more concrete evidence in the CV."
+              className="border-0 bg-transparent p-0"
+            />
+          )}
+          {activeRefactorTab === 'gaps' && (
+            <CriticalRefactorList
+              items={gapItems}
+              heading=""
+              emptyMessage="No critical gaps detected. Solid baseline."
+              className="border-0 bg-transparent p-0"
+            />
+          )}
+          {activeRefactorTab === 'recs' && (
+            <CriticalRefactorList
+              items={recItems}
+              heading=""
+              emptyMessage="No follow-up recommendations."
+              className="border-0 bg-transparent p-0"
+            />
+          )}
+        </Tabs>
+      </section>
 
-      {/* 9-dim deep dive — collapsed by default so it doesn't dominate the page */}
+      {/* 9-dim deep dive — adjustable sliders (collapsed by default) */}
       <section className="flex flex-col gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest p-4">
         <button
           type="button"
@@ -297,7 +412,7 @@ function CvAnalyzeRender({
               9-Dimension Deep Dive
             </span>
             <span className="text-label-sm text-on-surface-variant">
-              Recruiter rubric breakdown — {showDeepDive ? 'click to hide' : 'click to show'}
+              Adjust per-dim scores — overall recomputes live (gaps / recs stay frozen)
             </span>
           </div>
           <span
@@ -308,15 +423,27 @@ function CvAnalyzeRender({
           </span>
         </button>
         {showDeepDive && (
-          <div className="grid gap-3 pt-2 sm:grid-cols-2">
-            {result.metrics.map((m) => (
-              <MetricBar
-                key={m.name}
-                label={NINE_DIM_LABELS[m.name] ?? m.name}
-                value={m.score}
-                reason={m.reason}
-              />
-            ))}
+          <div className="grid gap-4 pt-2 sm:grid-cols-2">
+            {NINE_DIM_KEYS.map((key) => {
+              const reason = result.metrics.find((m) => m.name === key)?.reason ?? '';
+              return (
+                <div key={key} className="flex flex-col gap-2 rounded-xl bg-surface-container-low p-3">
+                  <Slider
+                    label={NINE_DIM_LABELS[key] ?? key}
+                    value={[weights[key]]}
+                    onValueChange={(v) => onWeightChange(key, v[0] ?? 0)}
+                    min={0}
+                    max={100}
+                    step={1}
+                  />
+                  {reason && (
+                    <p className="text-body-sm text-on-surface-variant leading-snug line-clamp-2">
+                      {reason}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </section>
