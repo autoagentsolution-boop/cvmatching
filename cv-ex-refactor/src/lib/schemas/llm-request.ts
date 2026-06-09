@@ -121,6 +121,22 @@ export const GenerateCvV3Body = z.object({
     tone: ToneEnum.default('impact'),
     length: LengthEnum.default('medium'),
     extraInstructions: z.string().max(500).optional(),
+    /**
+     * Future-target role the candidate is moving toward. When present and
+     * different from findings.role (the current/detected target), the prompt
+     * tilts Summary + top Experience bullets to read as trajectory evidence
+     * from `role` → `aspirationRole`. Truth contract is unchanged — only
+     * reframes real experience, never invents.
+     */
+    aspirationRole: z.string().min(1).max(160).optional(),
+    /**
+     * Opt-in extra sections. The prompt includes them only when CV/profile
+     * has real content for the section — empty sections never appear.
+     */
+    additionalSections: z
+      .array(z.enum(['projects', 'opensource', 'speaking', 'certifications', 'awards', 'publications']))
+      .max(6)
+      .optional(),
   }),
   findings: AnalyzeFindings,
 });
