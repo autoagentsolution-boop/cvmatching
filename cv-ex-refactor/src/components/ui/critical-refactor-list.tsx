@@ -24,6 +24,10 @@ export interface CriticalRefactorListProps {
 // Severity is surfaced via a small icon + accent ring on the LEFT edge —
 // not by saturating the whole card background. Heavy backgrounds dominate
 // the page visually and crush text contrast; keep cards on neutral surface.
+//
+// Critical → red (error), Moderate → amber (warning), Minor → yellow
+// (caution). The triple maps to a clear visual hierarchy so users can
+// scan severity in peripheral vision without reading the badge label.
 const SEVERITY_META: Record<Severity, { color: string; iconBg: string; icon: typeof MdWarningAmber; label: string }> = {
   critical: {
     color: 'text-error',
@@ -32,14 +36,14 @@ const SEVERITY_META: Record<Severity, { color: string; iconBg: string; icon: typ
     label: 'Critical',
   },
   moderate: {
-    color: 'text-tertiary',
-    iconBg: 'bg-tertiary/10',
+    color: 'text-warning',
+    iconBg: 'bg-warning/15',
     icon: MdWarningAmber,
     label: 'Moderate',
   },
   minor: {
-    color: 'text-primary',
-    iconBg: 'bg-primary/10',
+    color: 'text-caution',
+    iconBg: 'bg-caution/15',
     icon: MdInfoOutline,
     label: 'Minor',
   },

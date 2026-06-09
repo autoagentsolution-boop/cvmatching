@@ -1,7 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { MdArrowUpward } from 'react-icons/md';
+import { useEffect, useMemo, useState, type ComponentType } from 'react';
+import {
+  MdArrowUpward,
+  MdCheckCircle,
+  MdCancel,
+  MdRemoveCircleOutline,
+} from 'react-icons/md';
 import {
   Button,
   ErrorState,
@@ -32,10 +37,19 @@ export interface JdMatchingContentProps {
   cvId: string;
 }
 
-const COVERAGE_TONE: Record<AnalysisCoverage['status'], { dot: string; label: string }> = {
-  match: { dot: 'bg-primary', label: 'Matched' },
-  partial: { dot: 'bg-tertiary', label: 'Partial' },
-  missing: { dot: 'bg-error', label: 'Missing' },
+interface CoverageVisual {
+  Icon: ComponentType<{ size?: number; className?: string; 'aria-hidden'?: boolean }>;
+  iconColor: string;
+  label: string;
+}
+
+// Match = green check; missing = red cross; partial = amber dash. Icons
+// communicate status faster than colored dots — at a glance the user
+// counts ticks vs crosses without parsing a legend.
+const COVERAGE_VISUAL: Record<AnalysisCoverage['status'], CoverageVisual> = {
+  match: { Icon: MdCheckCircle, iconColor: 'text-success', label: 'Matched' },
+  partial: { Icon: MdRemoveCircleOutline, iconColor: 'text-warning', label: 'Partial' },
+  missing: { Icon: MdCancel, iconColor: 'text-error', label: 'Missing' },
 };
 
 export function JdMatchingContent({ cvContent, cvId }: JdMatchingContentProps) {
@@ -287,13 +301,19 @@ function JdMatchingResults({
           </header>
           <ul className="flex flex-col gap-2">
             {result.coverage.map((c, i) => {
-              const tone = COVERAGE_TONE[c.status];
+              const visual = COVERAGE_VISUAL[c.status];
+              const VisualIcon = visual.Icon;
               return (
                 <li
                   key={i}
                   className="group flex items-start gap-3 rounded-xl bg-surface-container-low p-3"
                 >
-                  <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${tone.dot}`} aria-label={tone.label} />
+                  <VisualIcon
+                    size={20}
+                    className={`mt-0.5 shrink-0 ${visual.iconColor}`}
+                    aria-hidden={true}
+                  />
+                  <span className="sr-only">{visual.label}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-label-md font-medium text-on-surface">{c.requirement}</p>
                     {c.evidence && (

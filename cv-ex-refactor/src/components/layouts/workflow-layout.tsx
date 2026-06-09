@@ -62,15 +62,17 @@ export interface WorkflowLayoutProps {
   optionalRightRail?: ReactNode;
   /**
    * Where the source panel sits relative to step content.
-   *  - 'left' (default): vertical aside left of children → best when there is
-   *    a single source document (CV Analyze).
+   *  - 'left' (default): vertical aside left of children → single source
+   *    document (CV Analyze).
    *  - 'top': horizontal row across the top of main, children below taking
-   *    full width → best for parallel-source flows (JD Matching shows CV +
-   *    JD side-by-side and results stack underneath).
+   *    full width → parallel-source flows (JD Matching /match step).
+   *  - function form: called with the current step id so JD Matching can
+   *    use 'top' on /match and 'left' on Refined / Roadmap / Job Fit (which
+   *    only need the CV source).
    * Caller is responsible for laying out multiple cards inside the slot
-   *  (e.g. a 2-col grid for 'top').
+   * (e.g. a 2-col grid for 'top').
    */
-  sourceLayout?: 'left' | 'top';
+  sourceLayout?: 'left' | 'top' | ((stepId: string) => 'left' | 'top');
   isAdmin?: boolean;
   isAuthed?: boolean;
 }
@@ -101,6 +103,8 @@ export function WorkflowLayout({
   const [navDrawerOpen, setNavDrawerOpen] = useState(false);
   const steps = buildSteps(workflow, currentCvId, isAdmin);
   const activeNav: ActiveNav = workflow === 'cv-analyze' ? 'analyze' : 'jd-matching';
+  const resolvedSourceLayout =
+    typeof sourceLayout === 'function' ? sourceLayout(currentStepId) : sourceLayout;
 
   function handleSwitchCv(cvId: string) {
     const prefix = workflow === 'cv-analyze' ? '/cv-analyze' : '/jd-matching';
@@ -173,7 +177,7 @@ export function WorkflowLayout({
           />
         </div>
 
-        {sourceLayout === 'top' ? (
+        {resolvedSourceLayout === 'top' ? (
           // Top-row variant: sources span the full main width at the top,
           // step content (and match results, etc.) flows below. Used by JD
           // Matching so CV + JD viewers sit side-by-side and the result

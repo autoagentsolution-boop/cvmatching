@@ -60,16 +60,16 @@ export function RoleFitGauge({
       )}
 
       <CircularProgress
-        value={score}
+        value={Number.isFinite(score) ? score : 0}
         size={176}
         strokeWidth={10}
         progressColor={progressColor}
         label={
           <div className="flex flex-col items-center">
-            <span className="font-display text-display-sm font-semibold tabular-nums text-on-surface">
-              {Math.round(score)}
+            <span className="font-display text-display-sm font-bold tabular-nums leading-none text-on-surface">
+              {Number.isFinite(score) ? Math.round(score) : 0}
             </span>
-            <span className="mt-0.5 text-label-md font-semibold uppercase tracking-wider text-on-surface-variant">
+            <span className="mt-1 text-label-md font-semibold uppercase tracking-wider text-on-surface-variant">
               {tierLabel}
             </span>
           </div>

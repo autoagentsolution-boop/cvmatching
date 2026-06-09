@@ -111,6 +111,19 @@ export function JdImportPanel() {
         setError(message);
         return;
       }
+
+      // Reset URL-mode meta FIRST so jdSourceHtml/jdSourceTitle from a prior
+      // URL import don't leak into the persisted state. Without this, after
+      // PDF upload + reload, the blob URL is gone (correct — non-persisted)
+      // but jdSourceHtml survives in sessionStorage and the viewer flips
+      // back to reader-view mode unexpectedly.
+      const prevBlob = useAnalysis.getState().jdOriginalBlobUrl;
+      if (prevBlob) URL.revokeObjectURL(prevBlob);
+      setField('jdSourceHtml', '');
+      setField('jdSourceTitle', '');
+      setField('jdUrl', '');
+      setField('jdOriginalBlobUrl', null);
+
       setField('jdText', body.text);
       setField('jdMime', file.type || null);
       setFileName(file.name);
@@ -118,12 +131,7 @@ export function JdImportPanel() {
       // PDF preview via object URL. DOCX/TXT fall through to styled text
       // render (mammoth conversion deferred — text-only is readable enough).
       if (file.type === 'application/pdf') {
-        // Revoke previous blob to avoid leaks on repeat uploads.
-        const prev = useAnalysis.getState().jdOriginalBlobUrl;
-        if (prev) URL.revokeObjectURL(prev);
         setField('jdOriginalBlobUrl', URL.createObjectURL(file));
-      } else {
-        setField('jdOriginalBlobUrl', null);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Import failed.');

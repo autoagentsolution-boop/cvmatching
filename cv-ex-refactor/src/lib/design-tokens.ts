@@ -63,6 +63,24 @@ export const tokens = {
     errorContainer: '#ffdad6',
     onErrorContainer: '#93000a',
 
+    // Success (alias of secondary green, named for semantic clarity)
+    success: '#006e2f',
+    onSuccess: '#ffffff',
+    successContainer: '#b6f0c6',
+    onSuccessContainer: '#002109',
+
+    // Warning (amber)
+    warning: '#b45309',
+    onWarning: '#ffffff',
+    warningContainer: '#fde68a',
+    onWarningContainer: '#78350f',
+
+    // Caution (yellow — minor severity / advisory)
+    caution: '#a16207',
+    onCaution: '#ffffff',
+    cautionContainer: '#fef08a',
+    onCautionContainer: '#422006',
+
     // Background
     background: '#f7f9fb',
     onBackground: '#191c1e',
