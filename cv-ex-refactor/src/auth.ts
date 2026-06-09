@@ -46,22 +46,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return false;
       }
     },
-    async jwt({ token, user }) {
-      if (user) {
-        // user.id should be the Google `sub` (stable, account-unique). If it
-        // is missing we MUST NOT fall back to email — different OAuth flows
-        // can yield different shapes for the email, and persisting CVs to a
-        // userId that later changes silently orphans the rows (looks like
-        // "CVs disappeared after relogin"). Surface as an explicit failure
-        // so we never write to user_cvs with an unstable key.
-        if (!user.id) {
-          console.error('[auth] jwt callback received user without id', {
+    async jwt({ token, user, account }) {
+      // NextAuth v5 JWT strategy without a DB adapter generates a fresh
+      // random UUID for `user.id` on every OAuth round-trip — the Google
+      // `sub` is ignored. That orphaned every user_cvs row the moment the
+      // user logged out and back in. Always prefer the provider account id
+      // (Google `sub`), which is stable per OAuth identity for life.
+      if (user && account) {
+        const stableId = account.providerAccountId || user.id;
+        if (!stableId) {
+          console.error('[auth] jwt callback: no stable id from provider', {
+            provider: account.provider,
             email: user.email ?? null,
-            name: user.name ?? null,
           });
-          throw new Error('Authentication failed: provider did not return a stable user id.');
+          throw new Error('Authentication failed: provider returned no stable account id.');
         }
-        token.id = user.id;
+        token.id = stableId;
       }
       return token;
     },
