@@ -48,7 +48,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id ?? user.email ?? '';
+        // user.id should be the Google `sub` (stable, account-unique). If it
+        // is missing we MUST NOT fall back to email — different OAuth flows
+        // can yield different shapes for the email, and persisting CVs to a
+        // userId that later changes silently orphans the rows (looks like
+        // "CVs disappeared after relogin"). Surface as an explicit failure
+        // so we never write to user_cvs with an unstable key.
+        if (!user.id) {
+          console.error('[auth] jwt callback received user without id', {
+            email: user.email ?? null,
+            name: user.name ?? null,
+          });
+          throw new Error('Authentication failed: provider did not return a stable user id.');
+        }
+        token.id = user.id;
       }
       return token;
     },
