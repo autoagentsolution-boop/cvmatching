@@ -61,18 +61,17 @@ export interface WorkflowLayoutProps {
    *  when sourceLayout='left'. */
   optionalRightRail?: ReactNode;
   /**
-   * Where the source panel sits relative to step content.
-   *  - 'left' (default): vertical aside left of children → single source
-   *    document (CV Analyze).
-   *  - 'top': horizontal row across the top of main, children below taking
-   *    full width → parallel-source flows (JD Matching /match step).
-   *  - function form: called with the current step id so JD Matching can
-   *    use 'top' on /match and 'left' on Refined / Roadmap / Job Fit (which
-   *    only need the CV source).
-   * Caller is responsible for laying out multiple cards inside the slot
-   * (e.g. a 2-col grid for 'top').
+   * Optional override for source-panel placement. When omitted, the layout
+   * derives placement from (workflow, currentStepId):
+   *  - CV Analyze → always 'left' (single CV source, vertical aside).
+   *  - JD Matching → 'top' on /match (CV + JD side-by-side at top of main),
+   *                  'left' on the downstream steps (CV-only, like CV
+   *                  Analyze pattern).
+   * Pass a literal here only to override that default. Functions are not
+   * accepted because props must be serializable across the server→client
+   * boundary; the auto-derive lives in this client component instead.
    */
-  sourceLayout?: 'left' | 'top' | ((stepId: string) => 'left' | 'top');
+  sourceLayout?: 'left' | 'top';
   isAdmin?: boolean;
   isAuthed?: boolean;
 }
@@ -103,8 +102,9 @@ export function WorkflowLayout({
   const [navDrawerOpen, setNavDrawerOpen] = useState(false);
   const steps = buildSteps(workflow, currentCvId, isAdmin);
   const activeNav: ActiveNav = workflow === 'cv-analyze' ? 'analyze' : 'jd-matching';
-  const resolvedSourceLayout =
-    typeof sourceLayout === 'function' ? sourceLayout(currentStepId) : sourceLayout;
+  const resolvedSourceLayout: 'left' | 'top' =
+    sourceLayout ??
+    (workflow === 'jd-matching' && currentStepId === 'match' ? 'top' : 'left');
 
   function handleSwitchCv(cvId: string) {
     const prefix = workflow === 'cv-analyze' ? '/cv-analyze' : '/jd-matching';

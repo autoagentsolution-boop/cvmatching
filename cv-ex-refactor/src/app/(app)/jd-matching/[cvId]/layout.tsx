@@ -44,7 +44,6 @@ export default async function JdMatchingLayout({
           cvOriginalMime={cv.originalMime}
         />
       }
-      sourceLayout={(step) => (step === 'match' ? 'top' : 'left')}
       isAdmin={isAdmin}
       isAuthed
     >
