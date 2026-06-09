@@ -10,7 +10,6 @@ export type ActiveNav =
   | 'history'
   | 'optimizations'
   | 'career-path'
-  | 'job-fit'
   | 'admin-usage'
   | 'admin-pool'
   | 'admin-maintenance';
@@ -38,7 +37,6 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'admin-usage', label: 'Usage', icon: 'analytics', href: '/admin/usage', adminOnly: true },
   { key: 'admin-pool', label: 'Job Pool', icon: 'inventory_2', href: '/admin/pool', adminOnly: true },
   { key: 'admin-maintenance', label: 'Site Controls', icon: 'engineering', href: '/admin/maintenance', adminOnly: true },
-  { key: 'job-fit', label: 'Job Fit & Study (test)', icon: 'work', href: '/job-fit', adminOnly: true },
 ];
 
 function NavLink({

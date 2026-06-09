@@ -8,6 +8,7 @@ import { readVisitStats, readDailyVisits } from '@/lib/analytics/visit-counter';
 import { readBucketStatus, isAlertWebhookConfigured, WARN_LIMIT_MICRO_USD, KILL_LIMIT_MICRO_USD } from '@/lib/cost/guard';
 import { COST_BUCKETS } from '@/lib/cost/buckets';
 import { readActivationDay, ACTIVATION_ACTIONS, type ActivationAction } from '@/lib/usage/read-activation';
+import { PageHeader } from '@/components/ui';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -109,40 +110,39 @@ export default async function AdminUsagePage({
   const exportUrl = `/api/admin/export-usage?month=${month}`;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8">
-      <header>
-        <h1 className="font-display text-display-sm font-bold text-primary">Usage</h1>
-        <p className="text-label-md text-on-surface-variant">
-          Month: <strong>{month}</strong> · Daily window: <strong>{days}</strong> days · Active users:{' '}
-          <strong>{totalUsers}</strong>
-        </p>
-        <form className="mt-3 flex flex-wrap items-center gap-2 text-label-sm">
-          <input
-            name="month"
-            defaultValue={month}
-            placeholder="YYYY-MM"
-            className="rounded-lg border border-outline-variant bg-surface-container-low px-3 py-1.5"
-          />
-          <input
-            name="days"
-            defaultValue={days}
-            placeholder="30"
-            className="w-20 rounded-lg border border-outline-variant bg-surface-container-low px-3 py-1.5"
-          />
-          <button
-            type="submit"
-            className="rounded-lg bg-primary px-3 py-1.5 text-on-primary font-medium"
-          >
-            Reload
-          </button>
-          <a
-            href={exportUrl}
-            className="rounded-lg border border-outline-variant px-3 py-1.5 text-on-surface hover:bg-surface-container-high"
-          >
-            Export CSV
-          </a>
-        </form>
-      </header>
+    <div className="space-y-8">
+      <PageHeader
+        title="Usage"
+        subtitle={`Month: ${month} · Daily window: ${days} days · Active users: ${totalUsers}`}
+        action={
+          <form className="flex flex-wrap items-center gap-2 text-label-sm">
+            <input
+              name="month"
+              defaultValue={month}
+              placeholder="YYYY-MM"
+              className="rounded-lg border border-outline-variant bg-surface-container-low px-3 py-1.5"
+            />
+            <input
+              name="days"
+              defaultValue={days}
+              placeholder="30"
+              className="w-20 rounded-lg border border-outline-variant bg-surface-container-low px-3 py-1.5"
+            />
+            <button
+              type="submit"
+              className="rounded-lg bg-primary px-3 py-1.5 text-on-primary font-medium"
+            >
+              Reload
+            </button>
+            <a
+              href={exportUrl}
+              className="rounded-lg border border-outline-variant px-3 py-1.5 text-on-surface hover:bg-surface-container-high"
+            >
+              Export CSV
+            </a>
+          </form>
+        }
+      />
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat label="Total calls (month)" value={fmt(totalCalls)} />

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { kv, kvAvailable } from '@/lib/quota/kv-client';
 import { MAINTENANCE_KEY } from '@/lib/maintenance/maintenance-mode';
 import { LOGIN_FLAG_KEY } from '@/lib/maintenance/login-flag';
+import { PageHeader } from '@/components/ui';
 import { MaintenanceToggle } from './maintenance-toggle';
 import { LoginFlagToggle } from './login-flag-toggle';
 
@@ -32,13 +33,10 @@ export default async function AdminMaintenancePage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <header>
-        <h1 className="font-display text-display-sm font-bold text-primary">Site Controls</h1>
-        <p className="text-label-md text-on-surface-variant">
-          Bật/tắt maintenance toàn site và public login flow. Cả hai đều có in-process cache 5s
-          — flip cần tối đa 5s để propagate tới tất cả Vercel instances.
-        </p>
-      </header>
+      <PageHeader
+        title="Site Controls"
+        subtitle="Bật/tắt maintenance toàn site và public login flow. Cả hai đều có in-process cache 5s — flip cần tối đa 5s để propagate tới tất cả Vercel instances."
+      />
 
       <section className="space-y-2">
         <h2 className="font-display text-headline-sm font-bold text-on-surface">Maintenance</h2>

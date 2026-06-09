@@ -2,10 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { getSession } from '@/lib/get-session';
-import { getUserCv, listUserCvs } from '@/lib/cvs/repo';
-import { isAdminUser } from '@/lib/usage/admin-auth';
-import { WorkflowLayout } from '@/components/layouts/workflow-layout';
-import { SourceDocumentCard } from '@/components/ui/source-document-card';
+import { loadUserCv } from '@/lib/cvs/load-user-cv';
 import { CvAnalyzeContent } from '@/features/cv-analyze/cv-analyze-content';
 import { RefinedCvPage } from '@/features/refined-cv/refined-cv-page';
 import { CareerPathPage } from '@/features/career-path/career-path-page';
@@ -40,44 +37,18 @@ export default async function CvAnalyzeStepPage({
 }) {
   const { cvId, step } = await params;
 
-  // Validate step param
   if (!isValidStep(step)) notFound();
 
-  // Auth gate
+  // Auth + ownership are re-checked here even though the parent layout
+  // already validated, because page.tsx runs in its own RSC context and
+  // we still need cv.content for the 'score' step. loadUserCv() is wrapped
+  // in React cache() so this is a dedup-hit, not a second DB query.
   const session = await getSession();
   if (!session?.user?.id) redirect('/sign-in');
-
-  // Ownership check — returns null on missing OR wrong user (no info leak)
-  const cv = await getUserCv(session.user.id, cvId);
+  const cv = await loadUserCv(session.user.id, cvId);
   if (!cv) notFound();
 
-  // Fetch all CVs for the picker
-  const cvs = await listUserCvs(session.user.id);
-  const isAdmin = isAdminUser(session.user);
-
-  const sourceDocuments = (
-    <SourceDocumentCard
-      content={cv.content}
-      kind="cv"
-      className="h-full min-h-[400px]"
-      originalUrl={`/api/cvs/${cvId}/original`}
-      {...(cv.originalMime ? { originalMime: cv.originalMime } : {})}
-    />
-  );
-
-  return (
-    <WorkflowLayout
-      workflow="cv-analyze"
-      currentCvId={cvId}
-      currentStepId={step}
-      cvs={cvs}
-      sourceDocuments={sourceDocuments}
-      isAdmin={isAdmin}
-      isAuthed
-    >
-      <StepContent step={step} cvContent={cv.content} cvId={cvId} />
-    </WorkflowLayout>
-  );
+  return <StepContent step={step} cvContent={cv.content} cvId={cvId} />;
 }
 
 function StepContent({ step, cvContent, cvId }: { step: CvAnalyzeStep; cvContent: string; cvId: string }) {

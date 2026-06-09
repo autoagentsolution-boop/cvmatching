@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { ChevronStepper } from '@/components/ui/chevron-stepper';
@@ -27,6 +27,19 @@ const JD_MATCHING_STEPS = [
   { id: 'jobfit', label: 'Job Fit', href: '' },
 ];
 
+/**
+ * Derive the active step id from the URL. WorkflowLayout lives in the
+ * `/[cvId]/layout.tsx` segment which does not receive the `[step]` param,
+ * so we read it from pathname instead. Falls back to the workflow's first
+ * step id if no segment matches (defensive — should never hit in normal flow).
+ */
+function deriveStepFromPath(pathname: string, workflow: WorkflowType): string {
+  const prefix = workflow === 'cv-analyze' ? '/cv-analyze/' : '/jd-matching/';
+  const rest = pathname.startsWith(prefix) ? pathname.slice(prefix.length) : '';
+  const step = rest.split('/')[1] ?? '';
+  return step || (workflow === 'cv-analyze' ? 'score' : 'match');
+}
+
 function buildSteps(workflow: WorkflowType, cvId: string, isAdmin: boolean) {
   const base = workflow === 'cv-analyze' ? CV_ANALYZE_STEPS : JD_MATCHING_STEPS;
   const prefix = workflow === 'cv-analyze' ? '/cv-analyze' : '/jd-matching';
@@ -43,7 +56,6 @@ function buildSteps(workflow: WorkflowType, cvId: string, isAdmin: boolean) {
 export interface WorkflowLayoutProps {
   workflow: WorkflowType;
   currentCvId: string;
-  currentStepId: string;
   cvs: UserCvRow[];
   /** Left column: Source Document panel (Phase 3 provides real component). */
   sourceDocuments: ReactNode;
@@ -68,7 +80,6 @@ export interface WorkflowLayoutProps {
 export function WorkflowLayout({
   workflow,
   currentCvId,
-  currentStepId,
   cvs,
   sourceDocuments,
   children,
@@ -77,6 +88,8 @@ export function WorkflowLayout({
   isAuthed = false,
 }: WorkflowLayoutProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const currentStepId = deriveStepFromPath(pathname, workflow);
   const [showImportDrawer, setShowImportDrawer] = useState(false);
   const steps = buildSteps(workflow, currentCvId, isAdmin);
   const activeNav: WorkflowNavKey = workflow === 'cv-analyze' ? 'cv-analyze' : 'jd-matching';

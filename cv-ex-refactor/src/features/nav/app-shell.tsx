@@ -35,7 +35,6 @@ function deriveActiveNav(pathname: string): ActiveNav {
   if (pathname.startsWith('/optimizations')) return 'optimizations';
   if (pathname.startsWith('/career-path')) return 'career-path';
   if (pathname.startsWith('/refined-cv')) return 'refined-cv';
-  if (pathname.startsWith('/job-fit')) return 'job-fit';
   if (pathname.startsWith('/admin/maintenance')) return 'admin-maintenance';
   if (pathname.startsWith('/admin/pool')) return 'admin-pool';
   if (pathname.startsWith('/admin/usage')) return 'admin-usage';

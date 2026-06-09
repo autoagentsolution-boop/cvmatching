@@ -4,6 +4,7 @@ import { getDb } from '@/db';
 import { jobs } from '@/db/schema';
 import { kv, kvAvailable } from '@/lib/quota/kv-client';
 import { env } from '@/lib/env';
+import { PageHeader } from '@/components/ui';
 import { PoolTriggerButton } from './pool-trigger-button';
 
 export const dynamic = 'force-dynamic';
@@ -163,13 +164,11 @@ export default async function AdminPoolPage() {
   const ghActionsUrl = `https://github.com/${env.GITHUB_REPO ?? 'autoagentsolution-boop/cvmatching'}/actions/workflows/refresh-jobs.yml`;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <header className="space-y-1">
-        <h1 className="font-display text-display-sm font-bold text-primary">Job pool</h1>
-        <p className="text-label-md text-on-surface-variant">
-          Trạng thái pool jobs hiện tại + nút trigger refresh qua GitHub Actions.
-        </p>
-      </header>
+    <div className="space-y-6">
+      <PageHeader
+        title="Job pool"
+        subtitle="Trạng thái pool jobs hiện tại + nút trigger refresh qua GitHub Actions."
+      />
 
       {/* Top summary cards */}
       <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
