@@ -66,16 +66,21 @@ const SCHEMA = `{
   "suggestedSummaryLine": "1-2 sentence truthful CV summary tailored to the role"
 }`;
 
+// Universal dimension descriptions — work for any role family (tech,
+// sales, marketing, creative, operations, etc). Internal keys stay
+// (coreSkill, tool, production…) for cache/schema compat; what the LLM
+// scores against — and what users see in the UI — is the universal
+// reading below.
 const DIMENSION_DOCS_V3 = [
-  ['coreSkill', 'Core competencies the role demands. Does the CV demonstrate these for the role baseline?'],
-  ['tool', 'Concrete tools / platforms / frameworks expected for the role. Are they evidenced?'],
-  ['scope', 'Scope owned (IC vs lead, team vs cross-org). Does the CV match the role\'s level?'],
-  ['production', 'Real production environments — live systems, real users. Evidenced for the role?'],
-  ['domain', 'Industry / domain context relevant to the role. Demonstrates depth or generic?'],
-  ['evidence', 'Concrete proof: project, role, dates, ownership — not buzzwords. Strong for the role?'],
-  ['seniority', 'Level, years, ownership, decision-making. Does CV demonstrate the claimed seniority?'],
-  ['impact', 'Magnitude of outcomes: metrics, percentages, scale, business impact. Strong for the role?'],
-  ['communication', 'Stakeholder collaboration, team/client communication. Evidenced for the role?'],
+  ['coreSkill', 'Core competencies the role demands — the actual craft (system design for tech, pipeline ownership for sales, campaign strategy for marketing, etc.). Does the CV evidence these at the role baseline?'],
+  ['tool', 'Tools, platforms, methodologies expected for the role (CRM for sales, frameworks for tech, design suites for designers, BI tools for analysts…). Are they named with real usage context?'],
+  ['scope', 'Ownership scope — IC vs lead, single team vs cross-org, deal size for sales, territory size, project budget. Does the CV match the role\'s level?'],
+  ['production', 'Real-world delivery context — production systems for tech, signed deals / shipped campaigns / launched products for non-tech. Evidenced or hypothetical?'],
+  ['domain', 'Industry / vertical context relevant to the role (fintech, ad-tech, healthcare, education, government…). Demonstrates depth or generic?'],
+  ['evidence', 'Concrete proof: project name, role, dates, ownership, deliverable — not buzzwords. Strong for the role?'],
+  ['seniority', 'Level, years of relevant experience, decision-making authority, headcount/budget owned. Does the CV demonstrate the claimed seniority?'],
+  ['impact', 'Magnitude of outcomes — quantified where possible (revenue, %, headcount affected, NPS shift, latency reduced, eng-time saved). Strong for the role?'],
+  ['communication', 'Stakeholder collaboration, cross-functional partnership, client/customer-facing comms, written/spoken proof. Evidenced for the role?'],
 ].map(([k, v]) => `- ${k}: ${v}`).join('\n');
 
 export function buildAnalyzeV3Prompts(inputs: AnalyzeV3Inputs): BuiltPromptsV3 {

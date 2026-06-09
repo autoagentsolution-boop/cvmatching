@@ -30,16 +30,20 @@ const SCHEMA = `{
   "suggestedSummaryLine": "1-2 sentence truthful CV summary tailored to JD"
 }`;
 
+// Universal dimension descriptions — same set as prompt-analyze-v3 so a CV
+// scored under CV-solo and CV-vs-JD reads the same labels. See v3 file for
+// the full rationale on keeping internal keys (coreSkill/tool/production)
+// while broadening the prompt + UI text to non-tech roles.
 const DIMENSION_DOCS = [
-  ['coreSkill', 'Core competencies the role demands (e.g. distributed-system design, data modeling).'],
-  ['tool', 'Concrete tools, platforms, frameworks (e.g. Spark, Airflow, K8s).'],
-  ['scope', 'Same kind of scope owned (single team vs cross-org, IC vs lead).'],
-  ['production', 'Real production environments — live systems, real users, business-critical.'],
-  ['domain', 'Industry/domain context relevant to role (fintech, ad-tech, healthcare…).'],
-  ['evidence', 'Concrete proof in CV: project, role, dates, ownership — not buzzwords.'],
-  ['seniority', 'Level, years, ownership level, decision-making authority.'],
-  ['impact', 'Magnitude of outcomes: metrics, percentage gains, scale, business impact.'],
-  ['communication', 'Stakeholder collaboration, team/client communication, business acumen.'],
+  ['coreSkill', 'Core competencies the role demands — the actual craft (system design for tech, pipeline ownership for sales, campaign strategy for marketing). Does the CV evidence these at the role baseline?'],
+  ['tool', 'Tools, platforms, methodologies expected for the role (CRM for sales, frameworks for tech, design suites for designers, BI tools for analysts). Are they named with real usage context?'],
+  ['scope', 'Ownership scope — IC vs lead, single team vs cross-org, deal size for sales, territory size, project budget. Does the CV match the role\'s level?'],
+  ['production', 'Real-world delivery context — production systems for tech, signed deals / shipped campaigns / launched products for non-tech.'],
+  ['domain', 'Industry / vertical context relevant to the role (fintech, ad-tech, healthcare, education, government).'],
+  ['evidence', 'Concrete proof: project name, role, dates, ownership, deliverable — not buzzwords.'],
+  ['seniority', 'Level, years of relevant experience, decision-making authority, headcount/budget owned.'],
+  ['impact', 'Magnitude of outcomes — quantified where possible (revenue, %, headcount affected, NPS shift, latency reduced).'],
+  ['communication', 'Stakeholder collaboration, cross-functional partnership, client-facing comms, written/spoken proof.'],
 ].map(([k, v]) => `- ${k}: ${v}`).join('\n');
 
 export interface BuiltPrompts {

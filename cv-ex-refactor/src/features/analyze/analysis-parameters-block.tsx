@@ -21,51 +21,54 @@ interface SliderSpec {
   description: string;
 }
 
+// Universal slider labels — same set as cv-analyze-content NINE_DIM_LABELS
+// so any role family (tech, sales, marketing, creative, ops) reads
+// matching terms. Vietnamese descriptions also broadened.
 const SLIDERS: SliderSpec[] = [
   {
     key: 'coreSkill',
-    label: 'Core Skill',
-    description: 'Năng lực lõi cần cho vai trò (system design, data modeling…).',
+    label: 'Core Competency',
+    description: 'Năng lực lõi mà vai trò đòi hỏi — kỹ năng craft thực sự (system design / pipeline ownership / campaign strategy tuỳ ngành).',
   },
   {
     key: 'tool',
-    label: 'Tool / Platform',
-    description: 'Công cụ, framework, nền tảng quen thuộc cho vai trò.',
+    label: 'Tools & Systems',
+    description: 'Công cụ, nền tảng, phương pháp quen thuộc với vai trò (CRM cho sales, framework cho tech, BI/design suite tuỳ ngành).',
   },
   {
     key: 'scope',
-    label: 'Scope',
-    description: 'Quy mô công việc đã sở hữu — team, IC/lead, greenfield/maintenance.',
+    label: 'Ownership Scope',
+    description: 'Quy mô đã sở hữu — IC vs lead, team vs cross-org, deal size, territory, budget.',
   },
   {
     key: 'production',
-    label: 'Production',
-    description: 'Kinh nghiệm hệ thống thật, người dùng thật, môi trường business-critical.',
+    label: 'Execution & Delivery',
+    description: 'Bối cảnh giao việc thực — production system cho tech, deal đã đóng / campaign đã chạy / sản phẩm đã ship cho non-tech.',
   },
   {
     key: 'domain',
-    label: 'Domain',
-    description: 'Ngữ cảnh ngành cho vai trò — fintech, ad-tech, healthcare…',
+    label: 'Industry / Domain',
+    description: 'Ngữ cảnh ngành/vertical (fintech, ad-tech, healthcare, education, government…).',
   },
   {
     key: 'evidence',
-    label: 'Evidence',
-    description: 'Bằng chứng cụ thể: project, role, ngày, ownership — không buzzword.',
+    label: 'Evidence of Work',
+    description: 'Bằng chứng cụ thể: project name, role, ngày, ownership, deliverable — không buzzword.',
   },
   {
     key: 'seniority',
-    label: 'Seniority',
-    description: 'Level, năm kinh nghiệm, quyền ra quyết định, độ sâu sở hữu.',
+    label: 'Seniority & Authority',
+    description: 'Level, năm kinh nghiệm, quyền ra quyết định, headcount/budget sở hữu.',
   },
   {
     key: 'impact',
-    label: 'Impact',
-    description: 'Độ lớn kết quả — metric, quy mô, business outcome.',
+    label: 'Impact & Outcomes',
+    description: 'Độ lớn kết quả — quantified khi được (revenue, %, headcount, NPS, latency, eng-time saved).',
   },
   {
     key: 'communication',
     label: 'Communication',
-    description: 'Hợp tác stakeholder, business acumen, soft skills.',
+    description: 'Hợp tác stakeholder, cross-functional partnership, client-facing comms.',
   },
 ];
 

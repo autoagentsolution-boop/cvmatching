@@ -24,15 +24,18 @@ const NINE_DIM_KEYS: (keyof Weights)[] = [
   'coreSkill', 'tool', 'scope', 'production', 'domain', 'evidence', 'seniority', 'impact', 'communication',
 ];
 
+// Universal dim labels — internal keys stay (coreSkill/tool/production) for
+// schema compat, display text is role-agnostic so a Sales / Marketing CV
+// doesn't see "Production" or "Tool" as a tech-only signal.
 const NINE_DIM_LABELS: Record<string, string> = {
-  coreSkill: 'Core Skills',
-  tool: 'Tools',
-  scope: 'Scope',
-  production: 'Production',
-  domain: 'Domain',
-  evidence: 'Evidence',
-  seniority: 'Seniority',
-  impact: 'Impact',
+  coreSkill: 'Core Competency',
+  tool: 'Tools & Systems',
+  scope: 'Ownership Scope',
+  production: 'Execution & Delivery',
+  domain: 'Industry / Domain',
+  evidence: 'Evidence of Work',
+  seniority: 'Seniority & Authority',
+  impact: 'Impact & Outcomes',
   communication: 'Communication',
 };
 
