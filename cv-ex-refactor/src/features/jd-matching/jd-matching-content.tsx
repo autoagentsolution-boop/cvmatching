@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { MdArrowUpward } from 'react-icons/md';
 import {
   Button,
   ErrorState,
@@ -10,6 +11,7 @@ import {
   CriticalRefactorList,
   type CriticalRefactorItem,
 } from '@/components/ui';
+import { scrollToSource } from '@/lib/scroll-to-source';
 import { useAnalysis } from '@/features/analyze/analysis-store';
 import { useSettings } from '@/features/analyze/settings-store';
 import { callAnalyze } from '@/features/analyze/api-client';
@@ -196,12 +198,16 @@ function JdMatchingResults({
   const refactorItems: CriticalRefactorItem[] = useMemo(() => {
     const items: CriticalRefactorItem[] = [];
     let idx = 0;
+    // Each finding routes back to the JD card — that's where the requirement
+    // context lives; user wants to re-read the source to confirm the gap.
     for (const gap of result.gaps) {
       items.push({
         id: `gap-${idx++}`,
         title: gap.title,
         description: gap.recommendation || gap.fixAction || '',
         severity: gap.severity,
+        ctaLabel: 'Show in JD',
+        onCta: () => scrollToSource('jd'),
       });
     }
     for (const rec of result.recommendations) {
@@ -211,6 +217,8 @@ function JdMatchingResults({
         title: rec.title,
         description: rec.action,
         severity: sev,
+        ctaLabel: 'Show in JD',
+        onCta: () => scrollToSource('jd'),
       });
     }
     return items;
@@ -283,7 +291,7 @@ function JdMatchingResults({
               return (
                 <li
                   key={i}
-                  className="flex items-start gap-3 rounded-xl bg-surface-container-low p-3"
+                  className="group flex items-start gap-3 rounded-xl bg-surface-container-low p-3"
                 >
                   <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${tone.dot}`} aria-label={tone.label} />
                   <div className="flex-1 min-w-0">
@@ -294,6 +302,15 @@ function JdMatchingResults({
                       </p>
                     )}
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => scrollToSource('jd')}
+                    aria-label={`Find "${c.requirement}" in source JD`}
+                    title="Find in source JD"
+                    className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-on-surface-variant opacity-0 transition-all hover:bg-surface-container-high hover:text-on-surface focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 group-hover:opacity-100"
+                  >
+                    <MdArrowUpward size={16} aria-hidden="true" />
+                  </button>
                 </li>
               );
             })}

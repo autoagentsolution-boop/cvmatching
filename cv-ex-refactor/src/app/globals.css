@@ -120,6 +120,25 @@
   --shadow-ghost-border: 0 0 0 1px #c6c6cd;
 }
 
+/* Transient ring + outline flash applied via scrollToSource() when a user
+ * navigates from a finding row back up to the matching Source CV/JD card.
+ * Pure animation — no React state required. */
+@keyframes source-flash {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgb(var(--source-flash-rgb, 57 128 244) / 0);
+  }
+  25% {
+    box-shadow: 0 0 0 6px rgb(var(--source-flash-rgb, 57 128 244) / 0.45);
+  }
+  60% {
+    box-shadow: 0 0 0 4px rgb(var(--source-flash-rgb, 57 128 244) / 0.25);
+  }
+}
+.source-flash {
+  animation: source-flash 1.6s ease-out;
+  border-radius: 0.75rem;
+}
+
 /* Refined CV "Save as PDF" via window.print(). Hide app chrome + show only
  * the rendered CV page sheet so the print canvas lines up with letter / A4. */
 @media print {

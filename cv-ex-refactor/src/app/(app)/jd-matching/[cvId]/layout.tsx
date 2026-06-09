@@ -30,16 +30,21 @@ export default async function JdMatchingLayout({
   const cvs = await loadUserCvList(session.user.id);
   const isAdmin = isAdminUser(session.user);
 
+  // id anchors let scrollToSource() jump here from a finding row.
   const sourceDocuments = (
     <div className="grid gap-3 lg:grid-cols-2">
-      <SourceDocumentCard
-        content={cv.content}
-        kind="cv"
-        defaultZoom={0.75}
-        originalUrl={`/api/cvs/${cvId}/original`}
-        {...(cv.originalMime ? { originalMime: cv.originalMime } : {})}
-      />
-      <JdSourceCard />
+      <div id="source-cv-card" className="scroll-mt-20">
+        <SourceDocumentCard
+          content={cv.content}
+          kind="cv"
+          defaultZoom={0.75}
+          originalUrl={`/api/cvs/${cvId}/original`}
+          {...(cv.originalMime ? { originalMime: cv.originalMime } : {})}
+        />
+      </div>
+      <div id="source-jd-card" className="scroll-mt-20">
+        <JdSourceCard />
+      </div>
     </div>
   );
 
