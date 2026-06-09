@@ -91,7 +91,10 @@ export function WorkflowLayout({
   sourceDocuments,
   children,
   optionalRightRail,
-  sourceLayout = 'left',
+  // NOTE: deliberately no default — undefined cascades into the
+  // (workflow, currentStepId) auto-derive below. A default of 'left' here
+  // would short-circuit the derive and break /match parallel layout.
+  sourceLayout,
   isAdmin = false,
   isAuthed = false,
 }: WorkflowLayoutProps) {
