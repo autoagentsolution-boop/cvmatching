@@ -44,10 +44,20 @@ export default async function JdMatchingStepPage({
   const cv = await loadUserCv(session.user.id, cvId);
   if (!cv) notFound();
 
-  return <StepContent step={step} cvContent={cv.content} cvId={cvId} />;
+  return <StepContent step={step} cvContent={cv.content} cvId={cvId} cvName={cv.name} />;
 }
 
-function StepContent({ step, cvContent, cvId }: { step: JdMatchingStep; cvContent: string; cvId: string }) {
+function StepContent({
+  step,
+  cvContent,
+  cvId,
+  cvName,
+}: {
+  step: JdMatchingStep;
+  cvContent: string;
+  cvId: string;
+  cvName: string;
+}) {
   switch (step) {
     case 'match':
       return <JdMatchingContent cvContent={cvContent} cvId={cvId} />;
@@ -60,6 +70,6 @@ function StepContent({ step, cvContent, cvId }: { step: JdMatchingStep; cvConten
         </Suspense>
       );
     case 'jobfit':
-      return <JobFitListPage mode="jd-context" />;
+      return <JobFitListPage mode="jd-context" cvText={cvContent} cvName={cvName} />;
   }
 }

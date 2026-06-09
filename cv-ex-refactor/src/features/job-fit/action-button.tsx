@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { MdArrowForward } from 'react-icons/md';
+import { MdArrowForward, MdOpenInNew } from 'react-icons/md';
 import type { TierLetter } from '@/lib/jobs/fit-tier';
 import type { JobMatchOut } from '@/lib/llm/normalize-job-recommend';
 
@@ -11,6 +11,8 @@ interface ActionDef {
   label: string;
   href: (job: JobMatchOut) => string;
   intent: 'primary' | 'secondary';
+  /** When true, treat href as external — open in new tab + add MdOpenInNew icon. */
+  external?: boolean;
 }
 
 function refinedHref(jobId: string, mode: CvMode): string {
@@ -28,11 +30,29 @@ function careerHref(job: JobMatchOut): string {
   return `/career-path?${params.toString()}`;
 }
 
+// S/A tiers: "Apply ngay" now opens the EXTERNAL job posting in a new tab —
+// previously it sent users to /refined-cv which surprised them (the label
+// implies applying to the job, not refining CV first). The refine flow is
+// available as the secondary action.
+// B tier "Quick Fix" / C tier "Improve CV" relabeled: "Refine cho job này" /
+// "Polish CV (stretch)" so the destination + intent are obvious before click.
+function applyHref(job: JobMatchOut): string {
+  return job.sourceUrl ?? refinedHref(job.jobId, 'apply');
+}
+
 const ACTION_PER_TIER: Record<TierLetter, ActionDef> = {
-  S: { label: 'Apply ngay', intent: 'primary', href: (j) => refinedHref(j.jobId, 'apply') },
-  A: { label: 'Apply ngay', intent: 'primary', href: (j) => refinedHref(j.jobId, 'apply') },
-  B: { label: 'Quick Fix', intent: 'primary', href: (j) => refinedHref(j.jobId, 'fill-gaps') },
-  C: { label: 'Improve CV', intent: 'secondary', href: (j) => refinedHref(j.jobId, 'stretch') },
+  S: { label: 'Apply ngay', intent: 'primary', href: applyHref, external: true },
+  A: { label: 'Apply ngay', intent: 'primary', href: applyHref, external: true },
+  B: {
+    label: 'Refine cho job này',
+    intent: 'primary',
+    href: (j) => refinedHref(j.jobId, 'fill-gaps'),
+  },
+  C: {
+    label: 'Polish CV (stretch)',
+    intent: 'secondary',
+    href: (j) => refinedHref(j.jobId, 'stretch'),
+  },
   D: { label: 'Xem Roadmap', intent: 'secondary', href: careerHref },
   E: { label: 'Xem Roadmap', intent: 'secondary', href: careerHref },
 };
@@ -43,11 +63,12 @@ interface ActionButtonProps {
   size?: 'sm' | 'md';
 }
 
-// Per-tier primary CTA: S/A/B → /refined-cv with mode; C → /refined-cv stretch; D/E → /career-path roadmap.
-// Intent: B+C+D+E are diagnostic/exploratory → secondary visual weight; S/A → primary.
 export function ActionButton({ tier, job, size = 'md' }: ActionButtonProps) {
   const action = ACTION_PER_TIER[tier];
   const isPrimary = action.intent === 'primary';
+  const href = action.href(job);
+  // External applies only when both flagged AND we actually got a non-refined href.
+  const isExternal = action.external === true && !href.startsWith('/');
 
   const base =
     'inline-flex items-center gap-1.5 rounded-lg font-bold transition-opacity hover:opacity-90 ' +
@@ -56,11 +77,27 @@ export function ActionButton({ tier, job, size = 'md' }: ActionButtonProps) {
     ? 'bg-primary text-on-primary shadow-soft'
     : 'border border-outline-variant text-primary hover:bg-surface-container-low';
   const sizing = size === 'sm' ? 'px-3 py-1.5 text-label-sm' : 'px-4 py-2 text-label-md';
+  const cls = [base, variant, sizing].join(' ');
+
+  if (isExternal) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cls}
+        aria-label={`${action.label} cho job ${job.title} tại ${job.company} (mở tab mới)`}
+      >
+        {action.label}
+        <MdOpenInNew size={16} aria-hidden="true" />
+      </a>
+    );
+  }
 
   return (
     <Link
-      href={action.href(job)}
-      className={[base, variant, sizing].join(' ')}
+      href={href}
+      className={cls}
       aria-label={`${action.label} cho job ${job.title} tại ${job.company}`}
     >
       {action.label}

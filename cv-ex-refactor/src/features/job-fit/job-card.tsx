@@ -1,8 +1,8 @@
 'use client';
 
-import Link from 'next/link';
-import { MdLocationOn, MdOpenInNew } from 'react-icons/md';
+import { MdLocationOn, MdExpandMore, MdExpandLess } from 'react-icons/md';
 import { Badge, Card, TierBadge } from '@/components/ui';
+import { cn } from '@/lib/cn';
 import { TopicChip } from './topic-chip';
 import { ActionButton } from './action-button';
 import type { JobMatchOut } from '@/lib/llm/normalize-job-recommend';
@@ -16,14 +16,21 @@ function scoreVariant(score: number): 'success' | 'warning' | 'error' | 'neutral
 
 interface JobCardProps {
   match: JobMatchOut;
+  /** Inline-expand state — when true, the Detail button reads "Đóng chi tiết". */
+  isExpanded?: boolean;
+  /** Called when user clicks the Detail button. Falls back to legacy
+   *  /job-fit/[id] route when not provided. */
+  onToggleDetail?: () => void;
 }
 
 /**
  * Card for /job-fit list view.
  * Shows title, company, location, overallScore, top 3 matchReasons,
- * top 3 studyTopics (read-only chips), and "Xem chi tiết →" link.
+ * top 3 studyTopics (read-only chips), and a Detail toggle that expands
+ * the full match panel inline below (instead of navigating to a separate
+ * /job-fit/[id] page). Legacy route still works as a fallback.
  */
-export function JobCard({ match }: JobCardProps) {
+export function JobCard({ match, isExpanded = false, onToggleDetail }: JobCardProps) {
   const topReasons = match.matchReasons.slice(0, 3);
   const topTopics = match.studyTopics.slice(0, 3);
 
@@ -77,20 +84,41 @@ export function JobCard({ match }: JobCardProps) {
         </div>
       )}
 
-      {/* Footer — per-tier primary action + chi tiết secondary */}
+      {/* Footer — Detail toggle (inline expand) + per-tier primary action */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-outline-variant/30 pt-3">
-        <Link
-          href={`/job-fit/${match.jobId}`}
-          className={[
-            'inline-flex items-center gap-1.5 rounded text-label-md font-bold text-primary',
-            'transition-opacity hover:opacity-75',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-tertiary-container/40',
-          ].join(' ')}
-          aria-label={`Xem chi tiết job ${match.title} tại ${match.company}`}
-        >
-          Chi tiết
-          <MdOpenInNew size={16} aria-hidden="true" />
-        </Link>
+        {onToggleDetail ? (
+          <button
+            type="button"
+            onClick={onToggleDetail}
+            aria-expanded={isExpanded}
+            aria-controls={`job-detail-${match.jobId}`}
+            aria-label={isExpanded ? 'Đóng chi tiết' : `Xem chi tiết job ${match.title}`}
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded text-label-md font-bold text-primary',
+              'transition-opacity hover:opacity-75',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-tertiary-container/40',
+            )}
+          >
+            {isExpanded ? 'Đóng chi tiết' : 'Chi tiết'}
+            {isExpanded ? (
+              <MdExpandLess size={18} aria-hidden="true" />
+            ) : (
+              <MdExpandMore size={18} aria-hidden="true" />
+            )}
+          </button>
+        ) : (
+          // Legacy fallback for any caller that doesn't wire the toggle —
+          // navigate to the standalone route. Kept for backward compat.
+          <a
+            href={`/job-fit/${match.jobId}`}
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded text-label-md font-bold text-primary',
+              'transition-opacity hover:opacity-75',
+            )}
+          >
+            Chi tiết →
+          </a>
+        )}
         <ActionButton tier={match.tier} job={match} size="sm" />
       </div>
     </Card>

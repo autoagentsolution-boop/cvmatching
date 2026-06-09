@@ -1,9 +1,12 @@
 'use client';
 
-import { MdWork, MdRefresh } from 'react-icons/md';
+import { useEffect, useState } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { MdWork, MdRefresh, MdInfoOutline } from 'react-icons/md';
 import { Button, Card, PageHeader, LoadingState, ErrorState } from '@/components/ui';
 import { useJobFit, isCacheValid } from './job-fit-store';
 import { JobCard } from './job-card';
+import { JobFitInlineDetail } from './job-fit-inline-detail';
 import { EmptyStateNeedCv } from './empty-state-need-cv';
 import { ExhaustedPoolBanner } from './exhausted-pool-banner';
 import { semanticForTier, type TierLetter } from '@/lib/jobs/fit-tier';
@@ -34,6 +37,14 @@ function readCvText(): string | null {
   }
 }
 
+function writeCvText(text: string): void {
+  try {
+    sessionStorage.setItem(CV_SESSION_KEY, text);
+  } catch {
+    // private mode / quota exceeded — non-fatal, store state still holds it
+  }
+}
+
 /**
  * /job-fit list page orchestrator.
  *
@@ -53,9 +64,19 @@ export type WorkflowMode = 'cv-solo' | 'jd-context';
 export interface JobFitListPageProps {
   /** Phase 6: workflow-context hint. Currently passthrough. */
   mode?: WorkflowMode;
+  /**
+   * CV body loaded by the parent workflow layout. When provided, takes
+   * precedence over sessionStorage and is mirrored back into sessionStorage
+   * so other consumers (cover letter, career path) see the same CV.
+   * Omitted only on the legacy standalone /job-fit route, where we still
+   * fall back to whatever was last written to sessionStorage.
+   */
+  cvText?: string;
+  /** Human label for the active CV — surfaced in the "Đang dùng CV: …" banner. */
+  cvName?: string;
 }
 
-export function JobFitListPage({ mode }: JobFitListPageProps = {}) {
+export function JobFitListPage({ mode, cvText: cvTextProp, cvName }: JobFitListPageProps = {}) {
   void mode;
   // Per-field selectors only — see feedback_zustand_object_literal_selector.
   const jobs = useJobFit((s) => s.jobs);
@@ -66,12 +87,42 @@ export function JobFitListPage({ mode }: JobFitListPageProps = {}) {
   const seenPolicy = useJobFit((s) => s.seenPolicy);
   const cacheValid = isCacheValid(useJobFit.getState());
 
-  const cvText = readCvText();
-  const hasCv = Boolean(cvText && cvText.trim().length >= 200);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // Workflow-supplied CV wins. Mirror into sessionStorage so downstream
+  // (cover letter, career path) see the same CV without us threading it
+  // through more props. Old standalone /job-fit users still get the
+  // sessionStorage fallback.
+  const cvText = cvTextProp ?? readCvText() ?? '';
+  const hasCv = cvText.trim().length >= 200;
+
+  useEffect(() => {
+    if (cvTextProp && cvTextProp.trim().length > 0) {
+      writeCvText(cvTextProp);
+    }
+  }, [cvTextProp]);
 
   function handleFetch() {
-    const text = readCvText();
-    if (text) void generate(text);
+    if (cvText.trim().length > 0) void generate(cvText);
+  }
+
+  // Inline-detail expand state — drives JobFitInlineDetail render below the
+  // selected card. Mirrored to ?jobId= in the URL (replace, not push) so a
+  // refresh re-opens the same job and the URL is shareable. Default to
+  // searchParams on mount.
+  const initialExpanded = searchParams.get('jobId');
+  const [expandedJobId, setExpandedJobId] = useState<string | null>(initialExpanded);
+
+  function toggleExpanded(jobId: string) {
+    const next = expandedJobId === jobId ? null : jobId;
+    setExpandedJobId(next);
+    const params = new URLSearchParams(searchParams.toString());
+    if (next) params.set('jobId', next);
+    else params.delete('jobId');
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }
 
   const showFetchPrompt =
@@ -136,12 +187,24 @@ export function JobFitListPage({ mode }: JobFitListPageProps = {}) {
         />
       )}
 
+      {/* CV-source banner — surfaces WHICH CV is matched. Addresses the
+          "không biết đang dùng original hay refined CV" confusion. Only
+          shows when we have a name to label it (workflow-supplied props). */}
+      {cvName && hasCv && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-outline-variant/50 bg-surface-container-low px-3 py-2 text-label-sm text-on-surface-variant">
+          <MdInfoOutline size={14} aria-hidden="true" />
+          <span>
+            Đang match với CV: <strong className="text-on-surface">{cvName}</strong>
+          </span>
+        </div>
+      )}
+
       {/* Loaded list — grouped by tier S→E */}
       {cacheValid && jobs.length > 0 && (
         <div className="flex flex-col gap-6">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <p className="text-label-sm text-on-surface-variant">
-              {jobs.length} job phù hợp — nhấn &quot;Xem chi tiết&quot; để xem điểm chi tiết và chủ đề ôn luyện.
+              {jobs.length} job phù hợp — nhấn &quot;Chi tiết&quot; để mở rộng inline xem điểm chi tiết và chủ đề ôn luyện.
             </p>
             <div className="flex items-center gap-3">
               {quotaRemaining != null && (
@@ -169,7 +232,16 @@ export function JobFitListPage({ mode }: JobFitListPageProps = {}) {
                 </span>
               </h2>
               {group.map((match) => (
-                <JobCard key={match.jobId} match={match} />
+                <div key={match.jobId} className="flex flex-col gap-0">
+                  <JobCard
+                    match={match}
+                    isExpanded={expandedJobId === match.jobId}
+                    onToggleDetail={() => toggleExpanded(match.jobId)}
+                  />
+                  {expandedJobId === match.jobId && (
+                    <JobFitInlineDetail match={match} onClose={() => toggleExpanded(match.jobId)} />
+                  )}
+                </div>
               ))}
             </section>
           ))}

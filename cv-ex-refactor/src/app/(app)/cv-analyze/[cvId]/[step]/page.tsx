@@ -48,10 +48,20 @@ export default async function CvAnalyzeStepPage({
   const cv = await loadUserCv(session.user.id, cvId);
   if (!cv) notFound();
 
-  return <StepContent step={step} cvContent={cv.content} cvId={cvId} />;
+  return <StepContent step={step} cvContent={cv.content} cvId={cvId} cvName={cv.name} />;
 }
 
-function StepContent({ step, cvContent, cvId }: { step: CvAnalyzeStep; cvContent: string; cvId: string }) {
+function StepContent({
+  step,
+  cvContent,
+  cvId,
+  cvName,
+}: {
+  step: CvAnalyzeStep;
+  cvContent: string;
+  cvId: string;
+  cvName: string;
+}) {
   switch (step) {
     case 'score':
       return <CvAnalyzeContent cvContent={cvContent} cvId={cvId} />;
@@ -64,6 +74,6 @@ function StepContent({ step, cvContent, cvId }: { step: CvAnalyzeStep; cvContent
         </Suspense>
       );
     case 'jobfit':
-      return <JobFitListPage mode="cv-solo" />;
+      return <JobFitListPage mode="cv-solo" cvText={cvContent} cvName={cvName} />;
   }
 }
