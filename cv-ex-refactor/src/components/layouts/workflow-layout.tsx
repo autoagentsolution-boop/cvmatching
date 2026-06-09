@@ -4,11 +4,13 @@ import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
+import { Button } from '@/components/ui/button';
+import { Drawer } from '@/components/ui/drawer';
 import { ChevronStepper } from '@/components/ui/chevron-stepper';
 import { CvPickerChip } from '@/components/ui/cv-picker-chip';
 import { SettingsDrawerTrigger } from '@/features/analyze/settings-drawer-trigger';
-import { WorkflowSidebar } from './workflow-sidebar';
-import type { WorkflowNavKey } from './workflow-sidebar';
+import { DashboardSidebar } from './dashboard-sidebar';
+import type { ActiveNav } from './dashboard-sidebar';
 import type { UserCvRow } from '@/lib/cvs/repo';
 
 export type WorkflowType = 'cv-analyze' | 'jd-matching';
@@ -28,10 +30,8 @@ const JD_MATCHING_STEPS = [
 ];
 
 /**
- * Derive the active step id from the URL. WorkflowLayout lives in the
- * `/[cvId]/layout.tsx` segment which does not receive the `[step]` param,
- * so we read it from pathname instead. Falls back to the workflow's first
- * step id if no segment matches (defensive — should never hit in normal flow).
+ * Derive active step id from the URL — WorkflowLayout lives in the
+ * `/[cvId]/layout.tsx` segment which doesn't receive [step] params.
  */
 function deriveStepFromPath(pathname: string, workflow: WorkflowType): string {
   const prefix = workflow === 'cv-analyze' ? '/cv-analyze/' : '/jd-matching/';
@@ -43,21 +43,17 @@ function deriveStepFromPath(pathname: string, workflow: WorkflowType): string {
 function buildSteps(workflow: WorkflowType, cvId: string, isAdmin: boolean) {
   const base = workflow === 'cv-analyze' ? CV_ANALYZE_STEPS : JD_MATCHING_STEPS;
   const prefix = workflow === 'cv-analyze' ? '/cv-analyze' : '/jd-matching';
-  // Job Fit stays admin-only during pilot (job pool gating in /api/jobs/recommend).
-  // Hide the chevron for non-admin to avoid dead-clicks into the 404 state.
+  // Job Fit stays admin-only during pilot (pool gating in /api/jobs/recommend).
   return base
     .filter((s) => isAdmin || s.id !== 'jobfit')
-    .map((s) => ({
-      ...s,
-      href: `${prefix}/${cvId}/${s.id}`,
-    }));
+    .map((s) => ({ ...s, href: `${prefix}/${cvId}/${s.id}` }));
 }
 
 export interface WorkflowLayoutProps {
   workflow: WorkflowType;
   currentCvId: string;
   cvs: UserCvRow[];
-  /** Left column: Source Document panel (Phase 3 provides real component). */
+  /** Left column: Source Document panel. */
   sourceDocuments: ReactNode;
   /** Right column: step-specific main content. */
   children: ReactNode;
@@ -70,12 +66,10 @@ export interface WorkflowLayoutProps {
 /**
  * WorkflowLayout — shell for CV Analyze + JD Matching.
  *
- * Structure:
- *   [60px icon sidebar] | [main area]
- *                           [top bar: brand + CvPickerChip]
- *                           [ChevronStepper]
- *                           [2-col: source docs | step content]
- *                           [optional right rail]
+ * Shares the 256px DashboardSidebar with DashboardLayout (single nav source
+ * of truth — same items, icons, active styling, mobile drawer). Adds a
+ * workflow-specific topbar (CvPickerChip) + ChevronStepper + 2/3-column
+ * source/content grid stacked underneath.
  */
 export function WorkflowLayout({
   workflow,
@@ -91,29 +85,56 @@ export function WorkflowLayout({
   const pathname = usePathname();
   const currentStepId = deriveStepFromPath(pathname, workflow);
   const [showImportDrawer, setShowImportDrawer] = useState(false);
+  const [navDrawerOpen, setNavDrawerOpen] = useState(false);
   const steps = buildSteps(workflow, currentCvId, isAdmin);
-  const activeNav: WorkflowNavKey = workflow === 'cv-analyze' ? 'cv-analyze' : 'jd-matching';
+  const activeNav: ActiveNav = workflow === 'cv-analyze' ? 'analyze' : 'jd-matching';
 
   function handleSwitchCv(cvId: string) {
-    // Navigate to same step for the new CV
     const prefix = workflow === 'cv-analyze' ? '/cv-analyze' : '/jd-matching';
     router.push(`${prefix}/${cvId}/${currentStepId}`);
   }
 
   return (
     <div className="min-h-screen bg-surface">
-      {/* Icon sidebar */}
-      <WorkflowSidebar activeNav={activeNav} isAdmin={isAdmin} isAuthed={isAuthed} />
+      {/* Desktop sidebar — same 256px DashboardSidebar as the rest of the app */}
+      <aside
+        className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-outline-variant bg-surface-container-low lg:flex"
+        aria-label="Sidebar"
+      >
+        <DashboardSidebar activeNav={activeNav} isAdmin={isAdmin} isAuthed={isAuthed} />
+      </aside>
 
-      {/* Content area offset right of sidebar */}
-      <div className="pl-[60px] flex flex-col min-h-screen">
-        {/* Top bar */}
+      {/* Mobile/tablet drawer */}
+      <Drawer
+        open={navDrawerOpen}
+        onClose={() => setNavDrawerOpen(false)}
+        side="right"
+        title="Navigation"
+      >
+        <DashboardSidebar
+          activeNav={activeNav}
+          isAdmin={isAdmin}
+          isAuthed={isAuthed}
+          onNavClick={() => setNavDrawerOpen(false)}
+        />
+      </Drawer>
+
+      {/* Content area offset right of sidebar on desktop */}
+      <div className="flex min-h-screen flex-col lg:pl-64">
+        {/* Workflow topbar — CvPicker + Settings; no brand wordmark (sidebar owns it) */}
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b border-outline-variant bg-surface/90 px-4 backdrop-blur">
-          <div className="flex items-center gap-2">
-            <span className="font-display text-title-md font-bold text-primary hidden sm:block">
-              Resume Refactor
-            </span>
-            <span className="hidden sm:inline text-on-surface-variant/40">·</span>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label="Open navigation menu"
+              className="lg:hidden"
+              onClick={() => setNavDrawerOpen(true)}
+            >
+              <span className="material-symbols-outlined text-[22px]" aria-hidden="true">
+                menu
+              </span>
+            </Button>
             <span className="text-label-md font-medium text-on-surface-variant capitalize">
               {workflow === 'cv-analyze' ? 'CV Analyze' : 'JD Matching'}
             </span>
@@ -143,22 +164,24 @@ export function WorkflowLayout({
         <main
           className={cn(
             'flex flex-1 gap-0',
-            // 50/50 split when no right rail. With right rail keep Source at
-            // 1fr but compress the 3-col layout. User explicitly asked for
-            // wider Source panel so PDF / Word original render is readable.
-            optionalRightRail ? 'xl:grid xl:grid-cols-[minmax(360px,1fr)_minmax(0,1.5fr)_minmax(240px,320px)]' : 'lg:grid lg:grid-cols-[minmax(360px,1fr)_minmax(0,1fr)]',
+            // 50/50 split when no right rail; 3-col with optional rail.
+            // Source column min 360px so PDF embed renders without horizontal
+            // scroll. Sidebar took 256px so we have ~196px less horizontal
+            // budget than before — the minmax constraints keep both columns
+            // readable down to a 1024px viewport.
+            optionalRightRail
+              ? 'xl:grid xl:grid-cols-[minmax(360px,1fr)_minmax(0,1.5fr)_minmax(240px,320px)]'
+              : 'lg:grid lg:grid-cols-[minmax(360px,1fr)_minmax(0,1fr)]',
           )}
         >
           {/* Left: Source Document panel */}
-          <aside className="hidden lg:flex flex-col border-r border-outline-variant bg-surface-container-lowest overflow-y-auto">
-            <div className="sticky top-0 px-4 py-2 border-b border-outline-variant bg-surface-container-low">
+          <aside className="hidden flex-col overflow-y-auto border-r border-outline-variant bg-surface-container-lowest lg:flex">
+            <div className="sticky top-0 border-b border-outline-variant bg-surface-container-low px-4 py-2">
               <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
                 Source Documents
               </span>
             </div>
-            <div className="flex-1 p-4">
-              {sourceDocuments}
-            </div>
+            <div className="flex-1 p-4">{sourceDocuments}</div>
           </aside>
 
           {/* Right: step content */}
@@ -168,27 +191,30 @@ export function WorkflowLayout({
 
           {/* Optional right rail */}
           {optionalRightRail && (
-            <aside className="hidden xl:flex flex-col border-l border-outline-variant bg-surface-container-lowest overflow-y-auto p-4">
+            <aside className="hidden flex-col overflow-y-auto border-l border-outline-variant bg-surface-container-lowest p-4 xl:flex">
               {optionalRightRail}
             </aside>
           )}
         </main>
       </div>
 
-      {/* Import drawer — Phase 3 will replace this stub */}
+      {/* Import drawer stub — full UX lives at /cvs */}
       {showImportDrawer && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-inverse-surface/40 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-inverse-surface/40 backdrop-blur-sm sm:items-center"
           onClick={() => setShowImportDrawer(false)}
         >
           <div
-            className="w-full max-w-md rounded-t-2xl sm:rounded-2xl bg-surface-container-lowest p-6 shadow-soft-lg"
+            className="w-full max-w-md rounded-t-2xl bg-surface-container-lowest p-6 shadow-soft-lg sm:rounded-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="mb-1 font-display text-headline-md text-on-surface">New CV</h2>
             <p className="mb-4 text-body-sm text-on-surface-variant">
               Import a CV to get started. Head to{' '}
-              <a href="/cvs" className="text-primary underline">My CVs</a> for full management.
+              <a href="/cvs" className="text-primary underline">
+                My CVs
+              </a>{' '}
+              for full management.
             </p>
             <button
               type="button"

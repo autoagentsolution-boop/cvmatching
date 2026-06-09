@@ -18,10 +18,10 @@ interface AppShellProps {
 }
 
 /**
- * Routes that render their own WorkflowLayout (own sidebar + top bar).
- * AppShell must not wrap these in DashboardLayout — that would double-sidebar.
- * /dashboard and /cvs also use a bare layout so they can use WorkflowSidebar
- * in Phase 3+; for now they are plain full-width pages inside DashboardLayout.
+ * Routes that render their own WorkflowLayout (own topbar + chevron + 2-col).
+ * AppShell must not wrap these in DashboardLayout or we'd double-render the
+ * sidebar shell. WorkflowLayout reuses DashboardSidebar internally so the
+ * nav itself stays identical across all routes.
  */
 function isWorkflowRoute(pathname: string): boolean {
   return (
@@ -31,14 +31,12 @@ function isWorkflowRoute(pathname: string): boolean {
 }
 
 function deriveActiveNav(pathname: string): ActiveNav {
+  if (pathname.startsWith('/cvs')) return 'cvs';
   if (pathname.startsWith('/history')) return 'history';
-  if (pathname.startsWith('/optimizations')) return 'optimizations';
-  if (pathname.startsWith('/career-path')) return 'career-path';
-  if (pathname.startsWith('/refined-cv')) return 'refined-cv';
   if (pathname.startsWith('/admin/maintenance')) return 'admin-maintenance';
   if (pathname.startsWith('/admin/pool')) return 'admin-pool';
   if (pathname.startsWith('/admin/usage')) return 'admin-usage';
-  // New workflow routes map to existing nav keys for backward compat
+  // Workflow detail routes highlight their entry-workflow nav item.
   if (pathname.startsWith('/cv-analyze')) return 'analyze';
   if (pathname.startsWith('/jd-matching')) return 'jd-matching';
   if (pathname.startsWith('/analyze')) return 'analyze';

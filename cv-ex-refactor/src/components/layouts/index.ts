@@ -12,6 +12,3 @@ export type { AuthLayoutProps } from './auth-layout';
 
 export { WorkflowLayout } from './workflow-layout';
 export type { WorkflowLayoutProps, WorkflowType } from './workflow-layout';
-
-export { WorkflowSidebar } from './workflow-sidebar';
-export type { WorkflowSidebarProps, WorkflowNavKey } from './workflow-sidebar';

@@ -4,12 +4,10 @@ import { cn } from '@/lib/cn';
 
 export type ActiveNav =
   | 'dashboard'
+  | 'cvs'
   | 'analyze'
   | 'jd-matching'
-  | 'refined-cv'
   | 'history'
-  | 'optimizations'
-  | 'career-path'
   | 'admin-usage'
   | 'admin-pool'
   | 'admin-maintenance';
@@ -23,18 +21,17 @@ interface NavItem {
   adminOnly?: boolean;
 }
 
-// Normal users see only the entry workflows (CV Analyze, JD Matching) —
-// downstream surfaces (Refined CV, Career Path, Job Fit, History) are
-// sub-steps inside those workflows and would confuse users if surfaced as
-// standalone nav entries. Admin sees everything for QA.
+// Single source of truth for app nav. Consumed by DashboardLayout (full app
+// shell) AND WorkflowLayout (cv-analyze / jd-matching). Downstream surfaces
+// (Refined CV, Career Path, Job Fit) live as chevron steps inside the
+// workflows and intentionally don't surface here.
 const NAV_ITEMS: NavItem[] = [
   { key: 'dashboard', label: 'Dashboard', icon: 'home', href: '/' },
+  { key: 'cvs', label: 'My CVs', icon: 'description', href: '/cvs' },
   { key: 'analyze', label: 'CV Analyze', icon: 'analytics', href: '/analyze' },
   { key: 'jd-matching', label: 'JD Matching', icon: 'compare_arrows', href: '/jd-matching' },
-  { key: 'refined-cv', label: 'Refined CV', icon: 'description', href: '/refined-cv', adminOnly: true },
-  { key: 'career-path', label: 'Career Path', icon: 'psychology', href: '/career-path', adminOnly: true },
   { key: 'history', label: 'History', icon: 'history', href: '/history', adminOnly: true },
-  { key: 'admin-usage', label: 'Usage', icon: 'analytics', href: '/admin/usage', adminOnly: true },
+  { key: 'admin-usage', label: 'Usage', icon: 'bar_chart', href: '/admin/usage', adminOnly: true },
   { key: 'admin-pool', label: 'Job Pool', icon: 'inventory_2', href: '/admin/pool', adminOnly: true },
   { key: 'admin-maintenance', label: 'Site Controls', icon: 'engineering', href: '/admin/maintenance', adminOnly: true },
 ];
