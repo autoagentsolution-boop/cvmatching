@@ -53,12 +53,24 @@ export interface WorkflowLayoutProps {
   workflow: WorkflowType;
   currentCvId: string;
   cvs: UserCvRow[];
-  /** Left column: Source Document panel. */
+  /** Source Document panel content. Position depends on sourceLayout. */
   sourceDocuments: ReactNode;
-  /** Right column: step-specific main content. */
+  /** Step-specific main content. Below or right of sourceDocuments. */
   children: ReactNode;
-  /** Optional 3rd column right rail (analytics, tips, etc.). */
+  /** Optional 3rd column right rail (analytics, tips, etc.). Only consumed
+   *  when sourceLayout='left'. */
   optionalRightRail?: ReactNode;
+  /**
+   * Where the source panel sits relative to step content.
+   *  - 'left' (default): vertical aside left of children → best when there is
+   *    a single source document (CV Analyze).
+   *  - 'top': horizontal row across the top of main, children below taking
+   *    full width → best for parallel-source flows (JD Matching shows CV +
+   *    JD side-by-side and results stack underneath).
+   * Caller is responsible for laying out multiple cards inside the slot
+   *  (e.g. a 2-col grid for 'top').
+   */
+  sourceLayout?: 'left' | 'top';
   isAdmin?: boolean;
   isAuthed?: boolean;
 }
@@ -78,6 +90,7 @@ export function WorkflowLayout({
   sourceDocuments,
   children,
   optionalRightRail,
+  sourceLayout = 'left',
   isAdmin = false,
   isAuthed = false,
 }: WorkflowLayoutProps) {
@@ -160,42 +173,54 @@ export function WorkflowLayout({
           />
         </div>
 
-        {/* 2-column main content */}
-        <main
-          className={cn(
-            'flex flex-1 gap-0',
-            // 50/50 split when no right rail; 3-col with optional rail.
-            // Source column min 360px so PDF embed renders without horizontal
-            // scroll. Sidebar took 256px so we have ~196px less horizontal
-            // budget than before — the minmax constraints keep both columns
-            // readable down to a 1024px viewport.
-            optionalRightRail
-              ? 'xl:grid xl:grid-cols-[minmax(360px,1fr)_minmax(0,1.5fr)_minmax(240px,320px)]'
-              : 'lg:grid lg:grid-cols-[minmax(360px,1fr)_minmax(0,1fr)]',
-          )}
-        >
-          {/* Left: Source Document panel */}
-          <aside className="hidden flex-col overflow-y-auto border-r border-outline-variant bg-surface-container-lowest lg:flex">
-            <div className="sticky top-0 border-b border-outline-variant bg-surface-container-low px-4 py-2">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+        {sourceLayout === 'top' ? (
+          // Top-row variant: sources span the full main width at the top,
+          // step content (and match results, etc.) flows below. Used by JD
+          // Matching so CV + JD viewers sit side-by-side and the result
+          // block stacks underneath for full-width reading.
+          <main className="flex flex-1 flex-col">
+            <div className="border-b border-outline-variant bg-surface-container-lowest px-4 py-4 md:px-6 lg:px-8">
+              <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
                 Source Documents
-              </span>
+              </div>
+              {sourceDocuments}
             </div>
-            <div className="flex-1 p-4">{sourceDocuments}</div>
-          </aside>
-
-          {/* Right: step content */}
-          <section className="flex-1 overflow-y-auto px-4 py-6 md:px-6 lg:px-8">
-            {children}
-          </section>
-
-          {/* Optional right rail */}
-          {optionalRightRail && (
-            <aside className="hidden flex-col overflow-y-auto border-l border-outline-variant bg-surface-container-lowest p-4 xl:flex">
-              {optionalRightRail}
+            <section className="flex-1 overflow-y-auto px-4 py-6 md:px-6 lg:px-8">
+              {children}
+            </section>
+          </main>
+        ) : (
+          // Default left-column variant: 2-col grid with sources as a tall
+          // aside on the left. The minmax constraints keep both columns
+          // readable down to a 1024px viewport (~256px chrome sidebar).
+          <main
+            className={cn(
+              'flex flex-1 gap-0',
+              optionalRightRail
+                ? 'xl:grid xl:grid-cols-[minmax(360px,1fr)_minmax(0,1.5fr)_minmax(240px,320px)]'
+                : 'lg:grid lg:grid-cols-[minmax(360px,1fr)_minmax(0,1fr)]',
+            )}
+          >
+            <aside className="hidden flex-col overflow-y-auto border-r border-outline-variant bg-surface-container-lowest lg:flex">
+              <div className="sticky top-0 border-b border-outline-variant bg-surface-container-low px-4 py-2">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+                  Source Documents
+                </span>
+              </div>
+              <div className="flex-1 p-4">{sourceDocuments}</div>
             </aside>
-          )}
-        </main>
+
+            <section className="flex-1 overflow-y-auto px-4 py-6 md:px-6 lg:px-8">
+              {children}
+            </section>
+
+            {optionalRightRail && (
+              <aside className="hidden flex-col overflow-y-auto border-l border-outline-variant bg-surface-container-lowest p-4 xl:flex">
+                {optionalRightRail}
+              </aside>
+            )}
+          </main>
+        )}
       </div>
 
       {/* Import drawer stub — full UX lives at /cvs */}

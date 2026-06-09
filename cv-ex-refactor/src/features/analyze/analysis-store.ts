@@ -30,6 +30,12 @@ interface AnalysisState {
    *  blob URLs can't survive a reload. When null after reload, the viewer
    *  falls back to the styled text render of jdText. */
   jdOriginalBlobUrl: string | null;
+  /** Cleaned HTML body from URL scrape (Readability / JSON-LD). Used by
+   *  JdSourceCard to render a reader-view with original headings/lists.
+   *  Empty for paste or file-upload modes. */
+  jdSourceHtml: string;
+  /** Title from URL scrape (e.g. "Senior Data Engineer — Tiki"). */
+  jdSourceTitle: string;
   profileText: string;
 
   // ── per-source CV inputs ───────────────────────────────────────────────
@@ -104,6 +110,8 @@ const initial: Omit<AnalysisState, 'setField' | 'reset'> = {
   jdUrl: '',
   jdMime: null,
   jdOriginalBlobUrl: null,
+  jdSourceHtml: '',
+  jdSourceTitle: '',
   profileText: '',
   analyzeCvText: '',
   jdMatchCvText: '',
@@ -160,6 +168,8 @@ export const useAnalysis = create<AnalysisState>()(
         jdMime: s.jdMime,
         // jdOriginalBlobUrl deliberately excluded — blob URLs are tab-scoped
         // and don't survive reload. Viewer falls back to styled text.
+        jdSourceHtml: s.jdSourceHtml,
+        jdSourceTitle: s.jdSourceTitle,
         profileText: s.profileText,
         analyzeCvText: s.analyzeCvText,
         jdMatchCvText: s.jdMatchCvText,

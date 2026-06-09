@@ -110,6 +110,8 @@ export async function POST(req: NextRequest) {
         meta: { chars: text.length, truncated },
         ...(scraped.title ? { title: scraped.title } : {}),
         ...(scraped.source ? { source: scraped.source } : {}),
+        ...(scraped.html ? { html: scraped.html } : {}),
+        sourceUrl: urlParsed.data.url,
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);

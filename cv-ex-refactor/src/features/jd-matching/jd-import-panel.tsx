@@ -40,6 +40,8 @@ export function JdImportPanel() {
   function resetSourceMeta() {
     setField('jdMime', null);
     setField('jdOriginalBlobUrl', null);
+    setField('jdSourceHtml', '');
+    setField('jdSourceTitle', '');
     setFileName(null);
   }
 
@@ -69,9 +71,17 @@ export function JdImportPanel() {
         setError(message);
         return;
       }
+      // Reset file-mode meta first, THEN write URL-mode meta — order
+      // matters so the new sourceHtml/sourceTitle aren't wiped.
+      resetSourceMeta();
       setField('jdText', body.text);
       setField('jdUrl', url);
-      resetSourceMeta();
+      if (typeof body.html === 'string' && body.html.length > 0) {
+        setField('jdSourceHtml', body.html);
+      }
+      if (typeof body.title === 'string' && body.title.length > 0) {
+        setField('jdSourceTitle', body.title);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Import failed.');
     } finally {

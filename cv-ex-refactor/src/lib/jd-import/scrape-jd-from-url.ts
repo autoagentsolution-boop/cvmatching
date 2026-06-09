@@ -28,7 +28,12 @@ import { fetchHtml } from '@/lib/scrape/fetch-html';
 
 export interface ScrapedJd {
   title?: string | undefined;
+  /** Plain-text JD body — fed to /api/analyze. Always present. */
   description: string;
+  /** Cleaned HTML body for reader-view rendering. Mirrors `description` in
+   *  meaning but preserves headings/lists/formatting from the source page.
+   *  Empty when the source returned no salvageable HTML. */
+  html?: string | undefined;
   source?: string | undefined;
 }
 
@@ -86,11 +91,20 @@ export async function scrapeJdFromUrl(rawUrl: string): Promise<ScrapedJd> {
   // Attempt JSON-LD JobPosting extraction for known sources first.
   const ld = parseJobPostingLd(html);
   if (ld) {
-    const desc = stripHtml(ld.description ?? '');
+    const rawDescription = ld.description ?? '';
+    const desc = stripHtml(rawDescription);
     if (desc.length >= 50) {
+      // JSON-LD often stores description as HTML — keep it for reader view.
+      // When the LD payload is plain text we fall back to <pre>-style by
+      // wrapping in a paragraph so spacing is preserved on render.
+      const looksLikeHtml = /<\w+[\s>]/.test(rawDescription);
+      const htmlBody = looksLikeHtml
+        ? rawDescription
+        : `<p>${escapeHtml(rawDescription)}</p>`;
       return {
         title: ld.title?.trim(),
         description: desc,
+        html: htmlBody,
         source,
       };
     }
@@ -117,6 +131,16 @@ export async function scrapeJdFromUrl(rawUrl: string): Promise<ScrapedJd> {
   return {
     title: article?.title?.trim() || undefined,
     description: fallbackText,
+    html: article?.content ?? undefined,
     source,
   };
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }

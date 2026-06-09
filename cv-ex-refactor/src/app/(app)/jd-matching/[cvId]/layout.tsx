@@ -31,7 +31,7 @@ export default async function JdMatchingLayout({
   const isAdmin = isAdminUser(session.user);
 
   const sourceDocuments = (
-    <div className="flex flex-col gap-3">
+    <div className="grid gap-3 lg:grid-cols-2">
       <SourceDocumentCard
         content={cv.content}
         kind="cv"
@@ -49,6 +49,7 @@ export default async function JdMatchingLayout({
       currentCvId={cvId}
       cvs={cvs}
       sourceDocuments={sourceDocuments}
+      sourceLayout="top"
       isAdmin={isAdmin}
       isAuthed
     >
