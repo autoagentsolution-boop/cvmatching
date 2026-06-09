@@ -22,6 +22,14 @@ interface AnalysisState {
   // ── shared inputs / settings (same across all sources) ─────────────────
   jdText: string;
   jdUrl: string;
+  /** MIME of the most recently imported JD (e.g. 'application/pdf'). null
+   *  for paste-only or URL-scrape (no original file). Persisted so the
+   *  Source JD viewer can re-render the correct mode after a tab reload. */
+  jdMime: string | null;
+  /** Object URL of the most recently uploaded JD file. Non-persisted —
+   *  blob URLs can't survive a reload. When null after reload, the viewer
+   *  falls back to the styled text render of jdText. */
+  jdOriginalBlobUrl: string | null;
   profileText: string;
 
   // ── per-source CV inputs ───────────────────────────────────────────────
@@ -94,6 +102,8 @@ const ZERO_WEIGHTS: Weights = {
 const initial: Omit<AnalysisState, 'setField' | 'reset'> = {
   jdText: '',
   jdUrl: '',
+  jdMime: null,
+  jdOriginalBlobUrl: null,
   profileText: '',
   analyzeCvText: '',
   jdMatchCvText: '',
@@ -147,6 +157,9 @@ export const useAnalysis = create<AnalysisState>()(
       partialize: (s) => ({
         jdText: s.jdText,
         jdUrl: s.jdUrl,
+        jdMime: s.jdMime,
+        // jdOriginalBlobUrl deliberately excluded — blob URLs are tab-scoped
+        // and don't survive reload. Viewer falls back to styled text.
         profileText: s.profileText,
         analyzeCvText: s.analyzeCvText,
         jdMatchCvText: s.jdMatchCvText,

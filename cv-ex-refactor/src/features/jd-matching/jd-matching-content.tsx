@@ -5,7 +5,6 @@ import {
   Button,
   ErrorState,
   LoadingState,
-  Textarea,
   RoleFitGauge,
   MetricBar,
   CriticalRefactorList,
@@ -15,6 +14,7 @@ import { useAnalysis } from '@/features/analyze/analysis-store';
 import { useSettings } from '@/features/analyze/settings-store';
 import { callAnalyze } from '@/features/analyze/api-client';
 import { callJdInsights } from './api-client';
+import { JdImportPanel } from './jd-import-panel';
 import { aggregateRoleFit, classifyFit } from '@/lib/scoring/role-fit-aggregate';
 import { isTransientLlmError } from '@/lib/llm/humanize-error';
 import type {
@@ -41,10 +41,10 @@ export function JdMatchingContent({ cvContent, cvId }: JdMatchingContentProps) {
   const isAnalyzing = useAnalysis((s) => s.isAnalyzing);
   const error = useAnalysis((s) => s.error);
   const language = useAnalysis((s) => s.language);
+  const jdText = useAnalysis((s) => s.jdText);
   const setField = useAnalysis((s) => s.setField);
   const { provider, model, temperature, baseUrl } = useSettings();
 
-  const [jdText, setJdText] = useState('');
   const [insights, setInsights] = useState<JdInsights | null>(null);
 
   // Seed CV into the v2 slot whenever the active CV changes.
@@ -126,31 +126,25 @@ export function JdMatchingContent({ cvContent, cvId }: JdMatchingContentProps) {
 
   if (!result) {
     return (
-      <section className="flex flex-col gap-4 rounded-2xl border border-dashed border-outline-variant bg-surface-container-lowest p-8">
+      <section className="flex flex-col gap-5 rounded-2xl border border-dashed border-outline-variant bg-surface-container-lowest p-8">
         <div>
-          <h2 className="font-display text-headline-md text-on-surface">Paste a job description</h2>
-          <p className="mt-1 text-body-md text-on-surface-variant">
-            We&apos;ll score how strongly your CV aligns with this JD and pull out priority gaps.
+          <h2 className="font-display text-headline-md text-on-surface">Ready to match CV vs JD</h2>
+          <p className="mt-2 text-body-md text-on-surface-variant">
+            Bring in a job description by pasting it, fetching a posting URL, or uploading a PDF/Word file.
+            We&apos;ll compare it against your CV across 9 recruiter dimensions and surface the priority gaps to close.
           </p>
         </div>
-        <Textarea
-          value={jdText}
-          onChange={(e) => setJdText(e.target.value)}
-          rows={10}
-          placeholder="Paste the full job description here…"
-          aria-label="Job description"
-        />
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-label-sm text-on-surface-variant">
-            {jdText.trim().length} / 50 min characters
-          </span>
+
+        <JdImportPanel />
+
+        <div className="flex items-center justify-end gap-3">
           <Button
             variant="primary"
             size="lg"
             onClick={runMatch}
             disabled={jdText.trim().length < 50}
           >
-            Run Match
+            Match CV vs JD
           </Button>
         </div>
       </section>

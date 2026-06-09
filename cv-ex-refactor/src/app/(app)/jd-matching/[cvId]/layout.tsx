@@ -5,12 +5,12 @@ import { loadUserCv, loadUserCvList } from '@/lib/cvs/load-user-cv';
 import { isAdminUser } from '@/lib/usage/admin-auth';
 import { WorkflowLayout } from '@/components/layouts/workflow-layout';
 import { SourceDocumentCard } from '@/components/ui/source-document-card';
+import { JdSourceCard } from '@/features/jd-matching/jd-source-card';
 
 // Mirror of cv-analyze/[cvId]/layout.tsx — owning the WorkflowLayout here
 // keeps the source CV iframe mounted across chevron step navigation.
-// JD viewer remains in-page (driven by client state), so only the CV side
-// of the dual-source pane benefits from persistence today; the empty-JD
-// card re-renders cheaply.
+// JD lives in the analysis store (client state) so JdSourceCard renders
+// it live as the user imports via paste/URL/file in the right pane.
 
 export default async function JdMatchingLayout({
   children,
@@ -39,16 +39,7 @@ export default async function JdMatchingLayout({
         originalUrl={`/api/cvs/${cvId}/original`}
         {...(cv.originalMime ? { originalMime: cv.originalMime } : {})}
       />
-      <SourceDocumentCard
-        content=""
-        kind="jd"
-        defaultZoom={0.75}
-        emptyHint={
-          <p className="text-[11px] text-on-surface-variant/70">
-            Upload PDF/Word or paste a job posting URL.
-          </p>
-        }
-      />
+      <JdSourceCard />
     </div>
   );
 
