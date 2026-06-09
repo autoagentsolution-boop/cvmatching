@@ -180,54 +180,63 @@ export function WorkflowLayout({
           />
         </div>
 
-        {resolvedSourceLayout === 'top' ? (
-          // Top-row variant: sources span the full main width at the top,
-          // step content (and match results, etc.) flows below. Used by JD
-          // Matching so CV + JD viewers sit side-by-side and the result
-          // block stacks underneath for full-width reading.
-          <main className="flex flex-1 flex-col">
-            <div className="border-b border-outline-variant bg-surface-container-lowest px-4 py-4 md:px-6 lg:px-8">
-              <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-                Source Documents
-              </div>
-              {sourceDocuments}
-            </div>
-            <section className="flex-1 overflow-y-auto px-4 py-6 md:px-6 lg:px-8">
-              {children}
-            </section>
-          </main>
-        ) : (
-          // Default left-column variant: 2-col grid with sources as a tall
-          // aside on the left. The minmax constraints keep both columns
-          // readable down to a 1024px viewport (~256px chrome sidebar).
-          <main
-            className={cn(
-              'flex flex-1 gap-0',
-              optionalRightRail
+        {/*
+          STABLE TREE: a single <main> with one <aside> + one <section>.
+          Top vs left variants are class-only swaps so the source-area
+          subtree (and its PDF iframe inside SourceDocumentCard) is NOT
+          unmounted when the chevron step changes. Branching JSX would
+          force React to tear down the iframe and re-fetch the PDF on
+          every step navigation, which manifested as visible lag.
+        */}
+        <main
+          className={cn(
+            'flex flex-1 gap-0',
+            resolvedSourceLayout === 'top'
+              ? 'flex-col'
+              : optionalRightRail
                 ? 'xl:grid xl:grid-cols-[minmax(360px,1fr)_minmax(0,1.5fr)_minmax(240px,320px)]'
                 : 'lg:grid lg:grid-cols-[minmax(360px,1fr)_minmax(0,1fr)]',
+          )}
+        >
+          <aside
+            className={cn(
+              'flex flex-col overflow-y-auto bg-surface-container-lowest',
+              resolvedSourceLayout === 'top'
+                ? 'border-b border-outline-variant'
+                : 'hidden border-r border-outline-variant lg:flex',
             )}
           >
-            <aside className="hidden flex-col overflow-y-auto border-r border-outline-variant bg-surface-container-lowest lg:flex">
-              <div className="sticky top-0 border-b border-outline-variant bg-surface-container-low px-4 py-2">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
-                  Source Documents
-                </span>
-              </div>
-              <div className="flex-1 p-4">{sourceDocuments}</div>
+            <div
+              className={cn(
+                'text-[10px] font-bold uppercase tracking-widest text-on-surface-variant',
+                resolvedSourceLayout === 'top'
+                  ? 'px-4 pt-4 pb-2 md:px-6 lg:px-8'
+                  : 'sticky top-0 border-b border-outline-variant bg-surface-container-low px-4 py-2',
+              )}
+            >
+              Source Documents
+            </div>
+            <div
+              className={cn(
+                resolvedSourceLayout === 'top'
+                  ? 'px-4 pb-4 md:px-6 lg:px-8'
+                  : 'flex-1 p-4',
+              )}
+            >
+              {sourceDocuments}
+            </div>
+          </aside>
+
+          <section className="flex-1 overflow-y-auto px-4 py-6 md:px-6 lg:px-8">
+            {children}
+          </section>
+
+          {resolvedSourceLayout !== 'top' && optionalRightRail && (
+            <aside className="hidden flex-col overflow-y-auto border-l border-outline-variant bg-surface-container-lowest p-4 xl:flex">
+              {optionalRightRail}
             </aside>
-
-            <section className="flex-1 overflow-y-auto px-4 py-6 md:px-6 lg:px-8">
-              {children}
-            </section>
-
-            {optionalRightRail && (
-              <aside className="hidden flex-col overflow-y-auto border-l border-outline-variant bg-surface-container-lowest p-4 xl:flex">
-                {optionalRightRail}
-              </aside>
-            )}
-          </main>
-        )}
+          )}
+        </main>
       </div>
 
       {/* Import drawer stub — full UX lives at /cvs */}
