@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { MdRoute, MdAutoAwesome } from 'react-icons/md';
-import { Button, EmptyState, ErrorState, LoadingState, PageHeader, Card } from '@/components/ui';
+import { MdRoute, MdAutoAwesome, MdClose, MdErrorOutline } from 'react-icons/md';
+import { Button, EmptyState, LoadingState, PageHeader, Card } from '@/components/ui';
 import { FormPageLayout } from '@/components/layouts';
 import { useAnalysis } from '@/features/analyze/analysis-store';
 import { useSettings } from '@/features/analyze/settings-store';
@@ -211,7 +211,30 @@ export function CareerPathPage({ mode }: CareerPathPageProps = {}) {
           )}
 
           {error && !isGenerating && (
-            <ErrorState title="Tạo lộ trình thất bại" description={error} />
+            // Inline dismissible alert instead of a full ErrorState card —
+            // a stale generate error used to sit beside the suggest error
+            // (PathSuggestionsBlock) and the Generate button, giving the user
+            // three competing "error" surfaces at once. Scope this one to its
+            // own action and let the user clear it explicitly.
+            <div className="flex items-start gap-3 rounded-xl border border-error/30 bg-error-container/40 px-4 py-3">
+              <MdErrorOutline
+                size={20}
+                className="mt-0.5 shrink-0 text-error"
+                aria-hidden="true"
+              />
+              <div className="flex-1 text-body-sm text-on-error-container">
+                <p className="font-semibold">Tạo lộ trình thất bại</p>
+                <p className="mt-0.5 text-on-surface-variant">{error}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setField('error', null)}
+                aria-label="Dismiss"
+                className="shrink-0 rounded-md p-1 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+              >
+                <MdClose size={16} aria-hidden="true" />
+              </button>
+            </div>
           )}
 
           {result && !isGenerating && (

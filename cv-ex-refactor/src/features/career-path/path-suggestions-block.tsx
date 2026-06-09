@@ -1,5 +1,6 @@
 'use client';
 
+import { MdErrorOutline, MdReplay } from 'react-icons/md';
 import { Badge, Card, LoadingState, ErrorState } from '@/components/ui';
 import type { PathSuggestion, PathTrajectory } from './types';
 import { TRAJECTORY_LABELS } from './types';
@@ -40,7 +41,8 @@ export function PathSuggestionsBlock({
     );
   }
 
-  if (error) {
+  // No cache + error → full-card error state (user has nothing to fall back to).
+  if (error && suggestions.length === 0) {
     return <ErrorState title="Không lấy được đề xuất" description={error} retry={onRetry} />;
   }
 
@@ -56,6 +58,26 @@ export function PathSuggestionsBlock({
           Chọn một hướng → AI sẽ dựng roadmap chi tiết
         </span>
       </header>
+
+      {/* Inline retry banner — when a refetch failed but cached suggestions
+          still exist. Replaces the previous full-card error which used to
+          wipe the list AND collide with the generate error below. */}
+      {error && suggestions.length > 0 && (
+        <div className="flex items-start gap-3 rounded-lg border border-error/30 bg-error-container/40 px-3 py-2 text-body-sm text-on-error-container">
+          <MdErrorOutline size={16} className="mt-0.5 shrink-0 text-error" aria-hidden="true" />
+          <div className="flex-1">
+            <span className="font-semibold">Refresh đề xuất thất bại — </span>
+            <span className="text-on-surface-variant">{error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={onRetry}
+            className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-label-sm font-semibold text-primary hover:bg-primary/10"
+          >
+            <MdReplay size={14} aria-hidden="true" /> Retry
+          </button>
+        </div>
+      )}
 
       <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {suggestions.map((s) => {

@@ -60,9 +60,22 @@ export function CareerPathActions() {
     }
   }
 
-  // Label changes based on context: picking a suggestion vs. natural auto
+  // Track whether the user has changed direction since the last roadmap.
+  // If selectedSuggestion is set AND differs from the current result's
+  // target, the button needs to advertise "rebuild for new target" not
+  // "regenerate same thing" — otherwise users who pick a fresh suggestion
+  // after a successful generation can't tell whether clicking will rebuild
+  // for the new pick or just re-run the old roadmap.
+  const aspirationChanged =
+    !!result &&
+    !!selectedSuggestion &&
+    selectedSuggestion.trim().toLowerCase() !==
+      (result.targetRole?.title ?? '').trim().toLowerCase();
+
   const buttonLabel = result
-    ? 'Regenerate roadmap'
+    ? aspirationChanged
+      ? `Rebuild roadmap → ${selectedSuggestion}`
+      : 'Regenerate current roadmap'
     : selectedSuggestion
       ? `Build roadmap → ${selectedSuggestion}`
       : 'Generate roadmap from my CV';
