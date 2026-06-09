@@ -136,6 +136,35 @@ Living document tracking feature phases, milestones, and completion status. Upda
 
 ---
 
+## v0.4.x — Resume Refactor IA + UX hardening (✓ Shipped 2026-06-08 / 2026-06-09)
+
+**Scope:** IA refactor (06-08) + Job Fit UX overhaul + auth correctness + prompt direction-setting (06-09).
+
+**Phases shipped:**
+
+- **Resume Refactor IA** (06-08): single sidebar (DashboardSidebar) shared across DashboardLayout + WorkflowLayout; chevron stepper for cv-analyze + jd-matching workflows; persistent layout (cv-analyze/[cvId]/layout.tsx + jd-matching/[cvId]/layout.tsx) so the Source CV iframe persists across step navigation; PDF iframe + bytea storage for original CV; role-fit gauge; 9-dim editable sliders; TipTap rich editor for refined CV; PDF/DOCX/TXT export.
+- **JD Matching parallel viewer** (06-08): /match step uses sourceLayout='top' with CV + JD side-by-side; URL reader-view for scraped JD (Readability cleaned HTML); JdImportPanel with paste / URL / file modes; gap-to-source scroll navigation.
+- **Workflow stability + JSX tree rules** (06-09): consolidated WorkflowLayout top/left variants into single stable tree; Source CV iframe persists across chevron clicks (no PDF re-fetch).
+- **Job Fit UX overhaul** (06-09 — 4 issues bundled): chevron-aware CV pickup (passes cv.content/name from layout), Apply ngay opens external sourceUrl, inline detail expand replacing standalone /job-fit/[id] navigation, B/C tier action labels clarified.
+- **Roadmap UX polish** (06-09): per-action error scope, regen button label tracks aspiration change.
+- **Auth correctness — CV orphan bug fix** (06-09): NextAuth v5 beta-31 was minting random UUIDs for user.id per OAuth round-trip. Fixed via Google `profile()` override anchoring `user.id = profile.sub` + JWT callback 3-source fallback chain + diagnostic log. ensureUserRow cascade-deletes orphan rows on email-uniq collision.
+- **PDF export rewrite** (06-09): window.print → html-to-image + jsPDF (after html2canvas attempt failed on Tailwind v4 oklch).
+- **Prompt audit + 9-dim universal labels** (06-09): full audit at `plans/reports/audit-260609-1539-llm-prompts.md` (8 surfaces + 4-phase plan). Phase 1a partial shipped (refined-cv prompt + schema). 9-dim labels universalized — internal keys preserved, prompt + UI labels role-agnostic.
+- **Token tracking gaps closed** (06-09): company-enrich added to UsageAction enum + logLlmCall wired; handle-v3 role-infer success path logs; ingest scripts structured stdout. Prerequisite for any per-user billing tier.
+
+**Status:** ✓ Shipped to main. 17 commits (`ad70004` → `3d5ba09`). 469 tests passing / 25 skipped.
+
+**Deferred to next session (priority order):**
+
+1. VN/EN i18n toggle (`next-intl` already in deps, ~12h plan).
+2. Phase 1b/1c/1d from prompt audit — Scoring calibration anchors, JD-match v2 distinct coverage + role mismatch flag + drop `strictness=friendly`, Cover Letter 4 tone variants.
+3. Phase 2 — Roadmap prompt-only fixes (keep `gemini-2.0-flash`; defer model bump).
+4. Refined CV aspiration UI (Phase 1a schema shipped; UI field + auto-flow from Career Path store deferred).
+5. Job Fit dim rebalance (`location` often empty → score noise). Defer until non-tech audience grows.
+6. Pricing rollout — blocked until VN/EN ships + token tracking stable for ≥1 week.
+
+---
+
 ## v0.5 (future)
 
 **Scope:** Authentication maturity, persistent history, auto-pipeline (daily-score + email digest).

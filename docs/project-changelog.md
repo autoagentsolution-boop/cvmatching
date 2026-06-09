@@ -1,5 +1,76 @@
 # Project Changelog
 
+## 2026-06-09 — Job Fit UX overhaul + CV-orphan auth fix + prompt audit (17 commits)
+
+Single-session ship across 17 commits (`ad70004` → `3d5ba09`). Reports at `plans/reports/audit-260609-1539-llm-prompts.md` (prompt audit) and `plans/reports/research-260609-1620-openai-pricing-estimate.md` (GPT-5 cost matrix). State snapshot in [[project_cvmatching_v01_state]] memory.
+
+### Auth — CV orphan bug definitively fixed (4 commits)
+- Diagnosed: NextAuth v5 beta-31 + JWT strategy + no DB adapter generates a fresh random UUID for `user.id` per OAuth round-trip. Admin verified two distinct UUIDs across logout/login on the same Google account → all `user_cvs` rows orphaned.
+- `54977cf` shipped Google `profile()` override anchoring `user.id = profile.sub`, plus a 3-source priority chain in the JWT callback (`profile.sub | account.providerAccountId | user.id`). Diagnostic log emits all candidates per sign-in event for ops visibility.
+- `919fb69` shipped `ensureUserRow` cascade-delete on email conflict — the orphan row with same email + different id collided on `users.email UNIQUE` and broke CV upload with 500.
+- Admin verified: same id across cycles, CVs preserved.
+- See [[feedback_nextauth_v5_random_user_id]] + [[feedback_users_email_unique_orphan]].
+
+### Job Fit UX — 4 user-flagged issues bundled (`5dde8a1`)
+- **Chevron auto-pickup CV** — `JobFitListPage` accepts `cvText` + `cvName` props from `[cvId]/[step]/page.tsx` instead of relying on stale sessionStorage. New "Đang match với CV: {name}" banner makes active CV obvious.
+- **Apply ngay opens external URL** — S/A tier action targets `job.sourceUrl` in a new tab instead of routing to `/refined-cv` (which was confusing — label implies the actual job posting).
+- **Inline detail expand** — new `JobFitInlineDetail` renders the full dossier (CompanyCard, MustHaveBlock, JobScoreBlock, MatchReasonsBlock, StudyTopicsBlock, CoverLetterBlock, DetailActionsBar) directly under the selected card with `?jobId=X` URL sync via `router.replace`. Legacy `/job-fit/[id]` route preserved.
+- **Clearer labels** — B tier "Quick Fix" → "Refine cho job này"; C tier "Improve CV" → "Polish CV (stretch)".
+
+### Roadmap UX (`813b3e0`)
+- Error states scoped per action — `PathSuggestionsBlock` only takes over the full card when no cached suggestions; otherwise inline retry banner. `CareerPathPage` generate-error becomes an inline dismissible alert.
+- `CareerPathActions` button label aware of aspiration change: "Rebuild roadmap → {suggestion}" when user picks new direction after a roadmap exists; else "Regenerate current roadmap".
+
+### PDF export — full rewrite (3 commits)
+- `6d62b1b` swapped `window.print()` (which grabbed app chrome) for `html2canvas` + `jsPDF`.
+- Production broke immediately: Tailwind v4 emits `oklch()` colors which `html2canvas` 1.x can't parse → silent failure.
+- `de17df5` swapped to `html-to-image` (`toPng` via SVG `<foreignObject>` = browser-native render = any CSS the browser understands works). Targets `.refined-cv-print-target article` only; multi-page split for content > 1 letter page; libs dynamic-imported.
+- Error message now surfaces exception detail so users can report root cause directly.
+- See [[feedback_html2canvas_oklch_tailwind_v4]].
+
+### Workflow layout stability (`ad70004` + `0b52127` + `c27b8aa`)
+- `WorkflowLayout` consolidated top/left variants into a single stable JSX tree (one `<main>` + `<aside>` + `<section>` with class toggles, no branching). Source CV `<iframe>` now persists across chevron step navigation — no PDF re-fetch. User-visible "lag lag" resolved.
+- `JdMatchingSourceArea` always renders the grid with both CV + JD cards; non-match steps hide JD via `hidden` class.
+- 3 related bugs caught:
+  - `c27b8aa` — function-form `sourceLayout` prop from server → client component throws 500 (RSC can't serialize functions). Pushed decision into client component (`usePathname`-derived). See [[feedback_rsc_no_function_props]].
+  - `0b52127` — destructure default `sourceLayout = 'left'` short-circuited the `??` nullish-coalescing fallback. Removed default so `undefined` cascades. See [[feedback_default_param_short_circuits_nullish]].
+  - [[feedback_react_stable_jsx_tree]] documents the iframe-remount root cause.
+
+### Prompt audit + 9-dim universal labels (`c8237f1` + `3d5ba09`)
+- Audit report covers 8 prompt surfaces with per-surface recommendations + 4-phase ship plan.
+- `c8237f1` shipped Phase 1a partial — schema fields (`aspirationRole`, `additionalSections`) + decoration rules in `prompt-generate-cv-v3` (verb bank, metric formatting, section dividers, Vietnamese register lock). UI wiring deferred.
+- `3d5ba09` shipped Option B for 9-dim: keep internal keys (`coreSkill / tool / production / …`) for schema compat; broaden prompt descriptions + UI labels to be role-agnostic. Sales/Marketing/HR CVs no longer read "Production" as a tech-only signal.
+- Pricing report at `plans/reports/research-260609-1620-openai-pricing-estimate.md` — caveat: absolute USD numbers ~6× too high (agent miscalc); ratios between models directionally correct.
+
+### Token tracking — 3 attribution gaps closed (`a903a76`)
+- `'company-enrich'` added to `UsageAction` enum + `logLlmCall` wired in route → admin/usage now counts enrichment activity per user.
+- `handle-v3` role-infer success path now logs (was under-counting per-user analyze totals by 10-20%).
+- Ingest scripts get `event:ingest_llm_call` structured stdout log so operator can grep total ingest spend from local runs.
+- See [[feedback_token_tracking_coverage]].
+
+### Other fixes
+- `79e210c` — removed "Enter as Guest" link (redirect loop — guest BYOK flow was lost in IA refactor and not restored).
+- `61a23f3` — whitelisted `lh3.googleusercontent.com` in `images.remotePatterns` so Google profile avatars load via `next/image`.
+- `59e23bb` — hotfix `package.json` trailing-comma after removing `pnpm` config block (broke Vercel build).
+
+### Tests + deployment
+
+- 469 passing / 25 skipped (was 363/10 on 06-05).
+- All 17 deploys ready in production; latest HEAD `3d5ba09`.
+- Production URL: `https://resume-refactor.vercel.app`.
+
+### Deferred (next session priority order)
+
+1. **VN/EN i18n toggle** — `next-intl` in deps, ~12h plan A-E. App currently mixes Vietnamese + English.
+2. **Phase 1b/1c/1d** from prompt audit — Scoring calibration anchors, JD-match v2 distinct coverage + role mismatch flag + drop `strictness=friendly`, Cover Letter 4 tone variants.
+3. **Phase 2** — Roadmap prompt-only fixes (operator chose: keep `gemini-2.0-flash`, fix prompt first; defer model bump).
+4. **Refined CV aspiration UI** — Phase 1a shipped prompt + schema; UI input field + auto-flow from Career Path store deferred.
+5. **Job Fit dim rebalance** — `location` often empty → score noise. Defer until non-tech audience grows.
+6. **Role-family dim variants** (Option A from audit) — revisit if non-tech CV audience grows.
+7. **Pricing rollout** — per-user billing blocked until VN/EN toggle ships + token tracking stable in prod for ≥1 week.
+
+---
+
 ## v0.4.0 — CV-Solo Analyze pivot — 2026-06-04
 
 Single-session ship across 8 commits (`ea2c6e1` → `4950932` + docs sync). Plan: `plans/260604-1356-v04-cv-solo-analyze-pivot/`. Full deviations + follow-ups documented in [[project_v04_pivot_cv_solo_analyze]] memory.
