@@ -24,6 +24,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // is already active. Combined value 'consent select_account' is the
       // most reliable way to switch accounts during admin setup.
       authorization: { params: { prompt: 'consent select_account' } },
+      // Explicit profile mapping — NextAuth v5 beta is generating random
+      // UUIDs for user.id under our JWT-only setup, so we anchor user.id to
+      // the Google `sub` ourselves at the provider boundary. Belt-and-
+      // suspenders: jwt callback also pulls account.providerAccountId.
+      profile(profile) {
+        return {
+          id: profile.sub,
+          name: profile.name,
+          email: profile.email,
+          image: profile.picture,
+        };
+      },
     }),
   ],
   session: { strategy: 'jwt' },
@@ -46,21 +58,48 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return false;
       }
     },
-    async jwt({ token, user, account }) {
-      // NextAuth v5 JWT strategy without a DB adapter generates a fresh
-      // random UUID for `user.id` on every OAuth round-trip — the Google
-      // `sub` is ignored. That orphaned every user_cvs row the moment the
-      // user logged out and back in. Always prefer the provider account id
-      // (Google `sub`), which is stable per OAuth identity for life.
-      if (user && account) {
-        const stableId = account.providerAccountId || user.id;
+    async jwt({ token, user, account, profile }) {
+      // user/account/profile are only populated on initial sign-in (fresh
+      // OAuth round-trip). Subsequent JWT refreshes pass token through
+      // unchanged. So we ONLY reset token.id on actual sign-in events.
+      //
+      // Priority chain to nail the stable Google `sub`:
+      //   1. profile.sub  — raw IdToken claim, most authoritative
+      //   2. account.providerAccountId — NextAuth's own mapping of sub
+      //   3. user.id  — with profile() override above this should also be sub
+      // Whichever wins, log a fingerprint so we can verify in Vercel runtime
+      // logs that the same Google account yields the same id across logouts.
+      if (user || account || profile) {
+        const fromProfile =
+          profile && typeof (profile as { sub?: unknown }).sub === 'string'
+            ? ((profile as { sub: string }).sub)
+            : null;
+        const fromAccount = account?.providerAccountId ?? null;
+        const fromUser = user?.id ?? null;
+        const stableId = fromProfile ?? fromAccount ?? fromUser;
+
         if (!stableId) {
           console.error('[auth] jwt callback: no stable id from provider', {
-            provider: account.provider,
-            email: user.email ?? null,
+            provider: account?.provider ?? null,
+            email: user?.email ?? null,
+            hasProfile: !!profile,
+            hasAccount: !!account,
           });
           throw new Error('Authentication failed: provider returned no stable account id.');
         }
+
+        // Diagnostic: log all three sources so we can confirm Google sub is
+        // consistent across sign-in events. Strip nothing — these are not
+        // PII in our op logs (admin-only access to Vercel logs).
+        console.log('[auth] sign-in id resolution', {
+          email: user?.email ?? null,
+          fromProfile: fromProfile ?? '(absent)',
+          fromAccount: fromAccount ?? '(absent)',
+          fromUser: fromUser ?? '(absent)',
+          chosen: stableId,
+          prevTokenId: typeof token.id === 'string' ? token.id : null,
+        });
+
         token.id = stableId;
       }
       return token;
