@@ -16,6 +16,16 @@ const SECURITY_HEADERS = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
 
+  // Whitelist external image hosts that next/image is allowed to optimize.
+  // Google profile photos render in the user menu via UserMenu → <Image>;
+  // without lh3.googleusercontent.com here the optimizer returns 400 and
+  // the avatar falls back to a broken-image icon.
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
+    ],
+  },
+
   async headers() {
     return [
       {
