@@ -7,7 +7,7 @@
 // This prevents the partial-unique index violation that would arise from a
 // plain UPDATE on the new row before clearing the old default.
 
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, ne, sql } from 'drizzle-orm';
 import { getDb, userCvs, users } from '@/db';
 import type { NewUserCvRow } from '@/db';
 
@@ -116,6 +116,30 @@ export interface CreateCvInput {
  */
 export async function ensureUserRow(userId: string, email?: string | null | undefined): Promise<void> {
   const db = getDb();
+
+  // users.email has a UNIQUE constraint. Before the OAuth providerAccountId
+  // fix landed, NextAuth was minting a fresh random UUID for token.id on
+  // every sign-in — those orphan users rows carry the user's real email but
+  // a now-unused id. Inserting the new stable-sub row would collide on
+  // UNIQUE(email) and throw 23505, blocking CV save with a 500.
+  //
+  // Strategy: best-effort cascade-delete the orphans first. user_cvs and the
+  // other FK tables reference users.id with ON DELETE CASCADE, so the
+  // orphan's children disappear in the same statement. We deliberately do
+  // NOT migrate the rows — the operator confirmed re-upload is acceptable
+  // and the migration path has too many edge cases (per-user is_default
+  // unique constraint, multi-orphan races, transaction scope).
+  if (email) {
+    try {
+      await db
+        .delete(users)
+        .where(and(eq(users.email, email), ne(users.id, userId)));
+    } catch {
+      // Defensive: never let cleanup failure cascade into the insert path.
+      // The insert below will still surface a real email-conflict if any.
+    }
+  }
+
   await db
     .insert(users)
     .values({ id: userId, email: email ?? null })
