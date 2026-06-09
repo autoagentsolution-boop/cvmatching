@@ -53,21 +53,29 @@ async function downloadPdf(filename: string): Promise<void> {
 
   // Dynamic-import keeps these libs out of the main client chunk —
   // they're only needed when the user clicks PDF.
-  const [{ default: html2canvas }, jsPdfMod] = await Promise.all([
-    import('html2canvas'),
+  //
+  // We use `html-to-image` instead of `html2canvas` because Tailwind v4
+  // emits modern CSS color spaces (oklch, color-mix) that html2canvas 1.x
+  // can't parse — it throws "Attempting to parse an unsupported color
+  // function" and bombs the export silently. html-to-image walks the DOM
+  // via SVG <foreignObject>, which the browser renders natively, so any
+  // CSS the browser understands works.
+  const [{ toPng }, jsPdfMod] = await Promise.all([
+    import('html-to-image'),
     import('jspdf'),
   ]);
   const JsPdf = jsPdfMod.jsPDF;
 
-  // Render at 2× scale so text stays crisp when downsampled into the PDF.
-  // backgroundColor:#fff ensures any transparent regions read as white
-  // instead of inheriting page color.
-  const canvas = await html2canvas(target, {
-    scale: 2,
+  // 2× pixel ratio so text stays crisp when downsampled into the PDF.
+  // backgroundColor: white guarantees no transparent fill bleed.
+  const dataUrl = await toPng(target, {
+    pixelRatio: 2,
     backgroundColor: '#ffffff',
-    useCORS: true,
-    logging: false,
+    cacheBust: true,
   });
+
+  // Measure the rendered article so we know the source aspect ratio.
+  const img = await loadImage(dataUrl);
 
   // Letter page in points (jsPDF default unit): 612 × 792.
   const pdf = new JsPdf({ unit: 'pt', format: 'letter', orientation: 'portrait' });
@@ -75,13 +83,11 @@ async function downloadPdf(filename: string): Promise<void> {
   const pageHeight = pdf.internal.pageSize.getHeight();
 
   const imgWidth = pageWidth;
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-  const imgData = canvas.toDataURL('image/png');
+  const imgHeight = (img.height * imgWidth) / img.width;
 
   // Single-page fast path.
   if (imgHeight <= pageHeight) {
-    pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+    pdf.addImage(dataUrl, 'PNG', 0, 0, imgWidth, imgHeight);
     pdf.save(filename);
     return;
   }
@@ -90,17 +96,26 @@ async function downloadPdf(filename: string): Promise<void> {
   // chunk lands on the page. jsPDF clips to the page bounds automatically.
   let heightLeft = imgHeight;
   let yOffset = 0;
-  pdf.addImage(imgData, 'PNG', 0, yOffset, imgWidth, imgHeight);
+  pdf.addImage(dataUrl, 'PNG', 0, yOffset, imgWidth, imgHeight);
   heightLeft -= pageHeight;
 
   while (heightLeft > 0) {
     yOffset -= pageHeight;
     pdf.addPage();
-    pdf.addImage(imgData, 'PNG', 0, yOffset, imgWidth, imgHeight);
+    pdf.addImage(dataUrl, 'PNG', 0, yOffset, imgWidth, imgHeight);
     heightLeft -= pageHeight;
   }
 
   pdf.save(filename);
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Could not load rendered PNG.'));
+    img.src = src;
+  });
 }
 
 async function downloadDocx(markdown: string, filename: string): Promise<void> {
@@ -157,8 +172,9 @@ export function DownloadActions() {
     try {
       await downloadPdf(`refined-cv-${timestamp}.pdf`);
     } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
       console.error('[refined-cv] pdf export failed', e);
-      alert('Không xuất được PDF — vui lòng thử lại hoặc dùng nút DOCX/TXT.');
+      alert(`Không xuất được PDF — ${msg}\n\nVui lòng thử lại hoặc dùng nút DOCX/TXT.`);
     } finally {
       setPending(null);
     }
