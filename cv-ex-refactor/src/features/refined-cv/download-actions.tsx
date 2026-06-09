@@ -6,9 +6,11 @@ import { useSourceData } from './use-source-resolver';
 
 /**
  * Downloads the generated CV in three formats per user request:
- *  - PDF:  client-side via window.print() — uses the browser's "Save as PDF"
- *          flow against the @media print stylesheet. No new server endpoint,
- *          no headless Chromium. User picks the destination from the dialog.
+ *  - PDF:  client-side via html2canvas + jsPDF. Targets ONLY the rendered
+ *          CV article (`.refined-cv-print-target article`) — not the
+ *          surrounding app shell — so the saved file mirrors the on-screen
+ *          page sheet, not the sidebar/topbar. Multi-page split when the
+ *          rendered height exceeds one letter page (8.5 × 11in).
  *  - DOCX: client-side via the `docx` package. Renders paragraph-by-paragraph
  *          from a light markdown stripper. Heading-level lines get bold.
  *  - TXT:  strip the markdown formatting and download the bytes.
@@ -36,6 +38,69 @@ function triggerDownload(blob: Blob, filename: string): void {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+async function downloadPdf(filename: string): Promise<void> {
+  // Target the rendered <article> sheet inside `.refined-cv-print-target`.
+  // We deliberately do NOT target the wrapper div — it contains the Edit
+  // mode toolbar and centering scaffolding that shouldn't end up in the PDF.
+  const target = document.querySelector<HTMLElement>(
+    '.refined-cv-print-target article',
+  );
+  if (!target) {
+    throw new Error('Refined CV article element not found in DOM.');
+  }
+
+  // Dynamic-import keeps these libs out of the main client chunk —
+  // they're only needed when the user clicks PDF.
+  const [{ default: html2canvas }, jsPdfMod] = await Promise.all([
+    import('html2canvas'),
+    import('jspdf'),
+  ]);
+  const JsPdf = jsPdfMod.jsPDF;
+
+  // Render at 2× scale so text stays crisp when downsampled into the PDF.
+  // backgroundColor:#fff ensures any transparent regions read as white
+  // instead of inheriting page color.
+  const canvas = await html2canvas(target, {
+    scale: 2,
+    backgroundColor: '#ffffff',
+    useCORS: true,
+    logging: false,
+  });
+
+  // Letter page in points (jsPDF default unit): 612 × 792.
+  const pdf = new JsPdf({ unit: 'pt', format: 'letter', orientation: 'portrait' });
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+
+  const imgWidth = pageWidth;
+  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+  const imgData = canvas.toDataURL('image/png');
+
+  // Single-page fast path.
+  if (imgHeight <= pageHeight) {
+    pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+    pdf.save(filename);
+    return;
+  }
+
+  // Multi-page: slide the same image upward each page so the next visible
+  // chunk lands on the page. jsPDF clips to the page bounds automatically.
+  let heightLeft = imgHeight;
+  let yOffset = 0;
+  pdf.addImage(imgData, 'PNG', 0, yOffset, imgWidth, imgHeight);
+  heightLeft -= pageHeight;
+
+  while (heightLeft > 0) {
+    yOffset -= pageHeight;
+    pdf.addPage();
+    pdf.addImage(imgData, 'PNG', 0, yOffset, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+  }
+
+  pdf.save(filename);
 }
 
 async function downloadDocx(markdown: string, filename: string): Promise<void> {
@@ -87,14 +152,16 @@ export function DownloadActions() {
 
   const timestamp = Date.now();
 
-  function handleDownloadPdf(): void {
-    // window.print() opens the browser's Save-as-PDF dialog; the user picks
-    // PDF as the destination. The @media print stylesheet on the rendered
-    // CV controls the visual.
+  async function handleDownloadPdf(): Promise<void> {
     setPending('pdf');
-    window.print();
-    // Print dialog is modal; reset state once user dismisses it (next tick).
-    setTimeout(() => setPending(null), 1000);
+    try {
+      await downloadPdf(`refined-cv-${timestamp}.pdf`);
+    } catch (e) {
+      console.error('[refined-cv] pdf export failed', e);
+      alert('Không xuất được PDF — vui lòng thử lại hoặc dùng nút DOCX/TXT.');
+    } finally {
+      setPending(null);
+    }
   }
 
   async function handleDownloadDocx(): Promise<void> {
