@@ -23,6 +23,7 @@ import { z } from 'zod';
 import { resolveApiKey } from '@/lib/llm/resolve-api-key';
 import { checkKillSwitch, recordCost } from '@/lib/cost/guard';
 import { microUsdCost } from '@/lib/llm/model-prices';
+import { logLlmCall } from '@/lib/llm/safe-logger';
 import { LlmConfig } from '@/lib/schemas/llm-request';
 import { getCompany, mergeEnrichment } from '@/lib/companies/kv-client';
 import { enrichCompany, isEnrichmentStale } from '@/lib/companies/enrichment';
@@ -85,15 +86,42 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
     return NextResponse.json({ ok: true, company, fromCache: true });
   }
 
+  const start = Date.now();
   const result = await enrichCompany(company, {
     llm: { ...body.llm, apiKey: resolved.apiKey },
   });
 
   if (!result.ok) {
+    await logLlmCall({
+      endpoint: 'company-enrich',
+      provider: body.llm.provider,
+      model: body.llm.model,
+      byok: resolved.byok,
+      ...(resolved.userId ? { userId: resolved.userId } : {}),
+      status: 'error',
+      latencyMs: Date.now() - start,
+      error: result.code,
+    });
     return err(result.code, result.message, result.status);
   }
 
   const updated = await mergeEnrichment(slug, result.enrichment);
+
+  // Per-user usage log — surfaces enrichment in admin/usage rollups +
+  // funnel/activation tables. trackUsage internally also writes to KV
+  // cost counters, so the recordCost call below is the cost-bucket
+  // kill-switch path (separate accounting).
+  await logLlmCall({
+    endpoint: 'company-enrich',
+    provider: body.llm.provider,
+    model: body.llm.model,
+    byok: resolved.byok,
+    ...(resolved.userId ? { userId: resolved.userId } : {}),
+    status: 'ok',
+    latencyMs: Date.now() - start,
+    ...(result.promptTokens !== undefined ? { promptTokens: result.promptTokens } : {}),
+    ...(result.completionTokens !== undefined ? { completionTokens: result.completionTokens } : {}),
+  });
 
   // Best-effort cost record — failures here don't block response.
   if (!resolved.byok) {

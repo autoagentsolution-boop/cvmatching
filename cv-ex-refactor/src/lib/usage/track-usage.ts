@@ -10,7 +10,13 @@ export type UsageAction =
   | 'career-path'
   | 'career-path-suggest'
   | 'job-recommend'
-  | 'jd-insights';
+  | 'jd-insights'
+  // company-enrich — fires when a user opens a Job Fit detail and the
+  // Company Tier-2 enrichment cache is missing/stale. Grounded-search
+  // Gemini call (~4k output tokens, ~$0.005/call shared key). Tracked
+  // separately from analyze so per-user reports surface enrichment cost
+  // and cost buckets stay independent for kill-switch tuning.
+  | 'company-enrich';
 export type UsageStatus = 'ok' | 'error';
 
 /**

@@ -145,6 +145,7 @@ async function rankAndDecide(
   ctx: ResolveCompanyCtx,
 ): Promise<Decision> {
   let call: LlmCallResult;
+  const start = Date.now();
   try {
     call = await callLLM({
       config: ctx.llm,
@@ -159,6 +160,25 @@ async function rankAndDecide(
     const msg = e instanceof Error ? e.message : String(e);
     throw new Error(`Company dedup LLM call failed: ${msg.slice(0, 200)}`);
   }
+  // Structured log line so operator can grep total ingest-time LLM cost
+  // (`event:ingest_llm_call`) from local script runs. Per-user attribution
+  // intentionally skipped — ingest is an admin operation, not user traffic.
+  // KV trackUsage path skipped too: ingest fires outside the request cycle
+  // and inflating per-user buckets with operator activity would skew
+  // admin/usage reports.
+  console.log(
+    JSON.stringify({
+      event: 'ingest_llm_call',
+      surface: 'company-dedup',
+      provider: ctx.llm.provider,
+      model: ctx.llm.model,
+      latencyMs: Date.now() - start,
+      promptTokens: call.promptTokens ?? null,
+      completionTokens: call.completionTokens ?? null,
+      rawName,
+      candidateCount: candidates.length,
+    }),
+  );
   return decideFromRanking(parseRankingResponse(call.text));
 }
 

@@ -56,6 +56,7 @@ export async function enrichCompany(
   ctx: EnrichCompanyCtx,
 ): Promise<EnrichCompanyResult> {
   let call;
+  const start = Date.now();
   try {
     call = await callLLM({
       config: ctx.llm,
@@ -76,6 +77,21 @@ export async function enrichCompany(
       message: `Lỗi LLM khi enrich Company: ${msg.slice(0, 200)}`,
     };
   }
+  // Structured log line — caller (API route) ALSO calls logLlmCall for
+  // per-user attribution; this is the lib-level fallback for ingest-time
+  // callers that don't sit on a request (script runs).
+  console.log(
+    JSON.stringify({
+      event: 'ingest_llm_call',
+      surface: 'company-enrich',
+      provider: ctx.llm.provider,
+      model: ctx.llm.model,
+      latencyMs: Date.now() - start,
+      promptTokens: call.promptTokens ?? null,
+      completionTokens: call.completionTokens ?? null,
+      companySlug: company.slug,
+    }),
+  );
 
   if (!call.text) {
     return {

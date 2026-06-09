@@ -89,6 +89,25 @@ export async function handleAnalyzeV3(
       return err(infer.code, infer.message, infer.status);
     }
 
+    // Per-user log on success — without this the role-infer tokens
+    // (~400 output tokens) silently disappear from admin/usage rollups
+    // and the per-user analyze totals under-count by ~10-20%. The cost
+    // bucket already accounts for them via recordCost below; this is
+    // the per-user attribution leg.
+    await logLlmCall({
+      endpoint: 'analyze',
+      variant: 'v3',
+      provider: body.llm.provider,
+      model: body.llm.model,
+      byok: resolved.byok,
+      ...(resolved.userId ? { userId: resolved.userId } : {}),
+      status: 'ok',
+      latencyMs: Date.now() - inferStart,
+      inputChars: cvText.length,
+      ...(infer.promptTokens !== undefined ? { promptTokens: infer.promptTokens } : {}),
+      ...(infer.completionTokens !== undefined ? { completionTokens: infer.completionTokens } : {}),
+    });
+
     if (!resolved.byok) {
       await recordCost(
         'analyze',
