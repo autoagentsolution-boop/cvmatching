@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { FcGoogle } from 'react-icons/fc';
 import { MdAutoAwesome } from 'react-icons/md';
 import { Button, Card } from '@/components/ui';
@@ -24,15 +23,6 @@ export function SignInForm() {
           Continue with Google
         </Button>
       </form>
-
-      <footer className="mt-8 flex flex-col items-center gap-4 border-t border-outline-variant pt-6">
-        <Link
-          href="/?mode=byok"
-          className="text-label-md text-on-tertiary-container hover:underline"
-        >
-          ← Enter as Guest
-        </Link>
-      </footer>
     </Card>
   );
 }
