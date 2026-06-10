@@ -16,6 +16,7 @@ import { getSession } from '@/lib/get-session';
 import { resolveUserTier, type UserTier } from '@/lib/users/resolve-user-tier';
 import { applyTierGate } from '@/lib/jobs/apply-tier-gate';
 import { markSeenForUser, seenCountForUser } from '@/lib/jobs/mark-seen-for-user';
+import { isJobFitEnabled } from '@/lib/maintenance/job-fit-flag';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -100,6 +101,19 @@ function classifyLlmError(msg: string): { code: string; status: number; userMsg:
 
 export async function POST(req: NextRequest) {
   const session = await getSession().catch(() => null);
+
+  // Admin kill-switch: when off, Job Fit goes dark across the app —
+  // chevron drops the step, /job-fit renders a maintenance card, and
+  // the endpoint refuses traffic (admin included, so the off state is
+  // testable from the admin's own session).
+  const jobFitOn = await isJobFitEnabled();
+  if (!jobFitOn) {
+    return err(
+      'service_unavailable',
+      'Tính năng Job Fit tạm ẩn để bảo trì. Quay lại sau ít phút.',
+      503,
+    );
+  }
 
   const json = await req.json().catch(() => null);
   const parsed = RecommendBodySchema.safeParse(json);

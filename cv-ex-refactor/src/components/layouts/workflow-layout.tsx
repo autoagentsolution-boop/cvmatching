@@ -40,12 +40,15 @@ function deriveStepFromPath(pathname: string, workflow: WorkflowType): string {
   return step || (workflow === 'cv-analyze' ? 'score' : 'match');
 }
 
-function buildSteps(workflow: WorkflowType, cvId: string, isAdmin: boolean) {
+function buildSteps(workflow: WorkflowType, cvId: string, isAdmin: boolean, jobFitEnabled: boolean) {
   const base = workflow === 'cv-analyze' ? CV_ANALYZE_STEPS : JD_MATCHING_STEPS;
   const prefix = workflow === 'cv-analyze' ? '/cv-analyze' : '/jd-matching';
-  // Job Fit stays admin-only during pilot (pool gating in /api/jobs/recommend).
+  // Drop Job Fit chevron step when (a) admin flipped the KV kill-switch, OR
+  // (b) the viewer is non-admin during pilot (pool gating still applies in
+  // /api/jobs/recommend regardless). The KV flag wins — admin gets the same
+  // hidden state when they flip off so the "test the off-state" loop works.
   return base
-    .filter((s) => isAdmin || s.id !== 'jobfit')
+    .filter((s) => s.id !== 'jobfit' ? true : jobFitEnabled && isAdmin)
     .map((s) => ({ ...s, href: `${prefix}/${cvId}/${s.id}` }));
 }
 
@@ -73,6 +76,12 @@ export interface WorkflowLayoutProps {
    */
   sourceLayout?: 'left' | 'top';
   isAdmin?: boolean;
+  /**
+   * KV-flag-derived. When false the Job Fit chevron step is dropped from
+   * this workflow's stepper regardless of admin status. Default true so a
+   * forgotten prop doesn't accidentally hide the feature.
+   */
+  jobFitEnabled?: boolean;
   isAuthed?: boolean;
 }
 
@@ -96,6 +105,7 @@ export function WorkflowLayout({
   // would short-circuit the derive and break /match parallel layout.
   sourceLayout,
   isAdmin = false,
+  jobFitEnabled = true,
   isAuthed = false,
 }: WorkflowLayoutProps) {
   const router = useRouter();
@@ -103,7 +113,7 @@ export function WorkflowLayout({
   const currentStepId = deriveStepFromPath(pathname, workflow);
   const [showImportDrawer, setShowImportDrawer] = useState(false);
   const [navDrawerOpen, setNavDrawerOpen] = useState(false);
-  const steps = buildSteps(workflow, currentCvId, isAdmin);
+  const steps = buildSteps(workflow, currentCvId, isAdmin, jobFitEnabled);
   const activeNav: ActiveNav = workflow === 'cv-analyze' ? 'analyze' : 'jd-matching';
   const resolvedSourceLayout: 'left' | 'top' =
     sourceLayout ??

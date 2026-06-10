@@ -5,6 +5,7 @@ import { loadUserCv, loadUserCvList } from '@/lib/cvs/load-user-cv';
 import { isAdminUser } from '@/lib/usage/admin-auth';
 import { WorkflowLayout } from '@/components/layouts/workflow-layout';
 import { JdMatchingSourceArea } from '@/features/jd-matching/jd-matching-source-area';
+import { isJobFitEnabled } from '@/lib/maintenance/job-fit-flag';
 
 // Layout-level shell for the JD Matching workflow. Owns the persistent
 // Source CV iframe across chevron step navigation. JdMatchingSourceArea
@@ -31,6 +32,7 @@ export default async function JdMatchingLayout({
 
   const cvs = await loadUserCvList(session.user.id);
   const isAdmin = isAdminUser(session.user);
+  const jobFitOn = await isJobFitEnabled();
 
   return (
     <WorkflowLayout
@@ -45,6 +47,7 @@ export default async function JdMatchingLayout({
         />
       }
       isAdmin={isAdmin}
+      jobFitEnabled={jobFitOn}
       isAuthed
     >
       {children}

@@ -5,6 +5,7 @@ import { loadUserCv, loadUserCvList } from '@/lib/cvs/load-user-cv';
 import { isAdminUser } from '@/lib/usage/admin-auth';
 import { WorkflowLayout } from '@/components/layouts/workflow-layout';
 import { SourceDocumentCard } from '@/components/ui/source-document-card';
+import { isJobFitEnabled } from '@/lib/maintenance/job-fit-flag';
 
 // Owning the WorkflowLayout at the [cvId] segment is what keeps the
 // SourceDocumentCard iframe mounted across chevron step navigation.
@@ -30,6 +31,7 @@ export default async function CvAnalyzeLayout({
 
   const cvs = await loadUserCvList(session.user.id);
   const isAdmin = isAdminUser(session.user);
+  const jobFitOn = await isJobFitEnabled();
 
   const sourceDocuments = (
     <SourceDocumentCard
@@ -48,6 +50,7 @@ export default async function CvAnalyzeLayout({
       cvs={cvs}
       sourceDocuments={sourceDocuments}
       isAdmin={isAdmin}
+      jobFitEnabled={jobFitOn}
       isAuthed
     >
       {children}
