@@ -94,6 +94,22 @@ export const GenerateCvBody = z.object({
     extraInstructions: z.string().max(500).optional(),
     // Wave A: per-tier refine variant. Defaults to 'apply' (original behavior).
     mode: CvModeEnum.optional(),
+    /**
+     * Phase 1a parity with v3: future-target role the candidate is moving
+     * toward. When present and different from the JD-derived role, the
+     * prompt frames Summary + top Experience bullets as trajectory evidence.
+     * Truth contract is unchanged — only reframes real experience.
+     */
+    aspirationRole: z.string().min(1).max(160).optional(),
+    /**
+     * Phase 1a parity with v3: opt-in extra sections. Included only when
+     * CV/profile has real content for the section — empty sections never
+     * appear. Same enum as GenerateCvV3Body.
+     */
+    additionalSections: z
+      .array(z.enum(['projects', 'opensource', 'speaking', 'certifications', 'awards', 'publications']))
+      .max(6)
+      .optional(),
   }),
   analysisSummary: z.string().min(10).max(4_000),
 });

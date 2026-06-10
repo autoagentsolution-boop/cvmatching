@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { Button, Card, FormField, Select, Textarea } from '@/components/ui';
+import { Button, Card, FormField, Input, Select, Textarea } from '@/components/ui';
 import type { SelectOption } from '@/components/ui';
 import { useAnalysis } from '@/features/analyze/analysis-store';
 import { useSettings } from '@/features/analyze/settings-store';
 import { callGenerateCv, callGenerateCvV3 } from '@/features/analyze/api-client';
 import { buildV3Findings } from '@/features/analyze/build-v3-findings';
+import { useCareerPath } from '@/features/career-path/career-path-store';
 import type { GenerateCvRequest } from '@/features/analyze/types';
 import { useResolvedSource, useSourceData, useSourceSetters } from './use-source-resolver';
 
@@ -27,8 +28,19 @@ type Tone = NonNullable<GenerateCvRequest['inputs']['tone']>;
 type Length = NonNullable<GenerateCvRequest['inputs']['length']>;
 
 export function RefineToolsBlock() {
+  // Pre-fill aspiration from the Career Path store when the user has set
+  // a target there — keeps the two flows in sync without manual re-entry.
+  // Empty / 'auto' values aren't useful — coerce to '' so the placeholder
+  // shows instead of literal "auto".
+  const careerTargetRole = useCareerPath((s) => s.targetRole);
+  const aspirationDefault =
+    careerTargetRole && careerTargetRole.trim() && careerTargetRole.trim().toLowerCase() !== 'auto'
+      ? careerTargetRole.trim()
+      : '';
+
   const [tone, setTone] = useState<Tone>('impact');
   const [length, setLength] = useState<Length>('medium');
+  const [aspirationRole, setAspirationRole] = useState<string>(aspirationDefault);
   const [extraInstructions, setExtraInstructions] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
 
@@ -58,6 +70,8 @@ export function RefineToolsBlock() {
       let markdown: string;
       let refineNotes: string | null;
 
+      const trimmedAspiration = aspirationRole.trim();
+
       if (source === 'analyze') {
         const findings = buildV3Findings(result, targetRoleConfirmed ?? '');
         const res = await callGenerateCvV3({
@@ -67,6 +81,7 @@ export function RefineToolsBlock() {
           findings,
           tone,
           length,
+          ...(trimmedAspiration ? { aspirationRole: trimmedAspiration } : {}),
           ...(extraInstructions.trim() ? { extraInstructions: extraInstructions.trim() } : {}),
         });
         markdown = res.markdown;
@@ -80,6 +95,7 @@ export function RefineToolsBlock() {
             language,
             tone,
             length,
+            ...(trimmedAspiration ? { aspirationRole: trimmedAspiration } : {}),
             ...(extraInstructions.trim() ? { extraInstructions: extraInstructions.trim() } : {}),
           },
           analysisSummary: result.summary,
@@ -118,6 +134,22 @@ export function RefineToolsBlock() {
           options={LENGTH_OPTIONS}
           value={length}
           onChange={(e) => setLength(e.target.value as Length)}
+          disabled={!canRegenerate}
+        />
+      </FormField>
+
+      <FormField
+        label="Aspiration role (optional)"
+        htmlFor="refine-aspiration"
+        helperText="Where you're heading. Summary + top bullets will frame existing experience as trajectory evidence."
+      >
+        <Input
+          id="refine-aspiration"
+          type="text"
+          maxLength={160}
+          placeholder="e.g. Staff Engineer, Director of Platform, ML Tech Lead"
+          value={aspirationRole}
+          onChange={(e) => setAspirationRole(e.target.value)}
           disabled={!canRegenerate}
         />
       </FormField>

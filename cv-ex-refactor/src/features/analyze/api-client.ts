@@ -117,6 +117,8 @@ export interface CallGenerateCvV3Args {
   tone?: 'concise' | 'impact' | 'recruiter' | 'executive';
   length?: 'short' | 'medium' | 'long';
   extraInstructions?: string;
+  aspirationRole?: string;
+  additionalSections?: Array<'projects' | 'opensource' | 'speaking' | 'certifications' | 'awards' | 'publications'>;
 }
 
 /**
@@ -136,6 +138,10 @@ export async function callGenerateCvV3(args: CallGenerateCvV3Args): Promise<Gene
         tone: args.tone ?? 'impact',
         length: args.length ?? 'medium',
         ...(args.extraInstructions ? { extraInstructions: args.extraInstructions } : {}),
+        ...(args.aspirationRole ? { aspirationRole: args.aspirationRole } : {}),
+        ...(args.additionalSections && args.additionalSections.length > 0
+          ? { additionalSections: args.additionalSections }
+          : {}),
       },
       findings: args.findings,
     }),

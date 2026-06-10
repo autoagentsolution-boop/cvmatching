@@ -189,6 +189,17 @@ export interface GenerateCvRequest {
     extraInstructions?: string;
     /** Wave A per-tier mode. Omit → server defaults to 'apply'. */
     mode?: CvMode;
+    /**
+     * Phase 1a v2 parity with v3 — future-target role. When present and
+     * different from JD-derived role, prompt frames Summary + top bullets
+     * as trajectory evidence. Truth contract unchanged.
+     */
+    aspirationRole?: string;
+    /**
+     * Phase 1a v2 parity with v3 — opt-in extra sections rendered only
+     * when CV/profile has real content.
+     */
+    additionalSections?: Array<'projects' | 'opensource' | 'speaking' | 'certifications' | 'awards' | 'publications'>;
   };
   analysisSummary: string;
 }

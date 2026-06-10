@@ -181,6 +181,8 @@ Block 2 — REFINE NOTES (for the candidate's eyes only, never sent to recruiter
 A short report with these sections, each as h3 (###):
 ### Mode
 - One short line stating tone + length + aspiration (if any) used for this refine.
+  (v3 CV-solo has no mode switch — the apply/fill-gaps/stretch toggle is JD-anchored
+  and lives on v2 only; intentionally omitted here.)
 
 ### Changes Made
 - bullets: what you rephrased / amplified, citing which strength or recommendation it addresses${hasAspiration ? ` (mention which bullets were tilted toward "${inputs.aspirationRole}")` : ''}
