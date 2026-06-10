@@ -17,20 +17,18 @@ const providerOptions: SelectOption[] = [
 ];
 
 // Curated per-provider model lists so users don't have to look up model
-// names. Order = recommended-first. Pricing snippets help BYOK users
-// decide. Keep in sync with src/lib/llm/model-prices.ts when shipping a
-// new SKU. `custom` provider keeps the free-text Input since baseUrl
-// targets vary wildly.
+// names. Order = recommended-first. `custom` provider keeps the
+// free-text Input since baseUrl targets vary wildly.
 const MODEL_OPTIONS: Record<'gemini' | 'openai', SelectOption[]> = {
   gemini: [
-    { value: 'gemini-flash-latest', label: 'gemini-flash-latest (alias — recommended)' },
-    { value: 'gemini-2.5-flash', label: 'gemini-2.5-flash ($0.30 / $2.50 per Mtok)' },
-    { value: 'gemini-2.5-pro', label: 'gemini-2.5-pro ($1.25 / $10 per Mtok — fallback)' },
-    { value: 'gemini-2.0-flash-exp', label: 'gemini-2.0-flash-exp (free tier preview)' },
+    { value: 'gemini-flash-latest', label: 'gemini-flash-latest (recommended)' },
+    { value: 'gemini-2.5-flash', label: 'gemini-2.5-flash' },
+    { value: 'gemini-2.5-pro', label: 'gemini-2.5-pro (fallback)' },
+    { value: 'gemini-2.0-flash-exp', label: 'gemini-2.0-flash-exp (preview)' },
   ],
   openai: [
-    { value: 'gpt-4o-mini', label: 'gpt-4o-mini ($0.15 / $0.60 per Mtok — recommended)' },
-    { value: 'gpt-4o', label: 'gpt-4o ($2.50 / $10 per Mtok)' },
+    { value: 'gpt-4o-mini', label: 'gpt-4o-mini (recommended)' },
+    { value: 'gpt-4o', label: 'gpt-4o' },
   ],
 };
 
