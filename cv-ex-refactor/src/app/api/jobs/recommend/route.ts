@@ -16,7 +16,6 @@ import { getSession } from '@/lib/get-session';
 import { resolveUserTier, type UserTier } from '@/lib/users/resolve-user-tier';
 import { applyTierGate } from '@/lib/jobs/apply-tier-gate';
 import { markSeenForUser, seenCountForUser } from '@/lib/jobs/mark-seen-for-user';
-import { isJobFitSharedKeyEnabled } from '@/lib/maintenance/job-fit-shared-key-flag';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -120,17 +119,7 @@ export async function POST(req: NextRequest) {
     req.headers.get('x-real-ip')?.trim() ??
     'unknown';
 
-  // Job Fit can opt in to the DISABLE_SHARED_KEY gate bypass, but the
-  // decision is admin-controlled at runtime via the KV flag flipped from
-  // /admin/maintenance. Default OFF — admin flips ON when they want non-
-  // admin users to hit shared key on Job Fit even while heavier endpoints
-  // (analyze, generate-cv) stay gated.
-  const allowSharedKeyDespiteGate = await isJobFitSharedKeyEnabled();
-  const resolved = await resolveApiKey(llmConfig, 'job-recommend', {
-    byokToken,
-    ip,
-    allowSharedKeyDespiteGate,
-  });
+  const resolved = await resolveApiKey(llmConfig, 'job-recommend', { byokToken, ip });
   if (!resolved.ok) return err(resolved.code, resolved.message, resolved.status);
 
   if (!resolved.byok && !resolved.isAdmin) {

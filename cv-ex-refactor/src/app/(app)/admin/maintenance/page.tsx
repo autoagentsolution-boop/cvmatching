@@ -2,11 +2,9 @@ import type { Metadata } from 'next';
 import { kv, kvAvailable } from '@/lib/quota/kv-client';
 import { MAINTENANCE_KEY } from '@/lib/maintenance/maintenance-mode';
 import { LOGIN_FLAG_KEY } from '@/lib/maintenance/login-flag';
-import { JOB_FIT_SHARED_KEY_FLAG } from '@/lib/maintenance/job-fit-shared-key-flag';
 import { PageHeader } from '@/components/ui';
 import { MaintenanceToggle } from './maintenance-toggle';
 import { LoginFlagToggle } from './login-flag-toggle';
-import { JobFitSharedKeyToggle } from './job-fit-shared-key-toggle';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -32,13 +30,12 @@ async function readFlag(key: string): Promise<boolean> {
 export default async function AdminMaintenancePage() {
   const maintenanceOn = await readFlag(MAINTENANCE_KEY);
   const loginOn = await readFlag(LOGIN_FLAG_KEY);
-  const jobFitSharedKeyOn = await readFlag(JOB_FIT_SHARED_KEY_FLAG);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader
         title="Site Controls"
-        subtitle="Bật/tắt maintenance toàn site, public login flow, và Job Fit shared-key bypass. Tất cả có in-process cache 5s — flip cần tối đa 5s để propagate tới tất cả Vercel instances."
+        subtitle="Bật/tắt maintenance toàn site và public login flow. Cả hai đều có in-process cache 5s — flip cần tối đa 5s để propagate tới tất cả Vercel instances."
       />
 
       <section className="space-y-2">
@@ -51,19 +48,12 @@ export default async function AdminMaintenancePage() {
         <LoginFlagToggle initiallyOn={loginOn} />
       </section>
 
-      <section className="space-y-2">
-        <h2 className="font-display text-headline-sm font-bold text-on-surface">
-          Job Fit shared-key bypass
-        </h2>
-        <JobFitSharedKeyToggle initiallyOn={jobFitSharedKeyOn} />
-      </section>
-
       <section className="rounded-xl border border-outline-variant bg-surface-container-low p-4 text-body-sm">
         <h2 className="mb-2 font-semibold text-on-surface">Cơ chế</h2>
         <ul className="list-disc space-y-1 pl-5 text-on-surface-variant">
           <li>
-            KV flags: <code>{MAINTENANCE_KEY}</code>, <code>{LOGIN_FLAG_KEY}</code>,{' '}
-            <code>{JOB_FIT_SHARED_KEY_FLAG}</code> (tất cả persistent, không TTL).
+            KV flags: <code>{MAINTENANCE_KEY}</code> + <code>{LOGIN_FLAG_KEY}</code> (cả hai
+            persistent, không TTL).
           </li>
           <li>
             <strong>Maintenance ON</strong>: proxy.ts trả 503 + HTML &quot;Đang bảo trì&quot; cho
