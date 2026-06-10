@@ -282,6 +282,9 @@ export async function POST(req: NextRequest) {
       candidates: jobs.map((j) => ({
         id: j.id, title: j.title, company: j.company,
         vertical: j.vertical, seniority: j.seniority, description: j.description,
+        // Phase 1c: hard-gate must-haves are now part of the scoring prompt
+        // — caps overallScore at 65 when CV clearly misses one.
+        ...(j.mustHaves && j.mustHaves.length > 0 ? { mustHaves: j.mustHaves } : {}),
       })),
     });
 

@@ -9,6 +9,14 @@ import { postDislike } from './api-client';
 import { useJobFit } from './job-fit-store';
 import type { StudyTopicOut } from '@/lib/llm/normalize-job-recommend';
 
+/** Format Phase 1c {min,max} hours into "4-8h"; tolerates legacy string
+ *  shape from cached responses during the 2-week soak window. */
+function formatEstimatedHours(v: StudyTopicOut['estimatedHours']): string {
+  if (typeof v === 'string') return v;
+  if (v.min === v.max) return `${v.min}h`;
+  return `${v.min}-${v.max}h`;
+}
+
 const TIER_BADGE_VARIANT: Record<StudyTopicOut['tier'], 'success' | 'warning' | 'info'> = {
   basic: 'success',
   intermediate: 'warning',
@@ -84,7 +92,7 @@ export function StudyTopicsBlock({ jobId, topics }: StudyTopicsBlockProps) {
                   {topic.estimatedHours && (
                     <span className="inline-flex items-center gap-1 text-label-sm text-on-surface-variant">
                       <MdAccessTime size={14} aria-hidden="true" />
-                      {topic.estimatedHours}
+                      {formatEstimatedHours(topic.estimatedHours)}
                     </span>
                   )}
                   {/* Dislike chip renders the button inline */}

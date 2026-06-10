@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { normalizeRecommend } from '@/lib/llm/normalize-job-recommend';
+import { describe, it, expect, vi } from 'vitest';
+import { normalizeRecommend, parseLegacyEstimatedHours } from '@/lib/llm/normalize-job-recommend';
 import type { Job } from '@/lib/jobs/types';
 
 function makeJob(id: string): Job {
@@ -213,5 +213,94 @@ describe('normalizeRecommend', () => {
   it('returns empty array when jobs array is empty', () => {
     const map = new Map([['x', makeJob('x')]]);
     expect(normalizeRecommend({ jobs: [] }, map)).toHaveLength(0);
+  });
+
+  describe('Phase 1c — estimatedHours object shape + tier drift', () => {
+    it('accepts the new {min,max} estimatedHours shape and passes through', () => {
+      const jobId = 'topic-obj';
+      const map = new Map([[jobId, makeJob(jobId)]]);
+      const raw = {
+        jobs: [
+          {
+            ...makeRawMatch(jobId, 88),
+            studyTopics: [
+              {
+                name: 'TS', category: 'backend' as const, tier: 'intermediate' as const,
+                whyForThisJob: 'JD yêu cầu', estimatedHours: { min: 6, max: 12 },
+              },
+            ],
+          },
+        ],
+      };
+      const result = normalizeRecommend(raw, map);
+      expect(result).toHaveLength(1);
+      expect(result[0]!.studyTopics[0]!.estimatedHours).toEqual({ min: 6, max: 12 });
+    });
+
+    it('parses legacy "4-8h" string into {min:4,max:8}', () => {
+      expect(parseLegacyEstimatedHours('4-8h')).toEqual({ min: 4, max: 8 });
+      expect(parseLegacyEstimatedHours('10h')).toEqual({ min: 10, max: 14 });
+      expect(parseLegacyEstimatedHours('1-2 ngày')).toEqual({ min: 8, max: 16 });
+      expect(parseLegacyEstimatedHours('khoảng 6 giờ')).toEqual({ min: 6, max: 10 });
+      expect(parseLegacyEstimatedHours('không rõ')).toEqual({ min: 4, max: 8 });
+    });
+
+    it('normalizes legacy string shape into {min,max} during normalize', () => {
+      const jobId = 'legacy-string';
+      const map = new Map([[jobId, makeJob(jobId)]]);
+      const raw = {
+        jobs: [
+          {
+            ...makeRawMatch(jobId, 88),
+            studyTopics: [
+              {
+                name: 'Docker', category: 'devops' as const, tier: 'basic' as const,
+                whyForThisJob: 'JD nêu', estimatedHours: '12-18h',
+              },
+            ],
+          },
+        ],
+      };
+      const result = normalizeRecommend(raw, map);
+      expect(result[0]!.studyTopics[0]!.estimatedHours).toEqual({ min: 12, max: 18 });
+    });
+
+    it('passes through LLM tier without changing server-derived authoritative tier', () => {
+      const jobId = 'tier-llm';
+      const map = new Map([[jobId, makeJob(jobId)]]);
+      // 96 → server tier 'S' (>=95 boundary)
+      const raw = {
+        jobs: [{ ...makeRawMatch(jobId, 96), tier: 'S' as const }],
+      };
+      const result = normalizeRecommend(raw, map);
+      expect(result[0]!.tier).toBe('S');
+    });
+
+    it('warns on LLM tier drift vs server tier (mismatched boundary)', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const jobId = 'tier-drift';
+      const map = new Map([[jobId, makeJob(jobId)]]);
+      // overallScore 70 → server tier 'C' (65-74 band); LLM mis-emits 'A'
+      const raw = {
+        jobs: [{ ...makeRawMatch(jobId, 70), tier: 'A' as const }],
+      };
+      const result = normalizeRecommend(raw, map);
+      expect(result[0]!.tier).toBe('C'); // server still wins
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[job-fit] llm tier drift',
+        expect.objectContaining({ jobId, llmTier: 'A', serverTier: 'C' }),
+      );
+      warnSpy.mockRestore();
+    });
+
+    it('does NOT warn when LLM tier matches server tier', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const jobId = 'tier-match';
+      const map = new Map([[jobId, makeJob(jobId)]]);
+      const raw = { jobs: [{ ...makeRawMatch(jobId, 96), tier: 'S' as const }] };
+      normalizeRecommend(raw, map);
+      expect(warnSpy).not.toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
   });
 });
