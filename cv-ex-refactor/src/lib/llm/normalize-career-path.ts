@@ -5,6 +5,7 @@ import type {
   Milestone,
   SkillGap,
   AlternativePath,
+  QuickWin,
   QuickWins,
   TargetRoleSummary,
   SkillImportance,
@@ -59,11 +60,28 @@ function normalizeFeasibility(raw: unknown): Feasibility {
       : typeof realisticRaw === 'string'
         ? realisticRaw.toLowerCase() !== 'false'
         : true;
+
+  // Phase 2: structured ambitionGap + requiredSteps replace gentleAdvice
+  // softness. Legacy roadmaps without the new fields fall back: copy
+  // gentleAdvice into ambitionGap so the banner still renders something.
+  const ambitionGap = str(r.ambitionGap);
+  const requiredSteps = asStrArr(r.requiredSteps).slice(0, 6);
+  const gentleAdvice = str(r.gentleAdvice);
+
   const f: Feasibility = {
     realistic,
     reasons: asStrArr(r.reasons).slice(0, 4),
-    gentleAdvice: str(r.gentleAdvice),
+    gentleAdvice,
   };
+  if (ambitionGap) {
+    f.ambitionGap = ambitionGap;
+  } else if (gentleAdvice && !realistic) {
+    // Legacy fallback: gentleAdvice becomes the ambitionGap text so the new
+    // banner UI has something to render. Softeners aren't stripped here —
+    // accepted tone mismatch on cached data.
+    f.ambitionGap = gentleAdvice;
+  }
+  if (requiredSteps.length) f.requiredSteps = requiredSteps;
   const alt = str(r.pragmaticAlternative);
   if (alt) f.pragmaticAlternative = alt;
   return f;
@@ -126,7 +144,7 @@ function normalizeSkillGaps(raw: unknown): SkillGap[] {
 }
 
 function normalizeAlternatives(raw: unknown): AlternativePath[] {
-  return asArr(raw)
+  const items = asArr(raw)
     .map((a): AlternativePath => ({
       title: str(a.title),
       rationale: str(a.rationale),
@@ -134,14 +152,51 @@ function normalizeAlternatives(raw: unknown): AlternativePath[] {
     }))
     .filter((a) => a.title)
     .slice(0, 3);
+  // Phase 2: enforce min 1 — when LLM drops the field, surface a transparent
+  // stub so the UI doesn't render an empty section.
+  if (items.length === 0) {
+    items.push({
+      title: 'No alternative path identified',
+      rationale: 'Candidate is well-positioned for the primary target; no meaningful pivot suggested.',
+      pivotSteps: [],
+    });
+  }
+  return items;
+}
+
+/**
+ * Phase 2: quickWins entries are now {action, effortHours, outcome}.
+ * Legacy string-shape items (cached responses) normalize into the new
+ * shape with effortHours=0 + outcome=''. After 2 weeks of new-shape
+ * responses drop the string branch.
+ */
+function normalizeQuickWinList(raw: unknown): QuickWin[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item): QuickWin | null => {
+      if (typeof item === 'string') {
+        const action = item.trim();
+        return action ? { action, effortHours: 0, outcome: '' } : null;
+      }
+      if (item && typeof item === 'object') {
+        const o = item as RawAny;
+        const action = str(o.action);
+        if (!action) return null;
+        const effortHours = Math.max(0, Math.min(80, Math.round(num(o.effortHours, 0))));
+        return { action, effortHours, outcome: str(o.outcome) };
+      }
+      return null;
+    })
+    .filter((x): x is QuickWin => x !== null)
+    .slice(0, 6);
 }
 
 function normalizeQuickWins(raw: unknown): QuickWins {
   const r = asObj(raw);
   return {
-    days30: asStrArr(r.days30).slice(0, 6),
-    days60: asStrArr(r.days60).slice(0, 6),
-    days90: asStrArr(r.days90).slice(0, 6),
+    days30: normalizeQuickWinList(r.days30),
+    days60: normalizeQuickWinList(r.days60),
+    days90: normalizeQuickWinList(r.days90),
   };
 }
 

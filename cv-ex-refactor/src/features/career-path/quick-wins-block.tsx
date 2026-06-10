@@ -38,9 +38,15 @@ export function QuickWinsBlock({ quickWins }: Props) {
               {items.length === 0 ? (
                 <span className="text-body-sm text-on-surface-variant">No actions suggested.</span>
               ) : (
-                <ul className="list-disc pl-5 space-y-1.5">
-                  {items.map((it) => (
-                    <li key={it} className="text-body-md text-on-surface">{it}</li>
+                <ul className="list-disc pl-5 space-y-2">
+                  {items.map((it, idx) => (
+                    <li key={`${col.key}-${idx}`} className="text-body-md text-on-surface">
+                      <div className="font-medium">{it.action}</div>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-label-sm text-on-surface-variant">
+                        {it.effortHours > 0 && <span>~{it.effortHours}h</span>}
+                        {it.outcome && <span>→ {it.outcome}</span>}
+                      </div>
+                    </li>
                   ))}
                 </ul>
               )}

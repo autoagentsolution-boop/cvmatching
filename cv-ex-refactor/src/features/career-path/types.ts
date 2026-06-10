@@ -61,10 +61,21 @@ export interface AlternativePath {
   pivotSteps: string[];
 }
 
+/**
+ * Phase 2 — structured quick-win entry. {action, effortHours, outcome}
+ * replaces the freeform string. Legacy string-shape responses normalize
+ * into this shape with effortHours=0, outcome=''.
+ */
+export interface QuickWin {
+  action: string;
+  effortHours: number;
+  outcome: string;
+}
+
 export interface QuickWins {
-  days30: string[];
-  days60: string[];
-  days90: string[];
+  days30: QuickWin[];
+  days60: QuickWin[];
+  days90: QuickWin[];
 }
 
 /**
@@ -72,11 +83,21 @@ export interface QuickWins {
  * `realistic=false` triggers a soft warning banner — we still render the
  * roadmap (LLM is asked to fall back to a pragmatic version) instead of
  * hard-failing on the user.
+ *
+ * 2026-06-10 Phase 2 — gentleAdvice softness replaced by structured
+ * ambitionGap (1-sentence factual gap) + requiredSteps (2-4 bridging
+ * steps). gentleAdvice kept as deprecated legacy passthrough so cached
+ * roadmaps still render the banner.
  */
 export interface Feasibility {
   realistic: boolean;
   reasons: string[];
+  /** @deprecated Phase 2 — use ambitionGap + requiredSteps instead. */
   gentleAdvice: string;
+  /** Phase 2 — 1-sentence factual gap when realistic=false. */
+  ambitionGap?: string;
+  /** Phase 2 — 2-4 concrete steps to bridge the gap. */
+  requiredSteps?: string[];
   pragmaticAlternative?: string;
 }
 

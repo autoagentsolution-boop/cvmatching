@@ -13,9 +13,13 @@ interface Props {
  */
 export function FeasibilityBanner({ feasibility }: Props) {
   if (feasibility.realistic) return null;
+  // Phase 2: prefer ambitionGap; legacy data uses gentleAdvice.
+  const headline = feasibility.ambitionGap?.trim() || feasibility.gentleAdvice;
+  const steps = feasibility.requiredSteps ?? [];
   const hasContent =
     feasibility.reasons.length > 0 ||
-    feasibility.gentleAdvice.length > 0 ||
+    !!headline ||
+    steps.length > 0 ||
     !!feasibility.pragmaticAlternative;
   if (!hasContent) return null;
 
@@ -35,10 +39,8 @@ export function FeasibilityBanner({ feasibility }: Props) {
           <h4 className="text-title-sm font-bold text-on-surface">
             Mục tiêu này hơi xa so với hồ sơ hiện tại — nhưng vẫn có hướng đi
           </h4>
-          {feasibility.gentleAdvice && (
-            <p className="text-body-md text-on-surface-variant">
-              {feasibility.gentleAdvice}
-            </p>
+          {headline && (
+            <p className="text-body-md text-on-surface-variant">{headline}</p>
           )}
         </div>
       </div>
@@ -51,6 +53,19 @@ export function FeasibilityBanner({ feasibility }: Props) {
           <ul className="list-disc pl-5 space-y-1">
             {feasibility.reasons.map((r) => (
               <li key={r} className="text-body-sm text-on-surface">{r}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {steps.length > 0 && (
+        <div className="flex flex-col gap-1 pl-9">
+          <span className="text-label-sm font-bold uppercase tracking-wide text-on-surface-variant">
+            Bước cần thiết
+          </span>
+          <ul className="list-disc pl-5 space-y-1">
+            {steps.map((s) => (
+              <li key={s} className="text-body-sm text-on-surface">{s}</li>
             ))}
           </ul>
         </div>

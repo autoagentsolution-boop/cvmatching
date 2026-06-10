@@ -207,6 +207,13 @@ export const CareerPathBody = z.object({
     currentRole: z.string().max(160).optional(),
     aspiration: CareerAspiration,
     language: LanguageEnum.default('auto'),
+    /**
+     * Phase 2 — optional industry anchor. When non-empty, the prompt
+     * forces milestones/skillsToBuild/skillGaps to be specific to this
+     * vertical (e.g. fintech → KYC + audit, e-commerce → cache
+     * invalidation). Empty string treated as no anchor.
+     */
+    industry: z.string().max(80).optional(),
   }),
 });
 
