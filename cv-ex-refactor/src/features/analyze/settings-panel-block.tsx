@@ -8,6 +8,7 @@ import { useSettings, DEFAULT_MODELS } from './settings-store';
 import { useAnalysis } from './analysis-store';
 import type { Language, Provider } from './types';
 import { clearByokKey, fetchByokStatus, storeByokKey } from './api-client';
+import { useT } from '@/lib/i18n/use-t';
 
 const providerOptions: SelectOption[] = [
   { value: 'gemini', label: 'Google Gemini' },
@@ -230,23 +231,28 @@ export function SettingsPanelBlock({ isAuthed }: SettingsPanelBlockProps) {
  * the analyze form first.
  */
 function LanguagePreferenceRow() {
+  const t = useT();
   const language = useAnalysis((s) => s.language);
   const setField = useAnalysis((s) => s.setField);
 
+  const localizedOptions: SelectOption[] = [
+    { value: 'auto', label: t('lang.auto') },
+    { value: 'en', label: t('lang.en') },
+    { value: 'vi', label: t('lang.vi') },
+  ];
+
   return (
     <div className="rounded-xl border border-outline-variant bg-surface-container-low p-3 flex flex-col gap-2">
-      <FormField label="LLM output language" htmlFor="settings-language">
+      <FormField label={t('settings.outputLanguage')} htmlFor="settings-language">
         <Select
           id="settings-language"
-          options={languageOptions}
+          options={localizedOptions}
           value={language}
           onChange={(e) => setField('language', e.target.value as Language)}
         />
       </FormField>
       <p className="text-label-sm text-on-surface-variant leading-relaxed">
-        Áp dụng cho mọi output do AI sinh ra (analyze, refined CV, roadmap,
-        cover letter, job fit). UI / nút bấm hiện tại vẫn tiếng Việt — i18n
-        cho UI chuỗi đang được lên kế hoạch riêng.
+        {t('settings.outputLanguage.help')}
       </p>
     </div>
   );

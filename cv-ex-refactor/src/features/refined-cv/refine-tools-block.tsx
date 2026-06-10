@@ -10,6 +10,7 @@ import { buildV3Findings } from '@/features/analyze/build-v3-findings';
 import { useCareerPath } from '@/features/career-path/career-path-store';
 import type { GenerateCvRequest } from '@/features/analyze/types';
 import { useResolvedSource, useSourceData, useSourceSetters } from './use-source-resolver';
+import { useT } from '@/lib/i18n/use-t';
 
 const TONE_OPTIONS: SelectOption[] = [
   { value: 'impact', label: 'Impact-focused' },
@@ -28,6 +29,7 @@ type Tone = NonNullable<GenerateCvRequest['inputs']['tone']>;
 type Length = NonNullable<GenerateCvRequest['inputs']['length']>;
 
 export function RefineToolsBlock() {
+  const t = useT();
   // Pre-fill aspiration from the Career Path store when the user has set
   // a target there — keeps the two flows in sync without manual re-entry.
   // Empty / 'auto' values aren't useful — coerce to '' so the placeholder
@@ -116,9 +118,9 @@ export function RefineToolsBlock() {
 
   return (
     <Card padding="md" className="flex flex-col gap-4">
-      <h2 className="font-display text-headline-sm text-on-surface">Refine Controls</h2>
+      <h2 className="font-display text-headline-sm text-on-surface">{t('refinedCV.controls.title')}</h2>
 
-      <FormField label="Tone" htmlFor="refine-tone">
+      <FormField label={t('refinedCV.tone')} htmlFor="refine-tone">
         <Select
           id="refine-tone"
           options={TONE_OPTIONS}
@@ -128,7 +130,7 @@ export function RefineToolsBlock() {
         />
       </FormField>
 
-      <FormField label="Length" htmlFor="refine-length">
+      <FormField label={t('refinedCV.length')} htmlFor="refine-length">
         <Select
           id="refine-length"
           options={LENGTH_OPTIONS}
@@ -139,26 +141,26 @@ export function RefineToolsBlock() {
       </FormField>
 
       <FormField
-        label="Aspiration role (optional)"
+        label={t('refinedCV.aspirationRole')}
         htmlFor="refine-aspiration"
-        helperText="Where you're heading. Summary + top bullets will frame existing experience as trajectory evidence."
+        helperText={t('refinedCV.aspirationRole.help')}
       >
         <Input
           id="refine-aspiration"
           type="text"
           maxLength={160}
-          placeholder="e.g. Staff Engineer, Director of Platform, ML Tech Lead"
+          placeholder={t('refinedCV.aspirationRole.placeholder')}
           value={aspirationRole}
           onChange={(e) => setAspirationRole(e.target.value)}
           disabled={!canRegenerate}
         />
       </FormField>
 
-      <FormField label="Extra instructions" htmlFor="refine-extra">
+      <FormField label={t('refinedCV.extraInstructions')} htmlFor="refine-extra">
         <Textarea
           id="refine-extra"
           rows={3}
-          placeholder="e.g. Emphasise leadership experience..."
+          placeholder={t('refinedCV.extraInstructions.placeholder')}
           value={extraInstructions}
           onChange={(e) => setExtraInstructions(e.target.value)}
           disabled={!canRegenerate}
@@ -177,7 +179,7 @@ export function RefineToolsBlock() {
         disabled={!canRegenerate}
         onClick={handleRegenerate}
       >
-        {isGeneratingCv ? 'Regenerating…' : 'Regenerate'}
+        {isGeneratingCv ? t('refinedCV.regenerating') : t('refinedCV.regenerate')}
       </Button>
     </Card>
   );

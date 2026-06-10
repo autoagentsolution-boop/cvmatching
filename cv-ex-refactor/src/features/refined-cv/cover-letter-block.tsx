@@ -13,6 +13,7 @@ import type {
   CoverLetterToneT,
   CoverLetterLengthT,
 } from '@/lib/schemas/cover-letter-request';
+import { useT } from '@/lib/i18n/use-t';
 
 const TONE_OPTIONS: SelectOption[] = [
   { value: 'professional', label: 'Professional' },
@@ -64,6 +65,7 @@ interface CoverLetterBlockProps {
 // the URL-fallback / refined-cv-aside path was removed.
 // Pilot quota: 3/day for logged-in users (consume-quota.ts), 0 for anonymous.
 export function CoverLetterBlock({ jobId }: CoverLetterBlockProps) {
+  const t = useT();
   const { jobs } = useJobFit();
   const { language } = useAnalysis();
   // Most-recent analyze result — used to auto-prefill strengthsToLead +
@@ -147,13 +149,13 @@ export function CoverLetterBlock({ jobId }: CoverLetterBlockProps) {
     <Card padding="md" className="flex flex-col gap-3 bg-primary-container">
       <header className="flex items-center gap-2">
         <MdAutoAwesome size={18} className="text-on-primary-container" aria-hidden="true" />
-        <h3 className="text-label-md font-bold text-on-primary-container">Generate Cover Letter</h3>
+        <h3 className="text-label-md font-bold text-on-primary-container">{t('coverLetter.title')}</h3>
       </header>
 
       {!canGenerate && (
         <p className="text-label-sm text-on-primary-container/80 leading-relaxed">
           {!hasCv
-            ? 'Cần CV trong phiên — chạy Analyze trước.'
+            ? t('coverLetter.needCv')
             : 'Phiên job không còn — quay lại /job-fit và click vào job này từ list để nạp lại context.'}
         </p>
       )}
@@ -161,13 +163,12 @@ export function CoverLetterBlock({ jobId }: CoverLetterBlockProps) {
       {canGenerate && (
         <>
           <p className="text-label-sm text-on-primary-container/80 leading-relaxed">
-            AI viết cover letter cho{' '}
             <strong className="font-bold">{job?.title}</strong>{' '}
-            @ <strong className="font-bold">{job?.company}</strong>. Quota: 3 lần / ngày.
+            @ <strong className="font-bold">{job?.company}</strong>. {t('coverLetter.descSuffix')}
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <FormField label="Tone" htmlFor="cover-tone">
+            <FormField label={t('refinedCV.tone')} htmlFor="cover-tone">
               <Select
                 id="cover-tone"
                 options={TONE_OPTIONS}
@@ -176,7 +177,7 @@ export function CoverLetterBlock({ jobId }: CoverLetterBlockProps) {
                 disabled={isLoading}
               />
             </FormField>
-            <FormField label="Length" htmlFor="cover-length">
+            <FormField label={t('refinedCV.length')} htmlFor="cover-length">
               <Select
                 id="cover-length"
                 options={LENGTH_OPTIONS}
@@ -196,7 +197,7 @@ export function CoverLetterBlock({ jobId }: CoverLetterBlockProps) {
                 disabled={isLoading}
                 className="rounded border-on-primary-container/40"
               />
-              <span>Address top critical gap from analysis (1 sentence near the close)</span>
+              <span>{t('coverLetter.addressGap')}</span>
             </label>
           )}
 
@@ -208,10 +209,12 @@ export function CoverLetterBlock({ jobId }: CoverLetterBlockProps) {
               loading={isLoading}
               disabled={isLoading}
             >
-              {markdown ? 'Generate lại' : 'Generate'}
+              {markdown ? t('common.regenerate') : t('common.generate')}
             </Button>
             {quota != null && (
-              <span className="text-xs text-on-primary-container/70">Còn {quota} lần hôm nay</span>
+              <span className="text-xs text-on-primary-container/70">
+                {t('coverLetter.quotaRemaining', { n: quota })}
+              </span>
             )}
           </div>
         </>
@@ -222,7 +225,7 @@ export function CoverLetterBlock({ jobId }: CoverLetterBlockProps) {
       )}
 
       {error && !isLoading && (
-        <ErrorState title="Cover Letter thất bại" description={error} retry={handleGenerate} />
+        <ErrorState title={t('coverLetter.error')} description={error} retry={handleGenerate} />
       )}
 
       {markdown && !isLoading && !error && (

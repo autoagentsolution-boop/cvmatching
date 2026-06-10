@@ -12,9 +12,15 @@ export type ActiveNav =
   | 'admin-pool'
   | 'admin-maintenance';
 
+import type { MessageKey } from '@/lib/i18n/messages';
+import { useT } from '@/lib/i18n/use-t';
+
 interface NavItem {
   key: ActiveNav;
-  label: string;
+  /** i18n message key — resolved at render time so the toggle takes effect instantly. */
+  labelKey: MessageKey;
+  /** English-only fallback for admin pages we haven't translated yet. Renders verbatim when present. */
+  rawLabel?: string;
   icon: string;
   href: string;
   /** When true, only renders for admin sessions. */
@@ -26,14 +32,15 @@ interface NavItem {
 // (Refined CV, Career Path, Job Fit) live as chevron steps inside the
 // workflows and intentionally don't surface here.
 const NAV_ITEMS: NavItem[] = [
-  { key: 'dashboard', label: 'Dashboard', icon: 'home', href: '/' },
-  { key: 'cvs', label: 'My CVs', icon: 'description', href: '/cvs' },
-  { key: 'analyze', label: 'CV Analyze', icon: 'analytics', href: '/analyze' },
-  { key: 'jd-matching', label: 'JD Matching', icon: 'compare_arrows', href: '/jd-matching' },
-  { key: 'history', label: 'History', icon: 'history', href: '/history', adminOnly: true },
-  { key: 'admin-usage', label: 'Usage', icon: 'bar_chart', href: '/admin/usage', adminOnly: true },
-  { key: 'admin-pool', label: 'Job Pool', icon: 'inventory_2', href: '/admin/pool', adminOnly: true },
-  { key: 'admin-maintenance', label: 'Site Controls', icon: 'engineering', href: '/admin/maintenance', adminOnly: true },
+  { key: 'dashboard', labelKey: 'nav.dashboard', icon: 'home', href: '/' },
+  { key: 'cvs', labelKey: 'nav.myCVs', icon: 'description', href: '/cvs' },
+  { key: 'analyze', labelKey: 'nav.analyze', icon: 'analytics', href: '/analyze' },
+  { key: 'jd-matching', labelKey: 'nav.jdMatching', icon: 'compare_arrows', href: '/jd-matching' },
+  { key: 'history', labelKey: 'nav.history', icon: 'history', href: '/history', adminOnly: true },
+  // Admin-only pages stay English-labelled for now.
+  { key: 'admin-usage', labelKey: 'nav.dashboard', rawLabel: 'Usage', icon: 'bar_chart', href: '/admin/usage', adminOnly: true },
+  { key: 'admin-pool', labelKey: 'nav.dashboard', rawLabel: 'Job Pool', icon: 'inventory_2', href: '/admin/pool', adminOnly: true },
+  { key: 'admin-maintenance', labelKey: 'nav.dashboard', rawLabel: 'Site Controls', icon: 'engineering', href: '/admin/maintenance', adminOnly: true },
 ];
 
 function NavLink({
@@ -45,6 +52,8 @@ function NavLink({
   active: boolean;
   onClick?: (() => void) | undefined;
 }) {
+  const t = useT();
+  const label = item.rawLabel ?? t(item.labelKey);
   return (
     <Link
       href={item.href}
@@ -59,7 +68,7 @@ function NavLink({
       <span className="material-symbols-outlined text-[20px] leading-none" aria-hidden="true">
         {item.icon}
       </span>
-      {item.label}
+      {label}
     </Link>
   );
 }
@@ -108,6 +117,7 @@ export function DashboardSidebar({
   isAdmin = false,
   isAuthed = false,
 }: DashboardSidebarProps) {
+  const t = useT();
   return (
     <>
       <div className="flex items-center gap-3 px-3 py-6">
@@ -139,7 +149,7 @@ export function DashboardSidebar({
           className="flex items-center gap-3 rounded-lg px-4 py-3 text-label-md text-on-surface-variant transition-colors hover:bg-surface-container-high"
         >
           <span className="material-symbols-outlined text-[20px]" aria-hidden="true">help</span>
-          Help
+          {t('nav.help')}
         </Link>
         <Link
           href="/privacy"
@@ -148,7 +158,7 @@ export function DashboardSidebar({
           <span className="material-symbols-outlined text-[20px]" aria-hidden="true">
             privacy_tip
           </span>
-          Privacy
+          {t('nav.privacy')}
         </Link>
         {isAuthed && (
           // Logout posts to NextAuth signout endpoint — keep as <a> so it's a real navigation/POST, not client-side route.

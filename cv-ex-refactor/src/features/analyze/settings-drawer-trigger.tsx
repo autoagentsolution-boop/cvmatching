@@ -4,12 +4,14 @@ import { useState } from 'react';
 import { MdSettings } from 'react-icons/md';
 import { Button, Drawer } from '@/components/ui';
 import { SettingsPanelBlock } from './settings-panel-block';
+import { useT } from '@/lib/i18n/use-t';
 
 export interface SettingsDrawerTriggerProps {
   isAuthed?: boolean;
 }
 
 export function SettingsDrawerTrigger({ isAuthed = false }: SettingsDrawerTriggerProps) {
+  const t = useT();
   // Lazy initializer — runs once on client mount. Avoids useSearchParams which would
   // force a Suspense boundary in every (app) route and break static generation.
   const [open, setOpen] = useState(() => {
@@ -32,7 +34,7 @@ export function SettingsDrawerTrigger({ isAuthed = false }: SettingsDrawerTrigge
         open={open}
         onClose={() => setOpen(false)}
         side="right"
-        title="LLM Settings"
+        title={t('settings.title')}
       >
         <SettingsPanelBlock isAuthed={isAuthed} />
       </Drawer>
