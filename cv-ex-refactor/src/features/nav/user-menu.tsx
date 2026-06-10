@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { FcGoogle } from 'react-icons/fc';
 import { Button } from '@/components/ui';
 import { signOutUser, signInWithGoogle } from '@/features/auth/sign-in-server-actions';
+import { useT } from '@/lib/i18n/use-t';
 
 interface UserMenuProps {
   user: Session['user'] | null;
@@ -12,6 +13,7 @@ interface UserMenuProps {
 }
 
 export function UserMenu({ user, loginEnabled = false }: UserMenuProps) {
+  const t = useT();
   if (!user) {
     // Guest. Public login is gated by KV flag — when off, no UI entry exists
     // so the /sign-in URL cannot be reached except by admins. When on, render
@@ -26,7 +28,7 @@ export function UserMenu({ user, loginEnabled = false }: UserMenuProps) {
           type="submit"
           leadingIcon={<FcGoogle aria-hidden="true" />}
         >
-          Đăng nhập với Google
+          {t('nav.signIn')}
         </Button>
       </form>
     );
@@ -55,7 +57,7 @@ export function UserMenu({ user, loginEnabled = false }: UserMenuProps) {
 
       <form action={signOutUser}>
         <Button variant="ghost" size="sm" type="submit">
-          Sign out
+          {t('nav.signOut')}
         </Button>
       </form>
     </div>

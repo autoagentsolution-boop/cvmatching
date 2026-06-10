@@ -24,6 +24,7 @@ import { callJdInsights } from './api-client';
 import { JdImportPanel } from './jd-import-panel';
 import { aggregateRoleFit, classifyFit } from '@/lib/scoring/role-fit-aggregate';
 import { hydrateWeightsFromResult, recomputeOverall } from '@/lib/scoring/recompute-overall';
+import { useT } from '@/lib/i18n/use-t';
 import { isTransientLlmError } from '@/lib/llm/humanize-error';
 import type {
   AnalyzeRequest,
@@ -54,6 +55,7 @@ const COVERAGE_VISUAL: Record<AnalysisCoverage['status'], CoverageVisual> = {
 };
 
 export function JdMatchingContent({ cvContent, cvId }: JdMatchingContentProps) {
+  const t = useT();
   const result = useAnalysis((s) => s.jdMatchResult);
   const isAnalyzing = useAnalysis((s) => s.isAnalyzing);
   const error = useAnalysis((s) => s.error);
@@ -130,7 +132,7 @@ export function JdMatchingContent({ cvContent, cvId }: JdMatchingContentProps) {
   if (error && !isAnalyzing && !transient) {
     return (
       <ErrorState
-        title="JD Matching failed"
+        title={t('jdMatch.error')}
         description={error}
         retry={runMatch}
       />
@@ -138,17 +140,16 @@ export function JdMatchingContent({ cvContent, cvId }: JdMatchingContentProps) {
   }
 
   if (isAnalyzing) {
-    return <LoadingState variant="spinner" message="Matching CV vs JD…" size="lg" />;
+    return <LoadingState variant="spinner" message={t('jdMatch.loading')} size="lg" />;
   }
 
   if (!result) {
     return (
       <section className="flex flex-col gap-5 rounded-2xl border border-dashed border-outline-variant bg-surface-container-lowest p-8">
         <div>
-          <h2 className="font-display text-headline-md text-on-surface">Ready to match CV vs JD</h2>
+          <h2 className="font-display text-headline-md text-on-surface">{t('jdMatch.readyTitle')}</h2>
           <p className="mt-2 text-body-md text-on-surface-variant">
-            Bring in a job description by pasting it, fetching a posting URL, or uploading a PDF/Word file.
-            We&apos;ll compare it against your CV across 9 recruiter dimensions and surface the priority gaps to close.
+            {t('jdMatch.readyDesc')}
           </p>
         </div>
 
@@ -161,7 +162,7 @@ export function JdMatchingContent({ cvContent, cvId }: JdMatchingContentProps) {
             onClick={runMatch}
             disabled={jdText.trim().length < 50}
           >
-            Match CV vs JD
+            {t('jdMatch.cta')}
           </Button>
         </div>
       </section>
@@ -187,12 +188,12 @@ export function JdMatchingContent({ cvContent, cvId }: JdMatchingContentProps) {
 
       <details className="mt-6 rounded-2xl border border-dashed border-outline-variant bg-surface-container-lowest open:bg-surface-container-low transition-colors">
         <summary className="cursor-pointer list-none px-5 py-3 text-label-md font-semibold text-on-surface flex items-center justify-between">
-          <span>Match a different JD</span>
-          <span className="text-on-surface-variant text-body-sm">Swap JD ↓</span>
+          <span>{t('jdMatch.swap')}</span>
+          <span className="text-on-surface-variant text-body-sm">↓</span>
         </summary>
         <div className="flex flex-col gap-4 px-5 pb-5">
           <p className="text-body-sm text-on-surface-variant">
-            Bring in another job description. Running a new match replaces the result above.
+            {t('jdMatch.swap.help')}
           </p>
           <JdImportPanel />
           <div className="flex items-center justify-end">

@@ -12,6 +12,7 @@ import { useCareerPath, cvCacheKey } from './career-path-store';
 import { useCareerSource } from './use-career-source';
 import { callSuggestPaths } from './api-client';
 import type { SuggestPathsRequest } from './types';
+import { useT } from '@/lib/i18n/use-t';
 import { AspirationInputBlock } from './aspiration-input-block';
 import { CareerPathActions } from './career-path-actions';
 import { CurrentSnapshotBlock } from './current-snapshot-block';
@@ -32,6 +33,7 @@ export interface CareerPathPageProps {
 
 export function CareerPathPage({ mode }: CareerPathPageProps = {}) {
   void mode;
+  const t = useT();
   // Source-aware (per `?from=`) CV + analysis result. See use-career-source.
   const { cvText, analysisResult } = useCareerSource();
   const language = useAnalysis((s) => s.language);
@@ -119,22 +121,22 @@ export function CareerPathPage({ mode }: CareerPathPageProps = {}) {
         <PageHeader
           title={
             <>
-              Map your{' '}
-              <span className="text-on-tertiary-container">career path.</span>
+              {t('careerPath.title')}{' '}
+              <span className="text-on-tertiary-container">{t('careerPath.titleAccent')}</span>
             </>
           }
-          subtitle="AI phân tích CV và đề xuất các hướng phát triển — chọn một hướng để dựng roadmap chi tiết, hoặc tuỳ chỉnh aspiration nếu muốn rẽ hướng khác."
+          subtitle={t('careerPath.subtitle')}
         />
       }
     >
       {!hasCv ? (
         <EmptyState
           icon={<MdRoute className="text-4xl" aria-hidden="true" />}
-          title="Cần phân tích CV trước"
-          description="Career Path đề xuất hướng nghề nghiệp dài hạn dựa trên CV của bạn. Hãy bắt đầu ở Analyze (paste CV) — kết quả sẽ dùng để gợi ý 3-5 path khả thi + roadmap."
+          title={t('careerPath.needCv.title')}
+          description={t('careerPath.needCv.desc')}
           action={
             <Button asChild variant="primary">
-              <Link href="/analyze">Bắt đầu ở Analyze</Link>
+              <Link href="/analyze">{t('careerPath.needCv.cta')}</Link>
             </Button>
           }
         />
@@ -162,13 +164,11 @@ export function CareerPathPage({ mode }: CareerPathPageProps = {}) {
               <div className="flex flex-col gap-1">
                 <span className="text-label-md font-bold uppercase tracking-wide text-primary">
                   {selectedSuggestion
-                    ? `Tạo lộ trình cho "${selectedSuggestion}"`
-                    : 'Tạo lộ trình sự nghiệp'}
+                    ? t('careerPath.start.titleSelected', { role: selectedSuggestion })
+                    : t('careerPath.start.title')}
                 </span>
                 <p className="text-body-md text-on-surface-variant">
-                  {selectedSuggestion
-                    ? 'Đã chọn hướng. Bấm Generate để dựng roadmap chi tiết.'
-                    : 'AI sẽ dựng roadmap tự nhiên từ CV của bạn. Hoặc xem các tùy chọn bên dưới để chọn hướng / tự nhập aspiration trước.'}
+                  {selectedSuggestion ? t('careerPath.start.descSelected') : t('careerPath.start.desc')}
                 </p>
               </div>
 
@@ -180,11 +180,10 @@ export function CareerPathPage({ mode }: CareerPathPageProps = {}) {
                     <button
                       type="button"
                       onClick={fetchSuggestions}
-                      aria-label="AI đề xuất 3-5 hướng phát triển từ CV (tốn 1 quota)"
                       className="inline-flex items-center gap-1 text-on-tertiary-container underline-offset-2 hover:underline focus-visible:outline-none focus-visible:underline"
                     >
                       <MdAutoAwesome size={14} aria-hidden="true" />
-                      AI đề xuất 3-5 hướng trước (1 quota)
+                      {t('careerPath.suggest.ctaPre')}
                     </button>
                   )}
                   <button
@@ -192,7 +191,7 @@ export function CareerPathPage({ mode }: CareerPathPageProps = {}) {
                     onClick={() => setShowAspiration((v) => !v)}
                     className="text-on-tertiary-container underline-offset-2 hover:underline focus-visible:outline-none focus-visible:underline"
                   >
-                    {showAspiration ? 'Ẩn tuỳ chỉnh aspiration' : 'Tuỳ chỉnh aspiration thủ công'}
+                    {showAspiration ? t('careerPath.customAspiration.hide') : t('careerPath.customAspiration.show')}
                   </button>
                 </div>
               </div>
@@ -209,7 +208,7 @@ export function CareerPathPage({ mode }: CareerPathPageProps = {}) {
             <LoadingState
               variant="spinner"
               size="lg"
-              message="Đang xây lộ trình sự nghiệp..."
+              message={t('careerPath.loading')}
               className="py-12"
             />
           )}
@@ -227,7 +226,7 @@ export function CareerPathPage({ mode }: CareerPathPageProps = {}) {
                 aria-hidden="true"
               />
               <div className="flex-1 text-body-sm text-on-error-container">
-                <p className="font-semibold">Tạo lộ trình thất bại</p>
+                <p className="font-semibold">{t('careerPath.error.title')}</p>
                 <p className="mt-0.5 text-on-surface-variant">{error}</p>
               </div>
               <button
@@ -253,7 +252,7 @@ export function CareerPathPage({ mode }: CareerPathPageProps = {}) {
               <QuickWinsBlock quickWins={result.quickWins} />
               {result.caveats && (
                 <div className="rounded-xl border border-outline-variant/50 bg-surface-container-low p-4 text-body-sm text-on-surface-variant">
-                  <span className="font-semibold text-on-surface">Lưu ý: </span>{result.caveats}
+                  <span className="font-semibold text-on-surface">{t('careerPath.note')} </span>{result.caveats}
                 </div>
               )}
 
@@ -264,10 +263,10 @@ export function CareerPathPage({ mode }: CareerPathPageProps = {}) {
               <Card padding="lg" className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1">
                   <span className="text-label-md font-bold uppercase tracking-wide text-primary">
-                    Lộ trình hiện tại
+                    {t('careerPath.current.title')}
                   </span>
                   <p className="text-body-md text-on-surface-variant">
-                    Bạn có thể tinh chỉnh aspiration hoặc chọn hướng khác phía trên rồi Regenerate.
+                    {t('careerPath.current.desc')}
                   </p>
                 </div>
                 <div className="flex flex-col items-start gap-3">
@@ -281,11 +280,10 @@ export function CareerPathPage({ mode }: CareerPathPageProps = {}) {
                       <button
                         type="button"
                         onClick={fetchSuggestions}
-                        aria-label="AI đề xuất 3-5 hướng phát triển từ CV (tốn 1 quota)"
                         className="inline-flex items-center gap-1 text-on-tertiary-container underline-offset-2 hover:underline focus-visible:outline-none focus-visible:underline"
                       >
                         <MdAutoAwesome size={14} aria-hidden="true" />
-                        AI đề xuất 3-5 hướng (1 quota)
+                        {t('careerPath.suggest.cta')}
                       </button>
                     )}
                     <button
@@ -293,7 +291,7 @@ export function CareerPathPage({ mode }: CareerPathPageProps = {}) {
                       onClick={() => setShowAspiration((v) => !v)}
                       className="text-on-tertiary-container underline-offset-2 hover:underline focus-visible:outline-none focus-visible:underline"
                     >
-                      {showAspiration ? 'Ẩn tuỳ chỉnh aspiration' : 'Tuỳ chỉnh aspiration thủ công'}
+                      {showAspiration ? t('careerPath.customAspiration.hide') : t('careerPath.customAspiration.show')}
                     </button>
                   </div>
                 </div>
