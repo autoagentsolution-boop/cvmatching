@@ -23,11 +23,11 @@ const MODEL_OPTIONS: Record<'gemini' | 'openai', SelectOption[]> = {
   gemini: [
     { value: 'gemini-flash-latest', label: 'gemini-flash-latest (recommended)' },
     { value: 'gemini-2.5-flash', label: 'gemini-2.5-flash' },
-    { value: 'gemini-2.5-pro', label: 'gemini-2.5-pro (fallback)' },
-    { value: 'gemini-2.0-flash-exp', label: 'gemini-2.0-flash-exp (preview)' },
+    { value: 'gemini-2.5-pro', label: 'gemini-2.5-pro' },
+    { value: 'gemini-2.0-flash-exp', label: 'gemini-2.0-flash-exp' },
   ],
   openai: [
-    { value: 'gpt-4o-mini', label: 'gpt-4o-mini (recommended)' },
+    { value: 'gpt-4o-mini', label: 'gpt-4o-mini' },
     { value: 'gpt-4o', label: 'gpt-4o' },
   ],
 };
