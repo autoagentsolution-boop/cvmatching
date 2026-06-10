@@ -126,9 +126,10 @@ export async function scrapeJdFromUrl(rawUrl: string): Promise<ScrapedJd> {
   return {
     title: article.title.trim() || undefined,
     description: article.text,
-    // cheerio path doesn't preserve sanitized HTML; reader view falls back
-    // to plain-text rendering for unknown sources.
-    html: undefined,
+    // Sanitized inner HTML of the main-content node — drives reader-view
+    // rendering with preserved headings/lists/links. Falls back to a
+    // wrapped paragraph when extraction yielded no markup.
+    html: article.html?.trim() ? article.html : `<p>${escapeHtml(article.text)}</p>`,
     source,
   };
 }

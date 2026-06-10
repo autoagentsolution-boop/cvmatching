@@ -15,6 +15,10 @@ import * as cheerio from 'cheerio';
 export interface ExtractedArticle {
   title: string;
   text: string;
+  /** Sanitized inner HTML of the main-content node — drives reader-view
+   *  rendering in the Source JD card. Preserves headings/lists/links so
+   *  the right rail looks like the source page, not a wall of text. */
+  html: string;
   byline?: string;
   length: number;
   siteName?: string;
@@ -28,6 +32,36 @@ const NOISE_SELECTORS = [
   '.ad', '.ads', '.advertisement', '.cookie', '.cookies',
   '.share', '.social', '.related', '.comments',
 ];
+
+// Strip inline event handlers + javascript:/data: URIs from the kept HTML
+// so reader-view cannot execute scripts even though we render it via
+// dangerouslySetInnerHTML. Allowlist of safe attributes preserved.
+const SAFE_ATTRS = new Set([
+  'href', 'src', 'alt', 'title', 'class', 'id', 'colspan', 'rowspan',
+  'width', 'height', 'target', 'rel',
+]);
+
+function sanitizeHtml($node: cheerio.Cheerio<any>, $: cheerio.CheerioAPI): string {
+  $node.find('*').each((_, el) => {
+    const attrs = (el as any).attribs ?? {};
+    for (const name of Object.keys(attrs)) {
+      const lower = name.toLowerCase();
+      if (!SAFE_ATTRS.has(lower) && !lower.startsWith('data-')) {
+        $(el).removeAttr(name);
+        continue;
+      }
+      if (lower === 'href' || lower === 'src') {
+        const v = (attrs[name] ?? '').trim().toLowerCase();
+        if (v.startsWith('javascript:') || v.startsWith('data:') || v.startsWith('vbscript:')) {
+          $(el).removeAttr(name);
+        }
+      }
+    }
+  });
+  // Force external links to open safely.
+  $node.find('a[href]').attr('target', '_blank').attr('rel', 'noopener noreferrer');
+  return $node.html() ?? '';
+}
 
 const MAIN_SELECTORS = ['main', 'article', '[role="main"]', '#main', '#content', '.content', '.main-content'];
 
@@ -50,10 +84,10 @@ function pickMainNode($: cheerio.CheerioAPI): cheerio.Cheerio<any> {
   return best ?? $('body');
 }
 
-export function extractReadability(html: string, _baseUrl: string): ExtractedArticle | null {
+export function extractReadability(rawHtml: string, _baseUrl: string): ExtractedArticle | null {
   let $: cheerio.CheerioAPI;
   try {
-    $ = cheerio.load(html);
+    $ = cheerio.load(rawHtml);
   } catch {
     return null;
   }
@@ -63,6 +97,8 @@ export function extractReadability(html: string, _baseUrl: string): ExtractedArt
   const main = pickMainNode($);
   const text = main.text().replace(/\s+/g, ' ').trim();
   if (text.length < 50) return null;
+
+  const sanitizedHtml = sanitizeHtml(main, $);
 
   const title =
     ($('meta[property="og:title"]').attr('content') ||
@@ -81,6 +117,7 @@ export function extractReadability(html: string, _baseUrl: string): ExtractedArt
   const result: ExtractedArticle = {
     title,
     text,
+    html: sanitizedHtml,
     length: text.length,
   };
   if (byline) result.byline = byline;
