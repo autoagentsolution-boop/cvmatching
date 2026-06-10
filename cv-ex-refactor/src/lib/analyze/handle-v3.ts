@@ -17,7 +17,7 @@ import { NextResponse } from 'next/server';
 import type { AnalyzeV3BodyT } from '@/lib/schemas/llm-request';
 import { resolveApiKey } from '@/lib/llm/resolve-api-key';
 import { buildAnalyzeV3Prompts } from '@/lib/llm/prompt-analyze-v3';
-import { callLLM } from '@/lib/llm/providers';
+import { callLLMWithFallback, geminiFallbackChain } from '@/lib/llm/providers';
 import { safeParseJson } from '@/lib/llm/safe-parse-json';
 import { normalizeAnalysis } from '@/lib/llm/normalize-analysis';
 import { logLlmCall } from '@/lib/llm/safe-logger';
@@ -142,7 +142,9 @@ export async function handleAnalyzeV3(
   const start = Date.now();
 
   try {
-    const { text: raw, promptTokens, completionTokens } = await callLLM({
+    const fallbackModels =
+      llmConfig.provider === 'gemini' ? geminiFallbackChain(llmConfig.model) : [];
+    const { text: raw, promptTokens, completionTokens } = await callLLMWithFallback({
       config: llmConfig,
       system,
       user,
@@ -152,6 +154,8 @@ export async function handleAnalyzeV3(
       // (52s second-call observed in prod 2026-06-04). Disable it — matches
       // the recommend/generate-cv treatment for structured-output tasks.
       disableThinking: true,
+      fallbackModels,
+      retries: 1,
     });
 
     const parsedRaw = safeParseJson(raw);

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { AnalyzeBody, AnalyzeV3Body } from '@/lib/schemas/llm-request';
 import { resolveApiKey } from '@/lib/llm/resolve-api-key';
 import { buildAnalyzePrompts } from '@/lib/llm/prompt-analyze';
-import { callLLM } from '@/lib/llm/providers';
+import { callLLMWithFallback, geminiFallbackChain } from '@/lib/llm/providers';
 import { safeParseJson } from '@/lib/llm/safe-parse-json';
 import { normalizeAnalysis } from '@/lib/llm/normalize-analysis';
 import { logLlmCall } from '@/lib/llm/safe-logger';
@@ -73,11 +73,15 @@ export async function POST(req: NextRequest) {
   const start = Date.now();
 
   try {
-    const { text: raw, promptTokens, completionTokens } = await callLLM({
+    const fallbackModels =
+      body.llm.provider === 'gemini' ? geminiFallbackChain(body.llm.model) : [];
+    const { text: raw, promptTokens, completionTokens } = await callLLMWithFallback({
       config: { ...body.llm, apiKey: resolved.apiKey },
       system,
       user,
       expectJson: true,
+      fallbackModels,
+      retries: 1,
     });
 
     const parsedRaw = safeParseJson(raw);
