@@ -184,6 +184,29 @@ export function JdMatchingContent({ cvContent, cvId }: JdMatchingContentProps) {
         </div>
       )}
       <JdMatchingResults result={result} insights={insights} cvId={cvId} />
+
+      <details className="mt-6 rounded-2xl border border-dashed border-outline-variant bg-surface-container-lowest open:bg-surface-container-low transition-colors">
+        <summary className="cursor-pointer list-none px-5 py-3 text-label-md font-semibold text-on-surface flex items-center justify-between">
+          <span>Match a different JD</span>
+          <span className="text-on-surface-variant text-body-sm">Swap JD ↓</span>
+        </summary>
+        <div className="flex flex-col gap-4 px-5 pb-5">
+          <p className="text-body-sm text-on-surface-variant">
+            Bring in another job description. Running a new match replaces the result above.
+          </p>
+          <JdImportPanel />
+          <div className="flex items-center justify-end">
+            <Button
+              variant="primary"
+              size="md"
+              onClick={runMatch}
+              disabled={jdText.trim().length < 50}
+            >
+              Match CV vs JD
+            </Button>
+          </div>
+        </div>
+      </details>
     </>
   );
 }
