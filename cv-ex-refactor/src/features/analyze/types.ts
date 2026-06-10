@@ -27,7 +27,8 @@ export type RoleFamily =
   | 'software'
   | 'other';
 
-export type Strictness = 'balanced' | 'strict' | 'friendly';
+// 2026-06-10 Phase 1b: 'friendly' dropped — see schemas/llm-request.ts.
+export type Strictness = 'balanced' | 'strict';
 export type Language = 'en' | 'vi' | 'auto';
 export type Decision = 'strong' | 'good' | 'stretch' | 'low';
 export type Severity = 'critical' | 'moderate' | 'minor';
@@ -111,6 +112,16 @@ export interface AnalysisResult {
   suggestedSummaryLine?: string;
   /** Carries target role label for display in Refined CV aside */
   targetRoleLabel?: string;
+  /**
+   * v2 only (CV-vs-JD). Phase 1b — flags candidate track vs JD role-track
+   * mismatch (e.g. Backend CV → ML JD). When aligned=false, `note` carries
+   * a 1-line description; UI may surface as a banner above the gauge.
+   * Absent on v3 (CV-solo) results.
+   */
+  roleAlignment?: {
+    aligned: boolean;
+    note: string;
+  };
 }
 
 /**

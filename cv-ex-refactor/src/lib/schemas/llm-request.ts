@@ -1,7 +1,10 @@
 import { z } from 'zod';
 
 export const ProviderEnum = z.enum(['gemini', 'openai', 'custom']);
-export const StrictnessEnum = z.enum(['balanced', 'strict', 'friendly']);
+// 2026-06-10 Phase 1b: dropped 'friendly' — was a grade-inflation knob that
+// produced misleadingly high scores. analysis-store coerces persisted
+// 'friendly' values to 'balanced' on rehydrate so legacy sessions don't 400.
+export const StrictnessEnum = z.enum(['balanced', 'strict']);
 export const LanguageEnum = z.enum(['en', 'vi', 'auto']);
 export const RoleFamilyEnum = z.enum([
   'auto',

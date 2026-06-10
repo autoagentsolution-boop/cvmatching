@@ -197,6 +197,15 @@ export const useAnalysis = create<AnalysisState>()(
         // awaitingRoleConfirm + roleCandidates are transient (modal state) —
         // never restored across reloads.
       }),
+      // 2026-06-10 Phase 1b: legacy persisted state may carry
+      // `strictness: 'friendly'` (dropped enum value). Coerce to 'balanced'
+      // before any consumer reads it — otherwise the first /api/analyze
+      // call zod-parse 400s on the body.
+      onRehydrateStorage: () => (state) => {
+        if (state && (state.strictness as string) === 'friendly') {
+          state.strictness = 'balanced';
+        }
+      },
     },
   ),
 );

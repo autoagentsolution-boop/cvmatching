@@ -209,5 +209,20 @@ export function normalizeAnalysis(rawInput: unknown): AnalysisResult {
   const summaryLine = str(raw.suggestedSummaryLine ?? raw.suggested_summary_line);
   if (summaryLine) result.suggestedSummaryLine = summaryLine;
 
+  // v2 only — track-mismatch flag. Phase 1b. Passthrough; UI surfacing
+  // is a separate task. Tolerates absent/partial shapes from legacy
+  // responses (pre-roleAlignment).
+  const ra = raw.roleAlignment ?? raw.role_alignment;
+  if (ra && typeof ra === 'object') {
+    const r = ra as RawAny;
+    const aligned = r.aligned === true || r.aligned === 'true';
+    const note = str(r.note);
+    // Only attach when at least one field carries signal — avoid noisy
+    // empty objects from JSON parse defaults.
+    if (typeof r.aligned !== 'undefined' || note) {
+      result.roleAlignment = { aligned, note };
+    }
+  }
+
   return result;
 }

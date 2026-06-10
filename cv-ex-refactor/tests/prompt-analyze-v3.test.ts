@@ -121,4 +121,39 @@ describe('buildAnalyzeV3Prompts', () => {
       expect(user).toMatch(/unknown.*treat all CV dates as historical/i);
     });
   });
+
+  describe('Phase 1b — calibration anchors + persona + role lock', () => {
+    it('system prompt names the recruiter persona', () => {
+      const { system } = buildAnalyzeV3Prompts({ cvText: CV_SAMPLE, role: ROLE });
+      expect(system).toMatch(/former Big-Tech recruiter/);
+      expect(system).toMatch(/5000\+ CVs/);
+    });
+
+    it('emits 4-anchor calibration table per dimension', () => {
+      const { user } = buildAnalyzeV3Prompts({ cvText: CV_SAMPLE, role: ROLE });
+      // Anchor format renders as "Anchors: 30 = … | 60 = … | 85 = … | 95 = …"
+      expect(user).toMatch(/Anchors: 30 = /);
+      expect(user).toMatch(/\| 60 = /);
+      expect(user).toMatch(/\| 85 = /);
+      expect(user).toMatch(/\| 95 = /);
+    });
+
+    it('locks detectedRole to input (no silent re-labeling)', () => {
+      const { user } = buildAnalyzeV3Prompts({ cvText: CV_SAMPLE, role: ROLE });
+      expect(user).toMatch(/detectedRole MUST echo the input role verbatim/);
+      expect(user).toMatch(/never silently re-label/);
+    });
+
+    it('locks Vietnamese register when language is vi', () => {
+      const { user } = buildAnalyzeV3Prompts({ cvText: CV_SAMPLE, role: ROLE, language: 'vi' });
+      expect(user).toMatch(/recruiter-Vietnamese register/);
+      expect(user).toMatch(/xây dựng/);
+      expect(user).toMatch(/em xin gửi/);
+    });
+
+    it('does NOT inject Vietnamese register when language is en', () => {
+      const { user } = buildAnalyzeV3Prompts({ cvText: CV_SAMPLE, role: ROLE, language: 'en' });
+      expect(user).not.toMatch(/recruiter-Vietnamese register/);
+    });
+  });
 });
