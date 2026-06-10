@@ -1,13 +1,31 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { MdAutoAwesome } from 'react-icons/md';
-import { Button, Card, ErrorState, LoadingState, MarkdownView } from '@/components/ui';
+import { Button, Card, ErrorState, FormField, LoadingState, MarkdownView, Select } from '@/components/ui';
+import type { SelectOption } from '@/components/ui';
 import { useAnalysis } from '@/features/analyze/analysis-store';
 import { useSettings } from '@/features/analyze/settings-store';
 import { useJobFit } from '@/features/job-fit/job-fit-store';
 import { JOB_FIT_CV_SESSION_KEY } from './use-source-resolver';
-import type { CoverLetterBodyT } from '@/lib/schemas/cover-letter-request';
+import type {
+  CoverLetterBodyT,
+  CoverLetterToneT,
+  CoverLetterLengthT,
+} from '@/lib/schemas/cover-letter-request';
+
+const TONE_OPTIONS: SelectOption[] = [
+  { value: 'professional', label: 'Professional' },
+  { value: 'warm', label: 'Warm' },
+  { value: 'concise', label: 'Concise' },
+  { value: 'leadership', label: 'Leadership' },
+];
+
+const LENGTH_OPTIONS: SelectOption[] = [
+  { value: 'short', label: 'Short (150-200 words)' },
+  { value: 'medium', label: 'Medium (250-400 words)' },
+  { value: 'long', label: 'Long (400-550 words)' },
+];
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
@@ -48,6 +66,26 @@ interface CoverLetterBlockProps {
 export function CoverLetterBlock({ jobId }: CoverLetterBlockProps) {
   const { jobs } = useJobFit();
   const { language } = useAnalysis();
+  // Most-recent analyze result — used to auto-prefill strengthsToLead +
+  // (when checkbox on) gapToAddress. Falls back gracefully when no
+  // analysis has run yet on this session.
+  const analyzeResult = useAnalysis((s) => s.analyzeResult ?? s.jdMatchResult);
+
+  const [tone, setTone] = useState<CoverLetterToneT>('professional');
+  const [length, setLength] = useState<CoverLetterLengthT>('medium');
+  const [addressGap, setAddressGap] = useState(false);
+
+  const strengthsToLead = useMemo<string[] | undefined>(() => {
+    const titles = analyzeResult?.strengths?.slice(0, 2).map((s) => s.title).filter(Boolean) ?? [];
+    return titles.length > 0 ? titles : undefined;
+  }, [analyzeResult]);
+
+  const gapToAddress = useMemo<string | undefined>(() => {
+    if (!addressGap || !analyzeResult) return undefined;
+    const critical = analyzeResult.gaps.find((g) => g.severity === 'critical');
+    return critical?.title || undefined;
+  }, [addressGap, analyzeResult]);
+
   // Job Fit context CV — sessionStorage bridge written by Analyze /
   // JD-Matching on completion. Per-source store slots aren't reachable here
   // since CoverLetterBlock has no `?from=` URL.
@@ -87,6 +125,10 @@ export function CoverLetterBlock({ jobId }: CoverLetterBlockProps) {
         jobTitle: job.title,
         company: job.company,
         language,
+        tone,
+        length,
+        ...(strengthsToLead ? { strengthsToLead } : {}),
+        ...(gapToAddress ? { gapToAddress } : {}),
       },
     };
     try {
@@ -119,10 +161,45 @@ export function CoverLetterBlock({ jobId }: CoverLetterBlockProps) {
       {canGenerate && (
         <>
           <p className="text-label-sm text-on-primary-container/80 leading-relaxed">
-            AI viết cover letter 250-400 từ cho{' '}
+            AI viết cover letter cho{' '}
             <strong className="font-bold">{job?.title}</strong>{' '}
             @ <strong className="font-bold">{job?.company}</strong>. Quota: 3 lần / ngày.
           </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <FormField label="Tone" htmlFor="cover-tone">
+              <Select
+                id="cover-tone"
+                options={TONE_OPTIONS}
+                value={tone}
+                onChange={(e) => setTone(e.target.value as CoverLetterToneT)}
+                disabled={isLoading}
+              />
+            </FormField>
+            <FormField label="Length" htmlFor="cover-length">
+              <Select
+                id="cover-length"
+                options={LENGTH_OPTIONS}
+                value={length}
+                onChange={(e) => setLength(e.target.value as CoverLetterLengthT)}
+                disabled={isLoading}
+              />
+            </FormField>
+          </div>
+
+          {analyzeResult && (
+            <label className="flex items-center gap-2 text-label-sm text-on-primary-container/80">
+              <input
+                type="checkbox"
+                checked={addressGap}
+                onChange={(e) => setAddressGap(e.target.checked)}
+                disabled={isLoading}
+                className="rounded border-on-primary-container/40"
+              />
+              <span>Address top critical gap from analysis (1 sentence near the close)</span>
+            </label>
+          )}
+
           <div className="flex items-center gap-3">
             <Button
               variant="primary"
