@@ -23,6 +23,20 @@ export type KeyResolution =
 export interface ResolveContext {
   byokToken?: string | undefined;
   ip?: string | undefined;
+  /**
+   * Per-endpoint override for the DISABLE_SHARED_KEY env gate.
+   *
+   * When DISABLE_SHARED_KEY=1, non-admin requests are normally blocked
+   * with 503 to keep public traffic off the shared Gemini key. Some
+   * endpoints are cheap enough (Job Fit recommend: one Gemini call,
+   * cost-bucket + per-user quota already enforced) that the shared key
+   * should remain accessible even while the gate is on for heavier
+   * surfaces (analyze, generate-cv).
+   *
+   * Route opts in by passing `allowSharedKeyDespiteGate: true`. The
+   * cost-bucket kill-switch + per-user quota continue to apply.
+   */
+  allowSharedKeyDespiteGate?: boolean;
 }
 
 export async function resolveApiKey(
@@ -50,7 +64,7 @@ export async function resolveApiKey(
   // Policy decision 2026-06-02: anonymous shared-key access removed to prevent
   // free-tier budget drain by visitors; guests are directed to login or BYOK.
 
-  if (env.DISABLE_SHARED_KEY === '1' && !isAdmin) {
+  if (env.DISABLE_SHARED_KEY === '1' && !isAdmin && !ctx.allowSharedKeyDespiteGate) {
     return {
       ok: false,
       status: 503,
