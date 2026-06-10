@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = parsed.data;
-  const llmConfig = body.llm ?? { provider: 'gemini' as const, model: 'gemini-2.5-flash', temperature: 0.3 };
+  const llmConfig = body.llm ?? { provider: 'gemini' as const, model: 'gemini-flash-latest', temperature: 0.3 };
 
   const byokToken = req.cookies.get('byok-token')?.value;
   const ip =

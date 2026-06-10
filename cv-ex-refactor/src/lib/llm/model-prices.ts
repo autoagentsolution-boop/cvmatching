@@ -12,6 +12,10 @@ export interface ModelPrice {
 }
 
 const PRICES: Record<string, ModelPrice> = {
+  // gemini-flash-latest is Google's alias for the current GA flash; priced
+  // at the underlying 2.5-flash rate. gemini-2.0-flash is kept for legacy
+  // cost-attribution lookups even though the model is deprecated (404).
+  'gemini-flash-latest': { inputPerMTok: 0.3, outputPerMTok: 2.5 },
   'gemini-2.0-flash': { inputPerMTok: 0.1, outputPerMTok: 0.4 },
   'gemini-2.0-flash-exp': { inputPerMTok: 0, outputPerMTok: 0 },
   'gemini-2.5-flash': { inputPerMTok: 0.3, outputPerMTok: 2.5 },

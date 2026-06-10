@@ -25,7 +25,10 @@ interface SettingsState {
 }
 
 const DEFAULT_MODELS: Record<Provider, string> = {
-  gemini: 'gemini-2.0-flash',
+  // 2026-06-10: Google deprecated gemini-2.0-flash (404 NOT_FOUND).
+  // gemini-flash-latest is Google's alias for the current GA flash; quota
+  // bucket is independent from gemini-2.5-flash so it survives daily caps.
+  gemini: 'gemini-flash-latest',
   openai: 'gpt-4o-mini',
   custom: 'openai/gpt-4o-mini',
 };
@@ -45,10 +48,12 @@ export const useSettings = create<SettingsState>()(
     }),
     {
       name: 'cv-ex-settings-v1',
-      version: 3,
+      version: 4,
       // v1/v2 → v3: strip apiKey, rememberKey, useSharedKey from any older
       // persisted blob. apiKey lives in memory only (never persisted); shared
       // vs BYOK is now decided by whether the server vault has a token.
+      // v3 → v4: rewrite stale gemini-2.0-flash (Google-deprecated 2026-06-10)
+      // to the new default gemini-flash-latest.
       migrate: (persisted) => {
         if (!persisted || typeof persisted !== 'object') return persisted;
         const {
@@ -59,6 +64,9 @@ export const useSettings = create<SettingsState>()(
           registeredKeyTail: _registeredKeyTail,
           ...rest
         } = persisted as Record<string, unknown>;
+        if (rest.provider === 'gemini' && rest.model === 'gemini-2.0-flash') {
+          rest.model = DEFAULT_MODELS.gemini;
+        }
         return rest;
       },
       partialize: (s) => ({
