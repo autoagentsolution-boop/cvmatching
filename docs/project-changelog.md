@@ -65,6 +65,16 @@ Deferred: analyze form (page header + run CTA), upgrade page, sign-in, dashboard
 4. **Operator KV cleanup** — Unset `JOBFIT_USE_POSTGRES` on Vercel, run `kv-snapshot` + `kv-drop-jobs-keys`, delete legacy `src/lib/jobs/{repo.ts, score.ts KV-bound parts, vertical-index.ts, pack-embeddings.ts}`.
 5. **Per-endpoint LLM fallback expansion** — Extend `callLLMWithFallback` from recommend+analyze to generate-cv + career-path + generate-cover-letter + extract-must-haves + jd-insights so transient Gemini 503 doesn't surface on any LLM endpoint.
 
+### Evening hotfix wave — Gemini 503 bug-storm + Settings polish (4 commits)
+Late-day Gemini outage hit ALL Gemini variants simultaneously (probed: flash-latest / 2.5-flash / 2.5-pro all 503 UNAVAILABLE on real-size analyze payloads at 10:50 UTC). Fallback chain shipped earlier (`2924161`) exhausted → route catch returned 502 with generic copy.
+
+- **`b77f60a`** — `/api/analyze` v2 now classifies Gemini upstream errors via `classifyLlmError` (mirror of recommend route's classifier). 429/RESOURCE_EXHAUSTED → 'upstream_rate_limit' (429), 5xx + UNAVAILABLE + high demand + overload → 'upstream_overloaded' (503 + "Model Gemini đang quá tải (cả flash + pro). Thử lại sau 1-2 phút — sự cố thường tự hồi trong 30-60 phút. Nếu gấp, đổi sang OpenAI BYOK key."), INTERNAL → 'upstream_internal' (502), 40x → 'upstream_auth' (502). Plus `disableThinking: true` on the v2 fallback call — important when chain lands on `gemini-2.5-pro` (default thinking = 30-50s wallclock).
+- **`1b9263b`** — Settings drawer: model field swapped from free-text Input → curated Select per provider. Gemini: `gemini-flash-latest` (recommended) + `gemini-2.5-flash` + `gemini-2.5-pro` + `gemini-2.0-flash-exp`. OpenAI: `gpt-4o-mini` + `gpt-4o`. Custom provider keeps free-text. Legacy localStorage value outside the curated list is injected with "(saved)" suffix so the dropdown doesn't silently flip on first open.
+- **`9022d9a` + `ba93b4b`** — Label polish: drop pricing snippets ("$X / $Y per Mtok") per user feedback, then drop "(fallback)" / "(preview)" tags. Only `gemini-flash-latest (recommended)` keeps a hint.
+
+### Stats (final)
+**Status:** ✓ Shipped to main. **20 commits + 1 revert** (`07591de` → `ba93b4b`). 608/608 tests passing. Docs + memory updated.
+
 ---
 
 ## 2026-06-09 — Job Fit UX overhaul + CV-orphan auth fix + prompt audit (17 commits)
