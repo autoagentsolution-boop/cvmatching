@@ -21,11 +21,22 @@ function hasType(obj: Record<string, unknown>, target: string): boolean {
 }
 
 /**
- * Extract every itemListElement[].url from JSON-LD ItemList blocks in `html`.
- * Pure function — no I/O. Returns [] when nothing matches (never throws).
+ * 2026-06-10 Phase 9 — entries now carry an optional `name` so callers can
+ * pre-filter listings by job title BEFORE the detail-page fetch (saves
+ * Cloudflare quota + LLM enrichment cost on obviously off-target roles).
  */
-export function extractItemListUrls(html: string): string[] {
-  const urls: string[] = [];
+export interface ItemListEntry {
+  url: string;
+  name?: string;
+}
+
+/**
+ * Extract every itemListElement[].{url,name} from JSON-LD ItemList blocks
+ * in `html`. Pure function — no I/O. Returns [] when nothing matches
+ * (never throws).
+ */
+export function extractItemListEntries(html: string): ItemListEntry[] {
+  const entries: ItemListEntry[] = [];
   const re = /<script[^>]*type=['"]application\/ld\+json['"][^>]*>([\s\S]*?)<\/script>/g;
   for (const m of html.matchAll(re)) {
     let parsed: unknown;
@@ -34,12 +45,30 @@ export function extractItemListUrls(html: string): string[] {
     } catch {
       continue;
     }
-    walk(parsed, urls);
+    walk(parsed, entries);
   }
-  return urls;
+  return entries;
 }
 
-function walk(node: unknown, out: string[]): void {
+/**
+ * Legacy URL-only signature. Preserved for callers that don't need the
+ * title (TopCV / VNW listings — Phase 9 filter wired into ITviec only).
+ */
+export function extractItemListUrls(html: string): string[] {
+  return extractItemListEntries(html).map((e) => e.url);
+}
+
+function pickName(er: Record<string, unknown>, fallback?: Record<string, unknown>): string | undefined {
+  const direct = er['name'];
+  if (typeof direct === 'string' && direct.trim()) return direct.trim();
+  if (fallback) {
+    const f = fallback['name'];
+    if (typeof f === 'string' && f.trim()) return f.trim();
+  }
+  return undefined;
+}
+
+function walk(node: unknown, out: ItemListEntry[]): void {
   if (!node) return;
   if (Array.isArray(node)) {
     for (const child of node) walk(child, out);
@@ -52,16 +81,25 @@ function walk(node: unknown, out: string[]): void {
     for (const el of obj['itemListElement']) {
       if (!el || typeof el !== 'object') continue;
       const er = el as Record<string, unknown>;
-      // Direct shape (ITviec): { url: "..." }
+      // Direct shape (ITviec): { url: "...", name?: "..." }
       if (typeof er['url'] === 'string') {
-        out.push(er['url']);
+        const entry: ItemListEntry = { url: er['url'] as string };
+        const name = pickName(er);
+        if (name) entry.name = name;
+        out.push(entry);
         continue;
       }
-      // Nested shape (TopCV SearchResultsPage): { item: { url: "..." } }
+      // Nested shape (TopCV SearchResultsPage): { item: { url: "...", name?: "..." } }
       const item = er['item'];
       if (item && typeof item === 'object') {
-        const u = (item as Record<string, unknown>)['url'];
-        if (typeof u === 'string') out.push(u);
+        const itemObj = item as Record<string, unknown>;
+        const u = itemObj['url'];
+        if (typeof u === 'string') {
+          const entry: ItemListEntry = { url: u };
+          const name = pickName(er, itemObj);
+          if (name) entry.name = name;
+          out.push(entry);
+        }
       }
     }
     return;
