@@ -193,29 +193,82 @@ function ReaderViewCard({
   );
 }
 
+// Minimal reader-mode stylesheet injected into the iframe. Uses native browser
+// defaults for tag spacing (so wall-of-divs from cheerio fallback still has UA
+// line breaks), then adds prose-like typography on top. No app CSS leaks in.
+const READER_CSS = `
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #fff; color: #111; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    padding: 20px 22px 32px;
+    word-wrap: break-word;
+  }
+  h1 { font-size: 22px; line-height: 1.25; margin: 0 0 14px; font-weight: 700; }
+  h2 { font-size: 18px; line-height: 1.3; margin: 22px 0 10px; font-weight: 600; }
+  h3 { font-size: 16px; line-height: 1.35; margin: 18px 0 8px; font-weight: 600; }
+  h4, h5, h6 { font-size: 14px; margin: 14px 0 6px; font-weight: 600; }
+  p { margin: 10px 0; }
+  ul, ol { margin: 10px 0; padding-left: 22px; }
+  li { margin: 4px 0; }
+  strong, b { font-weight: 600; }
+  em, i { font-style: italic; }
+  a { color: #2563eb; text-decoration: underline; text-underline-offset: 2px; }
+  a:hover { text-decoration: none; }
+  hr { border: 0; border-top: 1px solid #e5e7eb; margin: 18px 0; }
+  blockquote {
+    margin: 12px 0; padding: 6px 14px;
+    border-left: 3px solid #d1d5db; color: #4b5563;
+    background: #f9fafb;
+  }
+  img { max-width: 100%; height: auto; border-radius: 4px; display: block; margin: 10px 0; }
+  table { border-collapse: collapse; margin: 12px 0; max-width: 100%; }
+  th, td { border: 1px solid #e5e7eb; padding: 6px 10px; text-align: left; font-size: 13px; }
+  th { background: #f3f4f6; font-weight: 600; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; background: #f3f4f6; padding: 1px 5px; border-radius: 3px; }
+  pre { background: #f3f4f6; padding: 10px 12px; border-radius: 6px; overflow-x: auto; }
+  pre code { background: none; padding: 0; }
+  /* Cheerio's main-content fallback often yields nested wrappers — keep their
+     natural vertical rhythm so bullet lists / address blocks don't collapse. */
+  div { margin: 0; }
+  br + br { display: block; content: ''; margin-top: 6px; }
+`;
+
+function buildReaderDoc(title: string, html: string): string {
+  const safeTitle = title
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${safeTitle}</title>
+<base target="_blank">
+<style>${READER_CSS}</style>
+</head>
+<body>
+${title ? `<h1>${safeTitle}</h1>` : ''}
+${html}
+</body>
+</html>`;
+}
+
 function ReaderArticle({ title, html }: { title: string; html: string }) {
+  // Render inside an iframe srcdoc so the browser uses native UA layout +
+  // our reset stylesheet — no inheritance from the app shell, no Tailwind v4
+  // oklch colors leaking in. sandbox allows links to open (target=_blank via
+  // <base>) but blocks scripts even if sanitizer missed one.
+  const srcDoc = useMemo(() => buildReaderDoc(title, html), [title, html]);
   return (
-    <article
-      className={cn(
-        'prose prose-sm max-w-none',
-        // Style overrides so the cleaned HTML harmonizes with the design
-        // system. Plain CSS classes — keeps the bundle out of @tailwindcss/typography.
-        '[&_h1]:mt-0 [&_h1]:mb-3 [&_h1]:text-title-lg [&_h1]:font-bold [&_h1]:text-on-surface',
-        '[&_h2]:mt-5 [&_h2]:mb-2 [&_h2]:text-title-md [&_h2]:font-semibold [&_h2]:text-on-surface',
-        '[&_h3]:mt-4 [&_h3]:mb-2 [&_h3]:text-title-sm [&_h3]:font-semibold [&_h3]:text-on-surface',
-        '[&_p]:my-2 [&_p]:text-body-sm [&_p]:leading-relaxed [&_p]:text-on-surface',
-        '[&_ul]:my-2 [&_ul]:pl-5 [&_ul]:list-disc [&_ul]:text-body-sm [&_ul]:text-on-surface',
-        '[&_ol]:my-2 [&_ol]:pl-5 [&_ol]:list-decimal [&_ol]:text-body-sm [&_ol]:text-on-surface',
-        '[&_li]:my-1 [&_li]:leading-relaxed',
-        '[&_strong]:font-semibold [&_strong]:text-on-surface',
-        '[&_a]:text-primary [&_a]:underline-offset-2 hover:[&_a]:underline',
-        '[&_img]:rounded-md [&_img]:max-w-full [&_img]:h-auto',
-      )}
-    >
-      {title && (
-        <h1>{title}</h1>
-      )}
-      <div dangerouslySetInnerHTML={{ __html: html }} />
-    </article>
+    <iframe
+      title={title || 'Job Description reader view'}
+      srcDoc={srcDoc}
+      sandbox="allow-popups allow-popups-to-escape-sandbox"
+      className="h-[60vh] w-full border-0 bg-white"
+    />
   );
 }
