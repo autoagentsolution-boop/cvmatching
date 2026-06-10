@@ -8,6 +8,7 @@ import type { ActiveNav } from '@/components/layouts/dashboard-sidebar';
 import { UserMenu } from './user-menu';
 import { VisitsBadge } from './visits-badge';
 import { SettingsDrawerTrigger } from '@/features/analyze/settings-drawer-trigger';
+import { useUserIdGuard } from '@/features/auth/use-user-id-guard';
 
 interface AppShellProps {
   session: Session | null;
@@ -46,6 +47,11 @@ function deriveActiveNav(pathname: string): ActiveNav {
 export function AppShell({ session, isAdmin, loginEnabled, children, upgradeSlot }: AppShellProps) {
   const pathname = usePathname();
   const isAuthed = session !== null;
+
+  // Purge per-user client caches when the signed-in identity changes (A→B,
+  // A→null, or null→B after a prior session) so user B never sees user A's
+  // CV / JD / analyze results on a shared browser.
+  useUserIdGuard(session?.user?.id ?? null);
 
   // Workflow pages own their own shell — render children bare.
   if (isWorkflowRoute(pathname)) {
