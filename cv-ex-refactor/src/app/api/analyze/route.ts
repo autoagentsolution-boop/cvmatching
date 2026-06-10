@@ -80,6 +80,10 @@ export async function POST(req: NextRequest) {
       system,
       user,
       expectJson: true,
+      // v2 structured JSON output — same rationale as v3 + recommend.
+      // Esp. important when fallback lands on gemini-2.5-pro (default
+      // thinking = 30-50s wallclock) during Gemini flash outages.
+      disableThinking: true,
       fallbackModels,
       retries: 1,
     });
@@ -157,6 +161,42 @@ export async function POST(req: NextRequest) {
       inputChars,
       error: message.slice(0, 200),
     });
-    return err('llm_provider_error', `LLM lỗi: ${message.slice(0, 200)}`, 502);
+    // 2026-06-10: classify Gemini upstream signals so the user gets an
+    // actionable error code (503 retryable vs 502 our-bug) instead of a
+    // generic "LLM lỗi". Same shape as /api/jobs/recommend classifier.
+    const classified = classifyLlmError(message);
+    return err(classified.code, classified.userMsg, classified.status);
   }
+}
+
+function classifyLlmError(msg: string): { code: string; status: number; userMsg: string } {
+  if (/Gemini\s+429|RESOURCE_EXHAUSTED|rate.?limit/i.test(msg)) {
+    return {
+      code: 'upstream_rate_limit',
+      status: 429,
+      userMsg: 'Gemini đang giới hạn rate. Đợi 30-60s rồi thử lại, hoặc dùng API key riêng (Settings → BYOK) để bypass.',
+    };
+  }
+  if (/Gemini\s+503|UNAVAILABLE|high demand|overload/i.test(msg)) {
+    return {
+      code: 'upstream_overloaded',
+      status: 503,
+      userMsg: 'Model Gemini đang quá tải (cả flash + pro). Thử lại sau 1-2 phút — sự cố thường tự hồi trong 30-60 phút. Nếu gấp, đổi sang OpenAI BYOK key.',
+    };
+  }
+  if (/Gemini\s+50[02]|INTERNAL|Internal error/i.test(msg)) {
+    return {
+      code: 'upstream_internal',
+      status: 502,
+      userMsg: 'Gemini báo lỗi internal — vấn đề ở phía Google. Thử lại sau ít phút.',
+    };
+  }
+  if (/Gemini\s+40[013]|INVALID_ARGUMENT|API key/i.test(msg)) {
+    return {
+      code: 'upstream_auth',
+      status: 502,
+      userMsg: 'API key Gemini không hợp lệ hoặc payload sai format. Nếu đang dùng BYOK, hãy kiểm tra key.',
+    };
+  }
+  return { code: 'llm_provider_error', status: 502, userMsg: `LLM lỗi: ${msg.slice(0, 200)}` };
 }
