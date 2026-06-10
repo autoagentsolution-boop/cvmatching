@@ -19,12 +19,14 @@
 
 import { parseJobPostingLd } from '@/lib/scrape/vl24h-parser';
 import { fetchHtml } from '@/lib/scrape/fetch-html';
+import { extractReadability } from '@/lib/scrape/extract-readability';
 
-// NOTE: jsdom + @mozilla/readability are dynamic-imported below.
-// Loading them at module-init breaks Vercel serverless cold start (jsdom
-// pulls Node-native deps that misbundle under Turbopack) — symptom is a
-// 500 HTML page for ALL modes of the parent route, even ones that never
-// invoke the fallback path. Keep them lazy.
+// NOTE: fallback extraction uses cheerio (pure-CJS, no native deps).
+// Prior implementation dynamic-imported jsdom + @mozilla/readability —
+// jsdom's transitive html-encoding-sniffer 6 → @exodus/bytes (ESM-only)
+// crashes on Vercel serverless at runtime even when imported lazily.
+// cheerio ships clean; quality of fallback is heuristic but JSON-LD
+// path handles all 4 known sources (topcv/itviec/vnw/vl24h) without it.
 
 export interface ScrapedJd {
   title?: string | undefined;
@@ -110,18 +112,11 @@ export async function scrapeJdFromUrl(rawUrl: string): Promise<ScrapedJd> {
     }
   }
 
-  // Fallback: Readability main-content extraction — works for any HTML page.
-  // Dynamic-import to keep cold-start light (see top-of-file note).
-  const [{ JSDOM }, { Readability }] = await Promise.all([
-    import('jsdom'),
-    import('@mozilla/readability'),
-  ]);
-  const dom = new JSDOM(html, { url: rawUrl });
-  const reader = new Readability(dom.window.document);
-  const article = reader.parse();
-  const fallbackText = article?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
-
-  if (fallbackText.length < 50) {
+  // Fallback: cheerio-based main-content extraction. Quality is heuristic
+  // (looks for <main>/<article>/<role=main> then largest <div>) but enough
+  // for unknown-source JDs — known sources already returned via JSON-LD.
+  const article = extractReadability(html, rawUrl);
+  if (!article || article.text.length < 50) {
     throw new Error(
       'Could not extract job description content from the page. ' +
         'Please paste the JD text directly.',
@@ -129,9 +124,11 @@ export async function scrapeJdFromUrl(rawUrl: string): Promise<ScrapedJd> {
   }
 
   return {
-    title: article?.title?.trim() || undefined,
-    description: fallbackText,
-    html: article?.content ?? undefined,
+    title: article.title.trim() || undefined,
+    description: article.text,
+    // cheerio path doesn't preserve sanitized HTML; reader view falls back
+    // to plain-text rendering for unknown sources.
+    html: undefined,
     source,
   };
 }

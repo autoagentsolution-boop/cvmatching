@@ -13,8 +13,12 @@
 // Sanity guard: if <3 of 6 expected fields (displayName, industry, size,
 // hq, logoUrl, about) extract → caller treats as scrape failure and mints
 // stub with tier1Pending.
+//
+// 2026-06-10: swapped jsdom → cheerio. jsdom@29's transitive ESM dep
+// (html-encoding-sniffer 6 → @exodus/bytes) breaks Vercel serverless at
+// runtime. cheerio is pure-CJS and ships clean.
 
-import { JSDOM } from 'jsdom';
+import * as cheerio from 'cheerio';
 import { parseSizeRange } from '@/lib/companies/normalize';
 import type { CompanyTier1 } from '@/lib/companies/types';
 
@@ -31,27 +35,26 @@ const MIN_FIELDS_OK = 3;
 const EXPECTED_FIELDS = ['displayName', 'industry', 'size', 'hq', 'logoUrl', 'about'] as const;
 
 export function parseItviecCompanyPage(html: string, sourceUrl: string): ItviecParseResult {
-  const dom = new JSDOM(html, { url: sourceUrl });
-  const doc = dom.window.document;
+  const $ = cheerio.load(html);
 
   const fields: Partial<CompanyTier1> = { sourceUrl };
 
   // og:title — strip " - ITviec" / " | ITviec" trailing suffix
-  const ogTitle = metaContent(doc, 'og:title');
+  const ogTitle = metaContent($, 'og:title');
   if (ogTitle) {
     fields.displayName = ogTitle.replace(/\s*[-|]\s*ITviec.*$/i, '').trim();
   }
 
   // og:image — direct CDN URL (Rails active_storage proxy)
-  const ogImage = metaContent(doc, 'og:image');
+  const ogImage = metaContent($, 'og:image');
   if (ogImage) fields.logoUrl = ogImage;
 
   // General information section — label/value pairs
-  const labels = doc.querySelectorAll('.text-dark-grey.ifs-xl-14');
-  for (const label of Array.from(labels)) {
-    const labelText = (label.textContent ?? '').trim().toLowerCase();
-    const value = nextSiblingText(label);
-    if (!value) continue;
+  $('.text-dark-grey.ifs-xl-14').each((_, el) => {
+    const $label = $(el);
+    const labelText = ($label.text() ?? '').trim().toLowerCase();
+    const value = nextSiblingText($label, $);
+    if (!value) return;
 
     if (labelText === 'company industry' && !fields.industry) {
       fields.industry = value;
@@ -61,17 +64,17 @@ export function parseItviecCompanyPage(html: string, sourceUrl: string): ItviecP
     } else if (labelText === 'country' && !fields.hq) {
       fields.hq = value;
     }
-  }
+  });
 
   // Company overview section — find h2 with "Company overview" text then
-  // walk to next .paragraph sibling.
-  const overviewHeading = Array.from(doc.querySelectorAll('h2')).find(
-    (h) => (h.textContent ?? '').trim().toLowerCase().startsWith('company overview'),
-  );
-  if (overviewHeading) {
-    const paragraph = overviewHeading.parentElement?.querySelector('.paragraph');
-    if (paragraph) {
-      const text = (paragraph.textContent ?? '').trim();
+  // walk to next .paragraph sibling inside the same parent.
+  const overviewHeading = $('h2').filter((_, h) =>
+    ($(h).text() ?? '').trim().toLowerCase().startsWith('company overview'),
+  ).first();
+  if (overviewHeading.length) {
+    const paragraph = overviewHeading.parent().find('.paragraph').first();
+    if (paragraph.length) {
+      const text = (paragraph.text() ?? '').trim();
       if (text.length >= 30) fields.about = text.slice(0, 2000);
     }
   }
@@ -87,28 +90,26 @@ export function parseItviecCompanyPage(html: string, sourceUrl: string): ItviecP
   };
 }
 
-function metaContent(doc: Document, property: string): string | undefined {
-  const el = doc.querySelector(`meta[property="${property}"]`);
-  const content = el?.getAttribute('content');
+function metaContent($: cheerio.CheerioAPI, property: string): string | undefined {
+  const content = $(`meta[property="${property}"]`).attr('content');
   return content?.trim() || undefined;
 }
 
 /**
- * Walk DOM to find the visible value following a label div. ITviec lays
- * out: <div class="text-dark-grey ...">Label</div> then a sibling <div>
- * with the value. Both nested inside the same col div.
+ * Walk siblings to find the visible value following a label div. ITviec
+ * lays out: <div class="text-dark-grey ...">Label</div> then a sibling
+ * <div> with the value. Both nested inside the same col div.
  */
-function nextSiblingText(labelEl: Element): string {
-  // The parent col contains label div + value div. Take parent's last
-  // text-bearing div whose textContent ≠ label text, then strip whitespace.
-  const parent = labelEl.parentElement;
-  if (!parent) return '';
+function nextSiblingText($label: cheerio.Cheerio<any>, $: cheerio.CheerioAPI): string {
+  const parent = $label.parent();
+  if (!parent.length) return '';
 
-  const labelText = (labelEl.textContent ?? '').trim();
-  const children = Array.from(parent.children).filter((c) => c.tagName === 'DIV');
-  for (const child of children) {
-    const txt = (child.textContent ?? '').replace(/\s+/g, ' ').trim();
-    if (txt && txt !== labelText) return txt;
-  }
-  return '';
+  const labelText = ($label.text() ?? '').trim();
+  let result = '';
+  parent.children('div').each((_, child) => {
+    if (result) return;
+    const txt = ($(child).text() ?? '').replace(/\s+/g, ' ').trim();
+    if (txt && txt !== labelText) result = txt;
+  });
+  return result;
 }
