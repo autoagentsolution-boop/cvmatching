@@ -1,5 +1,72 @@
 # Project Changelog
 
+## 2026-06-10 — LLM prompt redesign + Gemini 503 hotfix + i18n harness + Job Fit kill-switch (16 commits + 1 revert)
+
+Single-session ship. Plans + audit reports referenced from prior sessions remain live: `plans/reports/audit-260609-1539-llm-prompts.md`, `plans/260610-1015-llm-prompts-redesign/*`.
+
+### Prod hotfix burst (morning, 7 commits)
+- **`07591de`** — Google deprecated `gemini-2.0-flash` (404 NOT_FOUND). Every shared-key LLM call returned 502. Swap default model to `gemini-flash-latest` in `settings-store.ts` + bump persist version 3→4 with migrate rewriting stale `gemini-2.0-flash` to the new default. `model-prices.ts` adds the alias entry. Affected /api/analyze, /api/jd-insights, /api/generate-cv, /api/career-path, /api/extract-must-haves, /api/role-infer, /api/generate-cover-letter, /api/companies/[slug]/enrichment.
+- **`cf4b5d7`** — jsdom@29 transitive `html-encoding-sniffer@6 → @exodus/bytes` (ESM-only) crashes Vercel serverless with `ERR_REQUIRE_ESM` at runtime. URL JD import via `itviec /companies/...` triggered the Readability fallback path. Replaced jsdom + `@mozilla/readability` with cheerio (pure-CJS, no native deps). Quality drop on fallback acceptable — known sources still hit JSON-LD first. Itviec parser test 11/11 green.
+- **`38a3c8f`** — Cross-user cache leak on shared browser. NextAuth signout is a server action that redirects, no client hook fires → localStorage + sessionStorage survive identity transitions. New `useUserIdGuard` hook (mounted in AppShell) tracks current `session.user.id` against a marker and purges all per-user storage (`cv-ex-settings-v1`, `cv-ex-career-path-v1`, `cv-ex-analysis-v1..v4`, `job-fit-matches:v2`, `refined-cv-text:v1`, `cv-ex-analysis-banner-dismissed`) on A→B / A→null transitions. Anon → first signin does NOT purge. 8/8 cases tested.
+- **`f8532bd`** — JD Matching gauge stuck at 0/STRETCH despite per-dim bars at 65/65/90. Prompt rule #11 told LLM not to emit `overallScore` (client computes it) but `result.overallScore` was being read directly. Mirror v3 cv-analyze pattern: `recomputeOverall(hydrateWeightsFromResult(result))`. "Silent error after Run" symptom was the gauge sitting on 0.
+- **`cdfd0bc`** — Reader-view HTML preservation lost in `cf4b5d7`. Cheerio fallback now sanitizes inner HTML of main node (allowlist of safe attrs, drops `javascript:`/`data:`/`vbscript:` URIs, force `a[href]` → `target=_blank rel=noopener`) and passes through as `article.html`. Source JD card reader view restored.
+- **`05318fe`** — Cheerio fallback on unstructured pages (itviec /companies/) yielded wall-of-divs without h1/ul/etc → prose-CSS arbitrary selectors didn't match. Replace `ReaderArticle` with `<iframe srcdoc>` + embedded reader stylesheet — native browser UA layout + total CSS isolation from app shell. Sandbox + `<base target=_blank>` for safe link handling.
+- **`72360e0`** — Swap-JD disclosure below results. After a JD Match completes the import panel hides; user had to close the browser to swap. Native `<details>` section below results with the import panel + Run button.
+
+### LLM prompt redesign Phase 1a–1d + Phase 2 (5 commits)
+
+- **`202cd61` Phase 1a — Refined CV polish** — v2 parity port from v3: VERB_BANK + metric formatting + skill grouping + `---` section dividers + `viRegisterLock` + extraInstructions HARD-RULES sanitizer wrapper. `MODE_INSTR.apply` gets optimization budget (≤40% rewrite). Block 2 Refine Notes gets `### Mode` h3 as first section. Schema adds `aspirationRole?` + `additionalSections?` (mirror v3). UI: `RefineToolsBlock` adds Aspiration role text input pre-filled from `useCareerPath((s)=>s.targetRole)` when non-empty + non-'auto'. 22/22 tests pass.
+- **`5001e52` Phase 1b — Scoring tightening + drop friendly** — v3: 4-anchor calibration per dim (`Anchors: 30 = ... | 60 = ... | 85 = ... | 95 = ...`) + recruiter persona system prompt + rule #9 rewritten (`detectedRole` MUST echo input) + VN register block. v2: strictness tiered into concrete score-delta (strict subtracts ~10 from intuition; balanced reports as-is) + JD Step-0 industry tagging + new `roleAlignment: {aligned, note}` schema field + rule #8 forces distinct coverage vs must-haves + VN register block. `StrictnessEnum` narrowed to `['balanced','strict']` — `friendly` dropped. `analysis-store` `onRehydrateStorage` coerces legacy `'friendly'` → `'balanced'` silently. Normalizer passthrough for `roleAlignment`. 31/31 tests pass.
+- **`d4948ff` Phase 1c — Job Fit hardening** — Prompt adds 9-dim rubric + mustHaves per candidate (cap overallScore at 65 when CV clearly misses a must-have) + ≥1 negative matchReason rule for sub-80 scores + studyTopics must filter against CV evidence (senior candidate → deep-dive/adjacent, no basics) + description truncation hint at 800 chars + LLM emits tier S/A/B/C/D/E (boundaries aligned with `tierFromScore`). `estimatedHours` schema migrates from string to `{min,max}`; normalizer accepts both during 2-week transition (drop string fallback 2026-06-24). Server still authoritative on tier via `tierFromScore`; LLM drift logged via `console.warn`. 17/17 tests pass.
+- **`4c40715` Phase 1d — Cover Letter** — 4 tone preset (warm / professional / concise / leadership) with VI + EN addendum maps. 3-band length (short 150-200 / medium 250-400 / long 400-550 words). Optional `strengthsToLead?: string[]` (top 2 from analyze) + `gapToAddress?: string` (top critical gap, opt-in checkbox). System prompt branches by language (`resolveLanguage` uses Vietnamese diacritic density heuristic when 'auto'). `sanitizeMarkdownInline` strips `[]*#` ` `<>` from `jobTitle`+`company` to keep h1 clean. UI: `CoverLetterBlock` adds Tone + Length dropdowns + "Address top critical gap" checkbox; auto-prefills `strengthsToLead` from `analyzeResult?.strengths.slice(0,2)`. 24/24 tests pass.
+- **`bfa8aad` Phase 2 — Roadmap specificity + industry + structured ambitionGap** — Operator locked: KEEP `gemini-flash-latest` (no model bump). Prompt-only. Few-shot Staff Engineer @ fintech example block in system prompt. New optional `inputs.industry?` (max 80 chars) → emits `=== INDUSTRY ANCHOR ===` block instructing vertical-specific milestones/skillGaps. Specificity rubric: every `skillGap.howToLearn` MUST contain (course OR book OR mentor) + (project OR repo OR artifact) + (timeline). `feasibility` schema: drop `gentleAdvice` softness → structured `ambitionGap` (1-sentence factual) + `requiredSteps` (2-4 concrete bridge steps). `quickWins` items become `{action, effortHours, outcome}` triples. `alternativePaths` ≥1 enforced (normalizer injects transparent stub if LLM returns 0). Legacy `gentleAdvice` → `ambitionGap` fallback in normalizer for cached responses. UI: `quick-wins-block` renders 2-line entry (action + ~Nh + outcome); `feasibility-banner` uses `ambitionGap` headline + `requiredSteps` list. 21/21 tests pass.
+
+### Infra phases (3 commits)
+
+- **`27b4d35` Phase 8 — KV decommission** — Drop `JOBFIT_USE_POSTGRES` env flag + the 404 admin-lockdown gate from `/api/jobs/recommend`. Remove legacy KV imports (`topKCandidates`, `JobIndexNotReadyError`, `kvGetJobBatch`, `getJobIdsForVertical`). Inline the Postgres branch in `topKByEmbedding` + `getJobBatch` sites. `applyTierGate` now always applied. `markSeenForUser` condition narrowed to `(session.user.id && matchedJobs)`. Operator follow-ups (not in this commit): unset Vercel env, run cleanup scripts, delete dead files.
+- **`d909f2d` Phase 9 — Scrape optimization** — `extractItemListEntries` returns `{url, name?}` (was URL-only); handles both ITviec direct shape + TopCV nested SearchResultsPage shape. New `--title-include kw1,kw2` + `--title-exclude kw1,kw2` flags on `ingest-itviec`: case-insensitive substring match on slug + name. Pagination tail detection still compares pre-filter count so aggressive filters don't truncate early. Stats per page log parsed/filtered/kept/fresh. 8/8 tests on jsonld-itemlist.
+- **`2924161` LLM retry+fallback chain** — Gemini upstream returning intermittent 503 UNAVAILABLE ("high demand") — verified via direct probe (flash-latest 503, 2.5-flash 200, 2.5-pro 503; rotates by hour). New `callLLMWithFallback` in `providers.ts`: retry SAME model once on transient (regex over 429/50[023]/UNAVAILABLE/overload/rate-limit/INTERNAL) after 600ms; then walk `geminiFallbackChain` (returns 2.5-flash → flash-latest → 2.5-pro minus current). Non-transient errors bubble. Wired into `/api/jobs/recommend` (`callRecommendLlm`) + `/api/analyze` (v2 + v3 via `handle-v3`). 8/8 cases.
+
+### Career Path UX + v2 todayIso (`edb8f74`)
+- Aspiration form jumping to top after roadmap exists → render `<AspirationInputBlock>` inside the bottom "Lộ trình hiện tại" card with a top-border divider. Edit→regenerate flow stays on single scroll position.
+- AI-suggest button ("AI đề xuất 3-5 hướng") only existed in pre-result Start Card → mirrored into post-result card so users can access path suggestions after generating.
+- v2 `prompt-generate-cv.ts` + `prompt-analyze.ts` were missing the `=== TODAY'S DATE ===` block that v3 had. JD Matching → Refined CV flagged "Mar 2026" as future date red flag; same input on Analyze → Refined (v3) did not. Same shape ported into both v2 prompts.
+
+### i18n in-house harness (3 commits)
+- **`4cc1983` morning** — Global LLM output language toggle added to Settings drawer (mirrors the inline analyze form picker so the preference is reachable from every workflow).
+- **`fac306a` batch 1** — `src/lib/i18n/messages.ts` carries ~80 keys for VI + EN sub-bundles (nav, settings, common buttons, language picker, career-path page, refined-cv, cover-letter, jd-matching, analyze). `src/lib/i18n/use-t.ts` exposes `useT()` hook that resolves locale from `useAnalysis(s.language)` ('auto' → 'vi'). Wired: user-menu (signIn/signOut), career-path-page (header + empty state + start card + suggest button + custom-aspiration toggle + loading + error + current-roadmap card + note prefix), jd-matching-content (ready empty-state, run CTA, loading, error, swap-JD disclosure). 9/9 i18n catalog parity + interpolation tests.
+- **`df60062` batch 2** — Wired into settings drawer + trigger (title + LanguagePreferenceRow), refined-cv refine-tools-block (controls title + Tone + Length + Aspiration role + Extra instructions + Regenerate CTA), cover-letter-block (Generate Cover Letter + tones + length + Address Gap checkbox + Generate + `quotaRemaining` with vars interp), dashboard sidebar nav (Dashboard + My CVs + Analyze + JD Matching + History + Help + Privacy; admin pages keep `rawLabel`).
+
+Why in-house vs `next-intl`: next-intl needs middleware + locale-routed URLs to do this canonically (multi-day rewire). Product is Vietnamese-first with one explicit user-controlled language toggle — in-house t() reads the same store the toggle writes, instant switching without URL changes. Server components default to VI since they can't read the client store; translate at the client boundary (most user-facing copy already is client-side).
+
+Deferred: analyze form (page header + run CTA), upgrade page, sign-in, dashboard cards, JD import panel, admin pages.
+
+### Job Fit shared-key bypass — reverted (`e0b0468` → `7e24d63`)
+- Initially built admin-controlled bypass of `DISABLE_SHARED_KEY` gate for `/api/jobs/recommend`. Operator clarified: Job Fit must NOT use shared key for non-admin — users have to BYOK. Reverted entire commit + deleted the KV flag.
+
+### Job Fit admin kill-switch (`6042a7a`)
+- New KV flag `flag:job-fit-enabled` (default ON, fail-OPEN on KV outage — opposite of `DISABLE_SHARED_KEY`). Admin POST `/api/admin/job-fit-flag {action:'on'|'off'}` toggles + cache reset. New `JobFitFlagToggle` UI section on `/admin/maintenance` alongside Maintenance + Public login.
+- 4 enforcement points when flag OFF: (1) `/api/jobs/recommend` returns early 503 'service_unavailable' before session/quota work; (2) `cv-analyze/[cvId]/layout.tsx` + `jd-matching/[cvId]/layout.tsx` read `isJobFitEnabled()` server-side and forward `jobFitEnabled` prop to `WorkflowLayout`; (3) `workflow-layout.tsx` `buildSteps` filter drops `jobfit` chevron step when flag off OR viewer non-admin; (4) `/job-fit/layout.tsx` `notFound()` — admin path included for testable off-state. 5s in-process cache for propagation.
+
+### Stats
+**Status:** ✓ Shipped to main. 16 commits + 1 revert (`07591de` → `6042a7a`). 608/608 tests passing / 25 skipped.
+
+### Operator runbook
+- **Manual pool refresh**: `pnpm run seed-pool` (full sweep: TopCV + ITviec + expire pass, ~25-40 min wall-clock).
+- **Subflags**: `pnpm run seed-pool -- --pages 2`, `--max-age-days 5`, `--skip-itviec`, `--skip-topcv`.
+- **Single-source**: `pnpm run ingest itviec data-engineer senior-data-engineer --pages 2 [--title-include senior,lead] [--title-exclude intern,fresher]`.
+- **Stats**: `pnpm run ingest stats` (pre/post counts by vertical/seniority).
+- **Expire pass only**: `pnpm run ingest expire` (mark `verifiedAt >21d` as expired).
+
+### Deferred (priority order for next session)
+1. **Billing + credits + shared-key open for Job Fit** (operator targeted 2026-06-11) — Enable cost-tracking when normal users use shared key on Job Fit recommend; per-user credit ledger + ledger debit on each Gemini call.
+2. **i18n batch 3** — analyze form, upgrade page, sign-in, dashboard cards, JD import panel, admin pages. Pattern proven; mechanical.
+3. **Soak reviews** — Phase 1c must-have cap-65 rule after 1 week; `estimatedHours` legacy string fallback removal scheduled 2026-06-24; Phase 2 `quickWins.effortHours` distribution tune.
+4. **Operator KV cleanup** — Unset `JOBFIT_USE_POSTGRES` on Vercel, run `kv-snapshot` + `kv-drop-jobs-keys`, delete legacy `src/lib/jobs/{repo.ts, score.ts KV-bound parts, vertical-index.ts, pack-embeddings.ts}`.
+5. **Per-endpoint LLM fallback expansion** — Extend `callLLMWithFallback` from recommend+analyze to generate-cv + career-path + generate-cover-letter + extract-must-haves + jd-insights so transient Gemini 503 doesn't surface on any LLM endpoint.
+
+---
+
 ## 2026-06-09 — Job Fit UX overhaul + CV-orphan auth fix + prompt audit (17 commits)
 
 Single-session ship across 17 commits (`ad70004` → `3d5ba09`). Reports at `plans/reports/audit-260609-1539-llm-prompts.md` (prompt audit) and `plans/reports/research-260609-1620-openai-pricing-estimate.md` (GPT-5 cost matrix). State snapshot in [[project_cvmatching_v01_state]] memory.

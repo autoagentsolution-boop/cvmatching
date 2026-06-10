@@ -165,6 +165,44 @@ Living document tracking feature phases, milestones, and completion status. Upda
 
 ---
 
+## v0.4.y — LLM prompt redesign + prod hotfix burst + i18n harness + Job Fit kill-switch (✓ Shipped 2026-06-10)
+
+**Scope:** Full prompt redesign (Phase 1a-1d + Phase 2 from 2026-06-09 audit), Gemini upstream resilience, in-house i18n, Phase 8 (KV decom) + Phase 9 (scrape filter), career-path UX, admin Job Fit kill-switch.
+
+**Phases shipped (15 commits):**
+
+1. **Hotfix burst (morning, 7 commits)** — Gemini 2.0-flash deprecation 404 → swap default to `gemini-flash-latest` (`07591de`). jsdom ESM bust on Vercel → cheerio refactor in `extract-readability.ts` + JD import URL fetch (`cf4b5d7`). Cross-user cache leak on shared browser (sessionStorage + persisted Zustand stores not cleared on signout) → `useUserIdGuard` purges all per-user caches on identity transition (`38a3c8f`). JD Matching gauge stuck at 0 → client-side recompute from 9 dim scores via `recomputeOverall` (`f8532bd`). Reader-view HTML preservation lost in cheerio refactor → restore + sanitize (`cdfd0bc`). Native iframe srcdoc reader view replaces prose-CSS article (`05318fe`). Swap-JD disclosure UI below results (`72360e0`).
+
+2. **LLM prompt redesign Phase 1a-1d + Phase 2 (5 commits)** — Refined CV polish v2 parity port from v3 (decoration + verb bank + dividers + VN register + sanitizer) + UI aspirationRole input + Mode tag (`202cd61`). Scoring tightening — 4-anchor calibration table per dim on v3 + persona + role-lock + VN register block; v2 strictness as score-delta + `roleAlignment` field + JD industry tag + distinct coverage rule; DROP `strictness=friendly` (`5001e52`). Job Fit hardening — per-dim rubric + mustHaves injection + ≥1 negative reason for sub-80 + studyTopics CV-aware + `estimatedHours` schema bump to `{min,max}` + tier passthrough (`d4948ff`). Cover Letter — 4 tone presets + length toggle + analysis findings feed + bilingual system prompt + heading sanitizer (`4c40715`). Roadmap — few-shot Staff Engineer example + industry anchor + specificity rubric for `skillGap.howToLearn` + `ambitionGap`/`requiredSteps` replacing `gentleAdvice` softness + `alternativePaths ≥1` (`bfa8aad`).
+
+3. **Phase 8 KV decommission (`27b4d35`)** — Removed `JOBFIT_USE_POSTGRES` env gate + 404 admin-lockdown branch from `/api/jobs/recommend`. All traffic now hits Postgres (`repoPg.topKByEmbedding` + `getJobBatch`). Legacy `score.ts`/`repo.ts`/`vertical-index.ts` files kept on disk for the operator script tail; cosineSim still used by `check-musthaves-semantic`. Operator follow-ups: drop `JOBFIT_USE_POSTGRES` from Vercel env, run `kv-snapshot` + `kv-drop-jobs-keys` scripts.
+
+4. **Phase 9 scrape optimization (`d909f2d`)** — `extractItemListEntries` now returns `{url, name?}` so listing-page parse carries title; new `--title-include` + `--title-exclude` CLI flags on `ingest-itviec` apply case-insensitive substring filter BEFORE detail fetch. Saves Cloudflare quota + LLM enrichment cost on cross-tagged roles. Pattern designed for parity to TopCV/VNW later.
+
+5. **LLM Gemini 503 hotfix (`2924161`)** — `gemini-flash-latest` returning intermittent 503 UNAVAILABLE ("high demand") in prod. New `callLLMWithFallback` retry+fallback layer in `providers.ts`: retry SAME model once on transient (429/503/UNAVAILABLE/overload) after 600ms; then walk `geminiFallbackChain` (2.5-flash → flash-latest → 2.5-pro, excluding current) with one attempt each. Wired into `/api/jobs/recommend` + `/api/analyze` (v2 + v3 paths). Non-transient errors bubble immediately. 8/8 cases tested.
+
+6. **Career Path UX + v2 todayIso (`edb8f74`)** — Aspiration form now renders inside the bottom "Lộ trình hiện tại" card after a roadmap exists (was jumping to top, forcing scroll). AI-suggest button mirrored to post-result card so users can access path-suggestions after generating. Also: v2 `prompt-generate-cv.ts` + `prompt-analyze.ts` were missing the `=== TODAY'S DATE ===` block that v3 has → JD-Match → Refined flagged Mar 2026 as "future date" red flag. Same shape ported.
+
+7. **i18n in-house harness + 2 surface batches (2 commits + earlier morning toggle)** — `src/lib/i18n/messages.ts` carries ~80 keys for VI + EN sub-bundles; `useT()` hook reads `useAnalysis(s.language)` for instant re-render on toggle. Wired: user-menu, career-path-page, jd-matching-content, settings drawer + trigger, refined-cv form, cover letter, dashboard sidebar nav. Server components default to VI since the in-house t() is client-only. Deferred: analyze form, upgrade page, sign-in, dashboard cards, admin pages.
+
+8. **Job Fit admin kill-switch (`6042a7a`)** — KV flag `flag:job-fit-enabled` (default ON, fail-OPEN on KV outage). New `/api/admin/job-fit-flag` POST + `JobFitFlagToggle` UI on `/admin/maintenance` alongside Maintenance + Public login. When OFF: chevron drops `jobfit` step from CV-Analyze + JD-Matching workflows, `/job-fit/*` subtree returns 404 (admin included for testable off-state), `/api/jobs/recommend` returns 503 early. 5s in-process cache for propagation.
+
+**Status:** ✓ Shipped to main. 15 commits + 1 revert (`07591de` → `6042a7a`). 608/608 tests passing.
+
+**Deferred to next session (priority order):**
+
+1. **Billing + credits + shared-key open for Job Fit** (operator targeted for 2026-06-11). Enable cost-tracking when normal users use shared key on `/api/jobs/recommend`; ship per-user credit ledger + ledger debit on each Gemini call.
+2. **i18n batch 3** — analyze form, upgrade page, sign-in, dashboard cards, admin pages. Pattern proven; remaining work is mechanical.
+3. **Soak reviews** — must-have cap-65 rule (Phase 1c) after 1 week; `estimatedHours` legacy string fallback removal scheduled 2026-06-24 (Phase 1c normalizer); `quickWins.effortHours` distribution tune (Phase 2).
+4. **Operator KV cleanup** — drop `JOBFIT_USE_POSTGRES` env on Vercel, run `kv-snapshot` + `kv-drop-jobs-keys` scripts, delete legacy `repo.ts`/KV-bound parts of `score.ts`/`vertical-index.ts`/`pack-embeddings.ts`.
+5. **Per-endpoint LLM fallback** — extend `callLLMWithFallback` from recommend+analyze to `/api/generate-cv` + `/api/career-path` + `/api/generate-cover-letter` + `/api/extract-must-haves` + `/api/jd-insights` so transient Gemini 503 doesn't surface on any LLM endpoint.
+
+**Operator runbook (pool refresh):**
+
+Manual job pool refresh: `pnpm run seed-pool` (defaults: 3 pages/source, ≤3 days freshness, full TopCV + ITviec + expire sweep). Wall-clock ~25-40 min. Subflags: `pnpm run seed-pool -- --pages 2`, `--max-age-days 5`, `--skip-itviec`, `--skip-topcv`. Per-source: `pnpm run ingest itviec data-engineer senior-data-engineer --pages 2 [--title-include senior,lead] [--title-exclude intern,fresher]`. Stats: `pnpm run ingest stats`. Expire pass: `pnpm run ingest expire`.
+
+---
+
 ## v0.5 (future)
 
 **Scope:** Authentication maturity, persistent history, auto-pipeline (daily-score + email digest).
