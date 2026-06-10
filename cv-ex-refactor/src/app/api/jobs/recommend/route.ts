@@ -4,11 +4,8 @@ import { resolveApiKey } from '@/lib/llm/resolve-api-key';
 import { checkKillSwitch, recordCost } from '@/lib/cost/guard';
 import { getCachedEmbedding, setCachedEmbedding } from '@/lib/jobs/embed-cache';
 import { embedText } from '@/lib/jobs/embed';
-import { topKCandidates, JobIndexNotReadyError } from '@/lib/jobs/score';
-import { getJobBatch as kvGetJobBatch } from '@/lib/jobs/repo';
 import * as repoPg from '@/lib/jobs/repo-postgres';
 import { classifyCvVertical } from '@/lib/jobs/classify-cv-vertical';
-import { getJobIdsForVertical } from '@/lib/jobs/vertical-index';
 import { buildRecommendPrompts } from '@/lib/llm/prompt-job-recommend';
 import { normalizeRecommend } from '@/lib/llm/normalize-job-recommend';
 import { microUsdCost } from '@/lib/llm/model-prices';
@@ -16,11 +13,9 @@ import { logLlmCall } from '@/lib/llm/safe-logger';
 import { callRecommendLlm } from './llm-call-with-retry';
 import type { Job } from '@/lib/jobs/types';
 import { getSession } from '@/lib/get-session';
-import { isAdminUser } from '@/lib/usage/admin-auth';
 import { resolveUserTier, type UserTier } from '@/lib/users/resolve-user-tier';
 import { applyTierGate } from '@/lib/jobs/apply-tier-gate';
 import { markSeenForUser, seenCountForUser } from '@/lib/jobs/mark-seen-for-user';
-import { env } from '@/lib/env';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -28,9 +23,12 @@ export const maxDuration = 60;
 // jobfit-db-pool-monetize). Cross-region adds 50-100ms per pgvector query.
 export const preferredRegion = 'sin1';
 
-// True when the Postgres + tier-gating cutover is active. When false, the
-// route falls back to the legacy KV admin-only path (unchanged behaviour).
-const USE_POSTGRES = env.JOBFIT_USE_POSTGRES === '1' || env.JOBFIT_USE_POSTGRES === 'true';
+// 2026-06-10 Phase 8 — cutover complete. JOBFIT_USE_POSTGRES flag dropped
+// after 4 days of stable Postgres traffic. KV-only branches removed; the
+// legacy repo.ts / score.ts / vertical-index.ts modules stay on disk for
+// now (operator-run scripts still reference them) but are no longer in
+// any live request path. File deletion + KV `job:*` key cleanup are
+// follow-up operator actions, not in this commit.
 
 // Internal deadline = maxDuration − safety buffer. Hits ~5s before Vercel's
 // hard kill so our catch block can still return a structured error body
@@ -102,13 +100,6 @@ function classifyLlmError(msg: string): { code: string; status: number; userMsg:
 
 export async function POST(req: NextRequest) {
   const session = await getSession().catch(() => null);
-
-  // Cutover-flag gate. When Postgres path is off we retain the v0.3 pilot
-  // lockdown so prod behaviour stays identical until the operator flips
-  // JOBFIT_USE_POSTGRES=1 in Vercel envs.
-  if (!USE_POSTGRES && !isAdminUser(session?.user)) {
-    return new NextResponse('Not found', { status: 404 });
-  }
 
   const json = await req.json().catch(() => null);
   const parsed = RecommendBodySchema.safeParse(json);
@@ -188,93 +179,59 @@ export async function POST(req: NextRequest) {
     stageTimings.embed = Date.now() - embedStart;
 
     // Vertical pre-filter: classify CV → restrict candidate pool to same vertical.
-    const MIN_VERTICAL_POOL = 3;
     const classifyStart = Date.now();
     const cvVertical = classifyCvVertical(body.cvText);
     stageTimings.classify = Date.now() - classifyStart;
 
-    // Tier resolution — Postgres path only. Anon UX, free signed-in, paid
-    // (active subscription). Drives K (candidate count) + the post-LLM gate.
-    const userTier: UserTier = USE_POSTGRES ? await resolveUserTier(session) : 'paid';
+    // Anon UX, free signed-in, paid (active subscription). Drives K
+    // (candidate count) + the post-LLM gate.
+    const userTier: UserTier = await resolveUserTier(session);
     // Paid gets headroom for tier-S/A discovery; free/anon stay tight to
     // limit LLM cost on traffic that we cap at 1-2 surfaced jobs anyway.
-    const K = USE_POSTGRES ? (userTier === 'paid' ? 12 : 6) : 6;
+    const K = userTier === 'paid' ? 12 : 6;
 
     let candidates: Array<{ id: string; score: number }>;
-    let verticalApplied = false;
-    let verticalBucketSize: number | null = null;
     const topkStart = Date.now();
 
-    if (USE_POSTGRES) {
-      // Postgres path — pgvector HNSW handles vertical filter + ranking in one
-      // query. Server-side dedup via excludeForUserId (signed-in) or client-
-      // supplied excludeIds (anon body.seenIds).
-      try {
-        candidates = await repoPg.topKByEmbedding(cvEmbedding, {
-          k: K,
-          ...(cvVertical ? { vertical: cvVertical } : {}),
-          ...(session?.user?.id ? { excludeForUserId: session.user.id } : {}),
-          ...(body.seenIds && body.seenIds.length > 0 ? { excludeIds: body.seenIds } : {}),
-        });
-        verticalApplied = Boolean(cvVertical);
-      } catch (e) {
-        return err('internal_error', `Lỗi pgvector query: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`, 500, {
-          stage: 'topk',
-          elapsedMs: stageElapsed(),
-        });
-      }
-    } else {
-      // Legacy KV path — sidecar vertical-index + module-scope cosine memo.
-      let allowedIds: Set<string> | undefined;
-      if (cvVertical) {
-        const verticalStart = Date.now();
-        const bucketIds = await getJobIdsForVertical(cvVertical).catch(() => null);
-        stageTimings.verticalLookup = Date.now() - verticalStart;
-        verticalBucketSize = bucketIds?.size ?? 0;
-        if (bucketIds && bucketIds.size >= MIN_VERTICAL_POOL) {
-          allowedIds = bucketIds;
-        }
-      }
-      verticalApplied = Boolean(allowedIds);
-      try {
-        candidates = await topKCandidates(cvEmbedding, K, allowedIds);
-      } catch (e) {
-        if (e instanceof JobIndexNotReadyError) {
-          return err('service_unavailable', 'Job index chưa sẵn sàng. Pool jobs trống — admin cần ingest trước.', 503);
-        }
-        return err('internal_error', `Lỗi tải job index: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`, 500, {
-          stage: 'topk',
-          elapsedMs: stageElapsed(),
-        });
-      }
+    // pgvector HNSW handles vertical filter + ranking in one query.
+    // Server-side dedup via excludeForUserId (signed-in) or client-
+    // supplied excludeIds (anon body.seenIds).
+    try {
+      candidates = await repoPg.topKByEmbedding(cvEmbedding, {
+        k: K,
+        ...(cvVertical ? { vertical: cvVertical } : {}),
+        ...(session?.user?.id ? { excludeForUserId: session.user.id } : {}),
+        ...(body.seenIds && body.seenIds.length > 0 ? { excludeIds: body.seenIds } : {}),
+      });
+    } catch (e) {
+      return err('internal_error', `Lỗi pgvector query: ${(e instanceof Error ? e.message : String(e)).slice(0, 200)}`, 500, {
+        stage: 'topk',
+        elapsedMs: stageElapsed(),
+      });
     }
+    const verticalApplied = Boolean(cvVertical);
 
     stageTimings.topk = Date.now() - topkStart;
     if (candidates.length === 0) {
       // Disambiguate empty result: dedup exhausted the user's pool, OR the
       // vertical pool is genuinely empty. Drives the UI banner copy in Phase 7.
-      if (USE_POSTGRES) {
-        const seenCount = session?.user?.id
-          ? await seenCountForUser(session.user.id).catch(() => 0)
-          : (body.seenIds?.length ?? 0);
-        const exhaustedPool = seenCount > 0;
-        return NextResponse.json({
-          jobs: [],
-          fromCache,
-          tier: userTier,
-          seenPolicy: session?.user?.id ? 'persisted' : 'client',
-          exhaustedPool,
-          seenCount,
-          pool: { cvVertical, verticalApplied, candidatesScored: 0 },
-          message: exhaustedPool ? 'no_more_new_matches' : 'pool_empty',
-        });
-      }
-      return err('service_unavailable', 'Job index chưa sẵn sàng (0 candidates). Admin cần ingest trước.', 503);
+      const seenCount = session?.user?.id
+        ? await seenCountForUser(session.user.id).catch(() => 0)
+        : (body.seenIds?.length ?? 0);
+      const exhaustedPool = seenCount > 0;
+      return NextResponse.json({
+        jobs: [],
+        fromCache,
+        tier: userTier,
+        seenPolicy: session?.user?.id ? 'persisted' : 'client',
+        exhaustedPool,
+        seenCount,
+        pool: { cvVertical, verticalApplied, candidatesScored: 0 },
+        message: exhaustedPool ? 'no_more_new_matches' : 'pool_empty',
+      });
     }
 
-    const jobs = USE_POSTGRES
-      ? await repoPg.getJobBatch(candidates.map((c) => c.id))
-      : await kvGetJobBatch(candidates.map((c) => c.id));
+    const jobs = await repoPg.getJobBatch(candidates.map((c) => c.id));
     const jobsById = new Map<string, Job>(jobs.map((j) => [j.id, j]));
 
     const { system, user } = buildRecommendPrompts({
@@ -362,13 +319,9 @@ export async function POST(req: NextRequest) {
     }
 
     const matchedJobsRaw = normalizeRecommend(parsedRaw, jobsById);
-    // Tier-gate filter for Postgres path. Legacy KV path is admin-only so the
-    // existing enforceQuota result (S:1 A:3 B:2 C:2 D:1 E:1 = 10) is what
-    // admin sees. Public users go through applyTierGate which subsets the
-    // letters allowed for their tier + caps count.
-    const matchedJobs = USE_POSTGRES
-      ? applyTierGate(matchedJobsRaw, userTier)
-      : matchedJobsRaw;
+    // Tier-gate filter — subsets the tier letters allowed for the user's
+    // tier and caps total count per tier.
+    const matchedJobs = applyTierGate(matchedJobsRaw, userTier);
 
     if (matchedJobs.length === 0) {
       await logLlmCall({
@@ -399,7 +352,7 @@ export async function POST(req: NextRequest) {
     // Persist seen for signed-in users. Fire-and-forget — never block the
     // response. Errors swallowed because seen state is recoverable: worst
     // case the user sees a duplicate job on next refresh until backfill.
-    if (USE_POSTGRES && session?.user?.id && matchedJobs.length > 0) {
+    if (session?.user?.id && matchedJobs.length > 0) {
       void markSeenForUser(
         session.user.id,
         matchedJobs.map((j) => j.jobId),
@@ -417,13 +370,11 @@ export async function POST(req: NextRequest) {
       expiresAt: new Date(Date.now() + 6 * 3600 * 1000).toISOString(),
       quotaRemaining: resolved.quotaRemaining,
       timings: stageTimings,
-      ...(USE_POSTGRES
-        ? { tier: userTier, seenPolicy: session?.user?.id ? 'persisted' : 'client' }
-        : {}),
+      tier: userTier,
+      seenPolicy: session?.user?.id ? 'persisted' : 'client',
       pool: {
         cvVertical,
         verticalApplied,
-        verticalBucketSize,
         candidatesScored: candidates.length,
       },
     });
