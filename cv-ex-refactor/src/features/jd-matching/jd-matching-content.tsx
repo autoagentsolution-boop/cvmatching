@@ -23,6 +23,7 @@ import { callAnalyze } from '@/features/analyze/api-client';
 import { callJdInsights } from './api-client';
 import { JdImportPanel } from './jd-import-panel';
 import { aggregateRoleFit, classifyFit } from '@/lib/scoring/role-fit-aggregate';
+import { hydrateWeightsFromResult, recomputeOverall } from '@/lib/scoring/recompute-overall';
 import { isTransientLlmError } from '@/lib/llm/humanize-error';
 import type {
   AnalyzeRequest,
@@ -204,7 +205,15 @@ function JdMatchingResults({
     }),
     [result],
   );
-  const overall = result.overallScore;
+  // The analyze prompt instructs the LLM NOT to emit overallScore (rule
+  // #11 — client computes it from the 9 dim scores). Mirror v3's pattern:
+  // derive weights from result.metrics then recomputeOverall. Falls back
+  // to result.overallScore only when metrics are empty so legacy cached
+  // responses still render a non-zero gauge.
+  const overall = useMemo(() => {
+    const recomputed = recomputeOverall(hydrateWeightsFromResult(result));
+    return recomputed.overallScore > 0 ? recomputed.overallScore : result.overallScore;
+  }, [result]);
   const { tier, label: tierLabel } = classifyFit(overall);
   const matched = result.coverage.filter((c) => c.status === 'match').length;
   const totalCoverage = result.coverage.length;
