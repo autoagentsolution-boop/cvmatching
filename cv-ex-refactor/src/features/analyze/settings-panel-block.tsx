@@ -5,13 +5,23 @@ import { MdLock } from 'react-icons/md';
 import { Button, FormField, Input, Select, Slider } from '@/components/ui';
 import type { SelectOption } from '@/components/ui';
 import { useSettings, DEFAULT_MODELS } from './settings-store';
-import type { Provider } from './types';
+import { useAnalysis } from './analysis-store';
+import type { Language, Provider } from './types';
 import { clearByokKey, fetchByokStatus, storeByokKey } from './api-client';
 
 const providerOptions: SelectOption[] = [
   { value: 'gemini', label: 'Google Gemini' },
   { value: 'openai', label: 'OpenAI' },
   { value: 'custom', label: 'Custom (OpenAI-compatible)' },
+];
+
+// Phase 6 (pragmatic i18n): output language preference is the only
+// user-controllable i18n surface today. Full UI string i18n (button
+// labels, headings, error toasts) is deferred — see plans for scope.
+const languageOptions: SelectOption[] = [
+  { value: 'auto', label: 'Theo CV / JD (Auto)' },
+  { value: 'en', label: 'English' },
+  { value: 'vi', label: 'Tiếng Việt' },
 ];
 
 export interface SettingsPanelBlockProps {
@@ -112,6 +122,8 @@ export function SettingsPanelBlock({ isAuthed }: SettingsPanelBlockProps) {
         </p>
       </div>
 
+      <LanguagePreferenceRow />
+
       <div className="flex flex-col gap-4">
         <FormField label="Provider" htmlFor="llm-provider">
           <Select
@@ -206,6 +218,36 @@ export function SettingsPanelBlock({ isAuthed }: SettingsPanelBlockProps) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Phase 6 — global LLM output language preference. Lives in the
+ * analyze-store so every surface (analyze, jd-match, refined-cv,
+ * roadmap, cover-letter, job-fit recommend) reads the same value.
+ * Mirrors the inline picker on /analyze for users who never visit
+ * the analyze form first.
+ */
+function LanguagePreferenceRow() {
+  const language = useAnalysis((s) => s.language);
+  const setField = useAnalysis((s) => s.setField);
+
+  return (
+    <div className="rounded-xl border border-outline-variant bg-surface-container-low p-3 flex flex-col gap-2">
+      <FormField label="LLM output language" htmlFor="settings-language">
+        <Select
+          id="settings-language"
+          options={languageOptions}
+          value={language}
+          onChange={(e) => setField('language', e.target.value as Language)}
+        />
+      </FormField>
+      <p className="text-label-sm text-on-surface-variant leading-relaxed">
+        Áp dụng cho mọi output do AI sinh ra (analyze, refined CV, roadmap,
+        cover letter, job fit). UI / nút bấm hiện tại vẫn tiếng Việt — i18n
+        cho UI chuỗi đang được lên kế hoạch riêng.
+      </p>
     </div>
   );
 }
