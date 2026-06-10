@@ -88,6 +88,7 @@ export function buildAnalyzePrompts(body: AnalyzeBodyT): BuiltPrompts {
     language,
     mustHaves,
   } = inputs;
+  const todayIso = new Date().toISOString().slice(0, 10);
 
   const langInstr =
     language === 'vi'
@@ -109,6 +110,10 @@ export function buildAnalyzePrompts(body: AnalyzeBodyT): BuiltPrompts {
     'You are an expert technical recruiter and CV reviewer. Always return ONE valid JSON object matching the requested schema. Be concrete, honest, concise. Never invent candidate experience.';
 
   const user = `Analyze how well the candidate's CV matches the Job Description. The JD is the ground truth — score each dimension based on what THIS role requires and what the CV evidences.
+
+=== TODAY'S DATE (server time) ===
+${todayIso}
+Use this to judge whether CV dates are past / current / future. Do NOT assume today is your training-cutoff date — a "Mar 2026" end date may be in the past relative to TODAY. Do NOT flag past dates as "future" red flags.
 
 === STEP 0 — IDENTIFY JD INDUSTRY ===
 Before scoring, identify the JD's industry / vertical (fintech, ad-tech, healthtech, e-commerce, gaming, government, education, logistics, manufacturing, telecom, etc.). Use this as the baseline for the \`domain\` dimension and mention the inferred industry in the \`summary\` field. If the JD is industry-neutral / staffing-firm style, state "generic" in summary and weight \`domain\` accordingly.

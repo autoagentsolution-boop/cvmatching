@@ -199,7 +199,11 @@ export function CareerPathPage({ mode }: CareerPathPageProps = {}) {
             </Card>
           )}
 
-          {showAspiration && <AspirationInputBlock />}
+          {/* Aspiration drawer renders here ONLY when no roadmap yet. After
+              a result exists it moves into the bottom "Lộ trình hiện tại"
+              card so toggling "Tuỳ chỉnh aspiration" no longer scrolls the
+              user up above the result. */}
+          {showAspiration && !result && <AspirationInputBlock />}
 
           {isGenerating && (
             <LoadingState
@@ -268,14 +272,40 @@ export function CareerPathPage({ mode }: CareerPathPageProps = {}) {
                 </div>
                 <div className="flex flex-col items-start gap-3">
                   <CareerPathActions />
-                  <button
-                    type="button"
-                    onClick={() => setShowAspiration((v) => !v)}
-                    className="text-label-sm text-on-tertiary-container underline-offset-2 hover:underline focus-visible:outline-none focus-visible:underline"
-                  >
-                    {showAspiration ? 'Ẩn tuỳ chỉnh aspiration' : 'Tuỳ chỉnh aspiration thủ công'}
-                  </button>
+
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-label-sm">
+                    {/* AI-suggest path stays reachable AFTER a roadmap
+                        exists — without this the user can't access
+                        Suggest Paths once they've generated. */}
+                    {showSuggestLink && (
+                      <button
+                        type="button"
+                        onClick={fetchSuggestions}
+                        aria-label="AI đề xuất 3-5 hướng phát triển từ CV (tốn 1 quota)"
+                        className="inline-flex items-center gap-1 text-on-tertiary-container underline-offset-2 hover:underline focus-visible:outline-none focus-visible:underline"
+                      >
+                        <MdAutoAwesome size={14} aria-hidden="true" />
+                        AI đề xuất 3-5 hướng (1 quota)
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowAspiration((v) => !v)}
+                      className="text-on-tertiary-container underline-offset-2 hover:underline focus-visible:outline-none focus-visible:underline"
+                    >
+                      {showAspiration ? 'Ẩn tuỳ chỉnh aspiration' : 'Tuỳ chỉnh aspiration thủ công'}
+                    </button>
+                  </div>
                 </div>
+
+                {/* Aspiration drawer renders INSIDE the bottom card when a
+                    result exists — keeps "edit then regenerate" workflow
+                    on a single scroll position. */}
+                {showAspiration && (
+                  <div className="border-t border-outline-variant pt-4">
+                    <AspirationInputBlock />
+                  </div>
+                )}
               </Card>
             </div>
           )}

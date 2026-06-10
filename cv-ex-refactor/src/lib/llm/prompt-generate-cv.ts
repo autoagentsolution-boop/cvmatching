@@ -66,6 +66,7 @@ export interface BuiltCvPrompts {
 
 export function buildGenerateCvPrompts(body: GenerateCvBodyT): BuiltCvPrompts {
   const { inputs, analysisSummary } = body;
+  const todayIso = new Date().toISOString().slice(0, 10);
   const langInstr =
     inputs.language === 'vi'
       ? 'Write the CV in Vietnamese.'
@@ -99,6 +100,10 @@ If a section has no genuine content to fill, OMIT it. Do not invent entries to p
 
   const mode: CvMode = inputs.mode ?? 'apply';
   const user = `Rewrite the candidate's CV to better match the Job Description, while staying 100% truthful.
+
+=== TODAY'S DATE (server time) ===
+${todayIso}
+Use this to judge whether CV dates are past / current / future. Do NOT assume today is your training-cutoff date — a "Mar 2026" end date may be in the past relative to TODAY. Do NOT flag past dates as "future".
 
 === JOB DESCRIPTION ===
 ${inputs.jdText}
