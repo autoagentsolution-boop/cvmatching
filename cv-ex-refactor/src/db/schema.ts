@@ -315,6 +315,11 @@ export const interviewSessions = pgTable(
     // Per-session overall score (0..100) computed by the grade call. null
     // while status='in_progress'.
     overallScore: integer('overall_score'),
+    // Post-grade study plan from the LLM — 2-4 themed weakness clusters
+    // with courses + free resources. Nullable: only set after the user
+    // explicitly clicks "Generate study plan" on the results page.
+    // 1-time generation per session (re-roll disabled v1).
+    studyPlan: jsonb('study_plan'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .notNull()
       .defaultNow(),

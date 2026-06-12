@@ -37,7 +37,8 @@ export type QuotaAction =
   // here so resolveApiKey accepts them; consumeQuotaForUser is a no-op for
   // non-QuotaKind actions.
   | 'interview-gen'
-  | 'interview-grade';
+  | 'interview-grade'
+  | 'interview-study-plan';
 
 export interface QuotaResult {
   ok: boolean;

@@ -189,6 +189,24 @@ export const MESSAGES = {
     'interview.grade.solid': 'Khá',
     'interview.grade.excellent': 'Xuất sắc',
     'interview.jobFitCta.label': 'Luyện phỏng vấn cho job này',
+
+    // Study plan (post-grade)
+    'interview.studyPlan.title': 'Lộ trình học gợi ý',
+    'interview.studyPlan.subtitle': 'Dựa trên các câu trả lời yếu, AI gom thành 2-4 chủ đề và đề xuất khóa học + tài liệu miễn phí cho từng chủ đề.',
+    'interview.studyPlan.generate': 'Tạo lộ trình học',
+    'interview.studyPlan.generating': 'Đang sinh lộ trình…',
+    'interview.studyPlan.notice': 'Sẽ tốn 1 lượt gọi LLM bằng BYOK key. Chỉ tạo được 1 lần / session.',
+    'interview.studyPlan.linkedQuestions': 'Bắt nguồn từ',
+    'interview.studyPlan.courses': 'Khóa học',
+    'interview.studyPlan.freeResource': 'Tài liệu miễn phí',
+    'interview.studyPlan.searchHint': 'Tìm tên khóa trên platform — link không được kèm để tránh URL sai.',
+    'interview.studyPlan.difficulty.beginner': 'Cơ bản',
+    'interview.studyPlan.difficulty.intermediate': 'Trung cấp',
+    'interview.studyPlan.difficulty.advanced': 'Nâng cao',
+    'interview.studyPlan.hours': '~{hours}h',
+    'interview.studyPlan.freeKind.youtube': 'YouTube',
+    'interview.studyPlan.freeKind.docs': 'Official docs',
+    'interview.studyPlan.freeKind.book': 'Sách',
   },
 
   en: {
@@ -362,6 +380,24 @@ export const MESSAGES = {
     'interview.grade.solid': 'Solid',
     'interview.grade.excellent': 'Excellent',
     'interview.jobFitCta.label': 'Practice interview for this job',
+
+    // Study plan (post-grade)
+    'interview.studyPlan.title': 'Recommended study plan',
+    'interview.studyPlan.subtitle': 'Based on your weak answers, AI clusters them into 2-4 themes and recommends courses + free resources per theme.',
+    'interview.studyPlan.generate': 'Generate study plan',
+    'interview.studyPlan.generating': 'Generating…',
+    'interview.studyPlan.notice': 'Costs 1 LLM call against your BYOK key. Generated once per session.',
+    'interview.studyPlan.linkedQuestions': 'Stems from',
+    'interview.studyPlan.courses': 'Courses',
+    'interview.studyPlan.freeResource': 'Free resource',
+    'interview.studyPlan.searchHint': 'Search the course title on the platform — URLs are intentionally omitted to avoid broken links.',
+    'interview.studyPlan.difficulty.beginner': 'Beginner',
+    'interview.studyPlan.difficulty.intermediate': 'Intermediate',
+    'interview.studyPlan.difficulty.advanced': 'Advanced',
+    'interview.studyPlan.hours': '~{hours}h',
+    'interview.studyPlan.freeKind.youtube': 'YouTube',
+    'interview.studyPlan.freeKind.docs': 'Official docs',
+    'interview.studyPlan.freeKind.book': 'Book',
   },
 } as const;
 

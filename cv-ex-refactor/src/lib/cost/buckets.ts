@@ -13,7 +13,8 @@ export type CostBucket =
   // Interview Practice — BYOK-only v1; bucket reserved so a future shared-key
   // tier has its own kill-switch + daily cap independent of analyze/etc.
   | 'interview-gen'
-  | 'interview-grade';
+  | 'interview-grade'
+  | 'interview-study-plan';
 
 export const COST_BUCKETS: readonly CostBucket[] = [
   'job-recommend',
@@ -27,4 +28,5 @@ export const COST_BUCKETS: readonly CostBucket[] = [
   'jd-insights',
   'interview-gen',
   'interview-grade',
+  'interview-study-plan',
 ] as const;

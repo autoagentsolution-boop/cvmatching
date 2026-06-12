@@ -8,6 +8,7 @@
 import { and, desc, eq, isNotNull, isNull, lt, sql } from 'drizzle-orm';
 import { getDb, interviewSessions } from '@/db';
 import type { InterviewQuestion, DualLens } from '@/lib/llm/schemas-interview';
+import type { StudyPlan } from '@/lib/llm/schemas-study-plan';
 import type { ResolvedLocale } from '@/lib/llm/detect-locale';
 
 export type SessionMode = 'job_fit' | 'standalone';
@@ -30,6 +31,8 @@ export interface PersistedSession {
   dualLens: DualLens;
   /** Resolved at start time; null on legacy sessions created before locale persistence shipped. */
   locale: ResolvedLocale | null;
+  /** Post-grade study plan. null until user generates it; 1-time per session (re-roll disabled v1). */
+  studyPlan: StudyPlan | null;
   overallScore: number | null;
   createdAt: Date;
   completedAt: Date | null;
@@ -61,10 +64,42 @@ function rowToSession(r: typeof interviewSessions.$inferSelect): PersistedSessio
     questions: r.questions as InterviewQuestion[],
     dualLens: dualLens as DualLens,
     locale: __locale ?? null,
+    studyPlan: (r.studyPlan as StudyPlan | null) ?? null,
     overallScore: r.overallScore,
     createdAt: r.createdAt,
     completedAt: r.completedAt,
   };
+}
+
+/**
+ * Persist the LLM-generated study plan. Returns the count of rows
+ * actually updated. The route layer uses this to enforce 1-time
+ * generation per session (re-roll disabled v1): caller pre-checks
+ * `getSessionById(...).studyPlan == null` and 409s if already present.
+ *
+ * Race safety: if two concurrent requests both pre-check null and both
+ * call this, the second will still overwrite the first (last-writer-
+ * wins). Acceptable for v1 — the cost is one extra LLM call per race;
+ * the BYOK user pays for their own race. Add a `WHERE study_plan IS
+ * NULL` guard later if it becomes a problem.
+ */
+export async function saveStudyPlan(
+  sessionId: string,
+  userId: string,
+  plan: StudyPlan,
+): Promise<number> {
+  const db = getDb();
+  const result = await db
+    .update(interviewSessions)
+    .set({ studyPlan: plan })
+    .where(
+      and(
+        eq(interviewSessions.id, sessionId),
+        eq(interviewSessions.userId, userId),
+      ),
+    )
+    .returning({ id: interviewSessions.id });
+  return result.length;
 }
 
 export async function createSession(input: CreateSessionInput): Promise<PersistedSession> {
@@ -174,7 +209,7 @@ export async function updateGrades(
     .where(and(eq(interviewSessions.id, id), eq(interviewSessions.userId, userId)));
 }
 
-export type HistoryRow = Omit<PersistedSession, 'questions' | 'dualLens' | 'locale'>;
+export type HistoryRow = Omit<PersistedSession, 'questions' | 'dualLens' | 'locale' | 'studyPlan'>;
 
 export async function listUserHistory(userId: string, limit: number): Promise<HistoryRow[]> {
   const db = getDb();

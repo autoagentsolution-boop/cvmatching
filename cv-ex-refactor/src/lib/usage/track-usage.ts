@@ -23,7 +23,9 @@ export type UsageAction =
   // submits all 10 answers (~3-4k output tokens). Tracked separately so
   // admin can see gen-to-grade conversion and per-user cost split.
   | 'interview-gen'
-  | 'interview-grade';
+  | 'interview-grade'
+  // Post-grade learning-path generation (1-time per session, BYOK-gated).
+  | 'interview-study-plan';
 export type UsageStatus = 'ok' | 'error';
 
 /**

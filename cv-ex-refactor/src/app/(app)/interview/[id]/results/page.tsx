@@ -4,12 +4,15 @@
 // raw row to the server here).
 
 import { notFound, redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import type { Metadata } from 'next';
 import { getSession } from '@/lib/get-session';
 import { getSessionById } from '@/lib/interview/storage';
 import { DualLensCard } from '@/features/interview/dual-lens-card';
 import { QuestionCard } from '@/features/interview/question-card';
 import { ResultsSummary } from '@/features/interview/results-summary';
+import { StudyPlanCard } from '@/features/interview/study-plan-card';
+import { GenerateStudyPlanButton } from '@/features/interview/generate-study-plan-button';
 import { PageHeader } from '@/components/ui/page-header';
 import type { InterviewGrade } from '@/lib/llm/schemas-interview';
 
@@ -54,6 +57,14 @@ export default async function InterviewResultsPage({
 
   const titleText = persisted.mode === 'standalone' ? (persisted.roleTitle ?? 'Practice results') : 'Job Fit interview · Kết quả';
 
+  // BYOK gate for the study-plan section: operator decision is to HIDE
+  // the section entirely when the user has no BYOK token, not show a
+  // disabled CTA. Cookie presence-only check (token validity is
+  // re-verified by the route on click). cookies() is a server-component
+  // primitive — no client roundtrip.
+  const byokCookie = (await cookies()).get('byok-token')?.value;
+  const hasByok = !!byokCookie;
+
   return (
     <div className="mx-auto max-w-4xl space-y-8 py-8 px-4 md:px-6">
       <div className="border-b border-outline-variant">
@@ -88,6 +99,15 @@ export default async function InterviewResultsPage({
           />
         ))}
       </section>
+
+      {/* Study plan — render persisted plan if present; else show
+          generate CTA, but ONLY when the user has a BYOK cookie (per
+          operator decision to hide the section entirely without BYOK). */}
+      {persisted.studyPlan ? (
+        <StudyPlanCard studyPlan={persisted.studyPlan} />
+      ) : hasByok ? (
+        <GenerateStudyPlanButton sessionId={persisted.id} />
+      ) : null}
     </div>
   );
 }
