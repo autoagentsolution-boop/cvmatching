@@ -80,18 +80,26 @@ const serverSchema = z.object({
   GITHUB_REPO: optStr(z.string().regex(/^[^/]+\/[^/]+$/)),
 });
 
+export const env = serverSchema.parse(process.env);
+
 /**
- * Vars that MUST be set in production. If absent at module-load time on a
- * prod deploy, parse() throws — fails closed at cold start instead of
- * silently using the dev-fallback strings literal-coded in auth.ts /
- * encrypt-key.ts. Without this guard a misconfigured Vercel env would
- * derive the BYOK AES key from a public string, making every encrypted
- * BYOK blob in KV trivially decryptable by anyone with the source.
+ * Vars that SHOULD be set in production. Logged once at module-load time
+ * but never thrown — a missing var here means specific code paths
+ * (auth.ts, byok-vault, cron routes) fail downstream with their own
+ * actionable error, but the site keeps booting for unaffected routes.
  *
- * Locally (`NODE_ENV !== 'production'`) all vars stay optional so
- * `pnpm dev` boots without OAuth/KV/etc configured.
+ * Rationale: a strict throw at module load took prod down 2026-06-12
+ * because one of these vars (likely EMBED_CACHE_SECRET or CRON_SECRET —
+ * truncated Vercel logs prevent precise attribution) was absent. The
+ * original audit recommendation to "fail closed" creates an all-or-
+ * nothing outage when ONE var is misconfigured. Warn-then-let-callers-
+ * fail-with-context is the right shape: observability without outage.
+ *
+ * Callers that genuinely need a var MUST check and 503 explicitly —
+ * see lib/byok-vault/encrypt-key.ts for the AUTH_SECRET handling that
+ * actually matters for the BYOK silent-fallback risk.
  */
-const PROD_REQUIRED = [
+const PROD_RECOMMENDED = [
   'AUTH_SECRET',
   'GOOGLE_CLIENT_ID',
   'GOOGLE_CLIENT_SECRET',
@@ -103,33 +111,17 @@ const PROD_REQUIRED = [
   'CRON_SECRET',
 ] as const satisfies readonly (keyof z.infer<typeof serverSchema>)[];
 
-const refined = serverSchema.superRefine((v, ctx) => {
-  if (process.env.NODE_ENV !== 'production') return;
-  // Next.js `next build` runs the route-metadata collection step with
-  // NODE_ENV=production but without runtime env injected. Skip the
-  // fail-closed check during build — Vercel injects env at function
-  // invocation time. NEXT_PHASE values come from next/constants.
-  if (process.env.NEXT_PHASE === 'phase-production-build') return;
-  for (const key of PROD_REQUIRED) {
-    if (!v[key]) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: [key],
-        message: `${key} is required in production — Vercel env injection missing or returned ''.`,
-      });
-    }
+if (
+  process.env.NODE_ENV === 'production' &&
+  process.env.NEXT_PHASE !== 'phase-production-build'
+) {
+  const missing = PROD_RECOMMENDED.filter((k) => !env[k]);
+  if (missing.length > 0) {
+    console.warn('[env] prod_missing_recommended_vars', { missing });
   }
-  // At least one shared-key provider OR explicit shared-key kill-switch.
-  const hasGemini = !!v.GEMINI_API_KEY;
-  const hasOpenAI = !!v.OPENAI_API_KEY;
-  const sharedKeyOff = v.DISABLE_SHARED_KEY === '1' || v.DISABLE_SHARED_KEY === 'true';
-  if (!sharedKeyOff && !hasGemini && !hasOpenAI) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['GEMINI_API_KEY'],
-      message: 'In production, either set GEMINI_API_KEY/OPENAI_API_KEY OR set DISABLE_SHARED_KEY=1 to force BYOK-only.',
-    });
+  const hasShared = !!env.GEMINI_API_KEY || !!env.OPENAI_API_KEY;
+  const sharedKeyOff = env.DISABLE_SHARED_KEY === '1' || env.DISABLE_SHARED_KEY === 'true';
+  if (!hasShared && !sharedKeyOff) {
+    console.warn('[env] prod_no_shared_provider_and_kill_switch_off');
   }
-});
-
-export const env = refined.parse(process.env);
+}
