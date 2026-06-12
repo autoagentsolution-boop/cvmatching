@@ -23,14 +23,21 @@ interface QuadrantProps {
 
 function Quadrant({ title, tone, blocks }: QuadrantProps) {
   // pos = dark surface (good news, hire). neg = light surface (concerns).
-  // Each tone has its OWN paired text token — never mix surfaces.
+  //
+  // 3-level visual hierarchy per card:
+  //   title  — paired token, bold (most prominent)
+  //   label  — paired token at /70 opacity (recedes)
+  //   body   — explicit white on dark / explicit error red on light, so
+  //            bullets POP against title + label. Operator screenshot
+  //            2026-06-12 (interview2.png): pre-change all three layers
+  //            were teal-on-navy and indistinguishable.
   const surface =
     tone === 'pos'
       ? 'bg-tertiary-container border-on-tertiary-container/20'
       : 'bg-error-container/40 border-error/20';
   const titleText = tone === 'pos' ? 'text-on-tertiary-container' : 'text-on-error-container';
   const labelText = tone === 'pos' ? 'text-on-tertiary-container/70' : 'text-on-surface-variant';
-  const bodyText = tone === 'pos' ? 'text-on-tertiary-container' : 'text-on-surface';
+  const bodyText = tone === 'pos' ? 'text-white' : 'text-error';
 
   return (
     <article
