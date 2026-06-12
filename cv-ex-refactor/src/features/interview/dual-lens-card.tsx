@@ -1,6 +1,10 @@
-// Presentational 4-quadrant Dual Lens card. Data-only props so it can be
-// rendered from server components (results page) without crossing the RSC
-// function-prop boundary.
+// Presentational 4-quadrant Dual Lens card.
+//
+// Token-pair contract: dark surfaces (bg-tertiary-container, bg-primary)
+// MUST pair with text-on-tertiary-container / text-on-primary. Mixing in
+// text-on-surface (the body-default near-black) on a dark card makes the
+// text invisible — caught 2026-06-12 prod. All children below use the
+// pair-correct token + opacity steps for hierarchy.
 
 'use client';
 
@@ -18,23 +22,31 @@ interface QuadrantProps {
 }
 
 function Quadrant({ title, tone, blocks }: QuadrantProps) {
-  const accentBg = tone === 'pos' ? 'bg-tertiary-container' : 'bg-error-container/40';
-  const accentText = tone === 'pos' ? 'text-on-tertiary-container' : 'text-on-error-container';
+  // pos = dark surface (good news, hire). neg = light surface (concerns).
+  // Each tone has its OWN paired text token — never mix surfaces.
+  const surface =
+    tone === 'pos'
+      ? 'bg-tertiary-container border-on-tertiary-container/20'
+      : 'bg-error-container/40 border-error/20';
+  const titleText = tone === 'pos' ? 'text-on-tertiary-container' : 'text-on-error-container';
+  const labelText = tone === 'pos' ? 'text-on-tertiary-container/70' : 'text-on-surface-variant';
+  const bodyText = tone === 'pos' ? 'text-on-tertiary-container' : 'text-on-surface';
+
   return (
     <article
-      className={`rounded-2xl border border-outline-variant/40 ${accentBg} p-5 shadow-soft`}
+      className={`rounded-2xl border ${surface} p-5 shadow-soft`}
       aria-label={title}
     >
-      <header className={`mb-3 text-label-md font-bold ${accentText}`}>{title}</header>
+      <header className={`mb-3 text-label-md font-bold ${titleText}`}>{title}</header>
       <div className="space-y-3">
         {blocks.map((b) => (
           <div key={b.label}>
-            <p className="text-label-sm font-semibold uppercase tracking-wide text-on-surface-variant">
+            <p className={`text-label-sm font-semibold uppercase tracking-wide ${labelText}`}>
               {b.label}
             </p>
             <ul className="mt-1 space-y-1">
               {b.items.map((item, i) => (
-                <li key={i} className="text-body-sm text-on-surface leading-relaxed">
+                <li key={i} className={`text-body-sm ${bodyText} leading-relaxed`}>
                   · {item}
                 </li>
               ))}

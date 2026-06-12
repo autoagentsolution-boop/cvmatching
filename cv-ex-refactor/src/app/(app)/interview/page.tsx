@@ -44,7 +44,7 @@ export default async function InterviewLandingPage({
       <header className="space-y-2">
         <h1 className="font-display text-headline-md font-bold text-on-surface">Luyện phỏng vấn</h1>
         <p className="text-body-md text-on-surface-variant leading-relaxed">
-          AI sinh Dual Lens + 10 câu hỏi medium-hard có rubric. Trả lời xong, AI chấm batched theo thang 0-3.
+          AI phân tích góc nhìn recruiter và của bạn cho vị trí mục tiêu, rồi sinh 10 câu hỏi medium-hard có rubric. Trả lời xong, AI chấm theo thang 0-3.
         </p>
       </header>
 

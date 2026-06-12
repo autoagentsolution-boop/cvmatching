@@ -135,7 +135,7 @@ export const MESSAGES = {
     // ── Interview Practice ─────────────────────────────────────────────
     'interview.landing.title': 'Luyện phỏng vấn',
     'interview.landing.subtitle':
-      'AI sinh Dual Lens (4 góc nhìn Recruiter × Candidate) + 10 câu hỏi medium-hard có rubric. Trả lời xong, AI chấm batched theo thang 0-3 và đề xuất cải thiện cụ thể.',
+      'AI phân tích góc nhìn của recruiter và của bạn cho vị trí mục tiêu, rồi sinh 10 câu hỏi medium-hard có rubric. Trả lời xong, AI chấm theo thang 0-3 và đề xuất cải thiện cụ thể.',
     'interview.mode.jobFit': 'Theo Job đã apply',
     'interview.mode.standalone': 'Theo vị trí mục tiêu',
     'interview.field.targetRole': 'Vị trí mục tiêu',
@@ -153,11 +153,11 @@ export const MESSAGES = {
     'interview.byok.body':
       'Interview Practice v1 chỉ chạy với API key của bạn (Gemini / OpenAI / Anthropic). Mở Settings → BYOK dán key, rồi quay lại đây.',
     'interview.byok.cta': 'Mở Settings',
-    'interview.dualLens.title': 'Dual Lens — 4 góc nhìn',
-    'interview.dualLens.recruiterHire': 'Recruiter: Nên hire',
-    'interview.dualLens.recruiterNoHire': 'Recruiter: Có thể pass',
-    'interview.dualLens.candidateHire': 'Bạn: Nên nhận',
-    'interview.dualLens.candidateNoHire': 'Bạn: Cân nhắc lại',
+    'interview.dualLens.title': 'Góc nhìn',
+    'interview.dualLens.recruiterHire': 'Recruiter: Lý do đồng ý',
+    'interview.dualLens.recruiterNoHire': 'Recruiter: Lý do e ngại',
+    'interview.dualLens.candidateHire': 'Bạn: Lý do đồng ý',
+    'interview.dualLens.candidateNoHire': 'Bạn: Lý do e ngại',
     'interview.dualLens.reasons': 'Lý do',
     'interview.dualLens.signals': 'Tín hiệu',
     'interview.dualLens.risks': 'Rủi ro',
@@ -308,7 +308,7 @@ export const MESSAGES = {
     // ── Interview Practice ─────────────────────────────────────────────
     'interview.landing.title': 'Interview Practice',
     'interview.landing.subtitle':
-      'AI generates a Dual Lens analysis (4 quadrants — Recruiter × Candidate) plus 10 medium-hard interview questions with rubrics. Answer them, AI grades in batch on a 0-3 scale with concrete improvements.',
+      'AI analyzes the role from the recruiter\'s view and yours, then generates 10 medium-hard interview questions with rubrics. Answer them, AI grades on a 0-3 scale with concrete improvements.',
     'interview.mode.jobFit': 'For an applied job',
     'interview.mode.standalone': 'For a target role',
     'interview.field.targetRole': 'Target role',
@@ -326,11 +326,11 @@ export const MESSAGES = {
     'interview.byok.body':
       'Interview Practice v1 only runs against your own API key (Gemini / OpenAI / Anthropic). Open Settings → BYOK to paste your key, then come back.',
     'interview.byok.cta': 'Open Settings',
-    'interview.dualLens.title': 'Dual Lens — 4 perspectives',
-    'interview.dualLens.recruiterHire': 'Recruiter: Should hire',
-    'interview.dualLens.recruiterNoHire': 'Recruiter: May pass',
-    'interview.dualLens.candidateHire': 'You: Should accept',
-    'interview.dualLens.candidateNoHire': 'You: Reconsider',
+    'interview.dualLens.title': 'Perspectives',
+    'interview.dualLens.recruiterHire': 'Recruiter: Case for',
+    'interview.dualLens.recruiterNoHire': 'Recruiter: Case against',
+    'interview.dualLens.candidateHire': 'You: Case for',
+    'interview.dualLens.candidateNoHire': 'You: Case against',
     'interview.dualLens.reasons': 'Reasons',
     'interview.dualLens.signals': 'Signals',
     'interview.dualLens.risks': 'Risks',
