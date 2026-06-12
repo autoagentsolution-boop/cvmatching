@@ -94,13 +94,16 @@ export type InterviewGenOutput = z.infer<typeof interviewGenOutputSchema>;
 
 // ─── Grade output ─────────────────────────────────────────────────────────
 //
-// 10 grades, one per question, identified by the same id. Score 0..3.
-// 0=fail (off-topic/incorrect) / 1=weak (surface-level) / 2=solid
-// (competent) / 3=excellent (signal of seniority).
+// 10 grades, one per question, identified by the same id. Score 0..10
+// (integer). Bucket semantics applied in UI:
+//   0-2  = Fail        (off-topic / wrong / no engagement)
+//   3-5  = Yếu/Weak    (surface-level, generic, missing specifics)
+//   6-7  = Khá/Solid   (competent, covers rubric, has examples)
+//   8-10 = Xuất sắc    (senior-grade — trade-offs, metrics, candor)
 
 export const interviewGradeSchema = z.object({
   id: z.string().regex(/^q([1-9]|10)$/, 'id must match q1..q10'),
-  score: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]),
+  score: z.number().int().min(0).max(10),
   feedback: z.string().min(20).max(600),
   improvements: z.array(z.string().min(5).max(220)).min(1).max(4),
 });
@@ -119,13 +122,14 @@ export type InterviewGradeOutput = z.infer<typeof interviewGradeOutputSchema>;
 
 // ─── Overall score helper ─────────────────────────────────────────────────
 //
-// avg(score) × 10/3 → 0..10 float. Round to 1 decimal at the storage
-// boundary (overall_score is INTEGER in DB so we scale × 10 → 0..100).
-// Caller persists `Math.round(overallScore * 10)` to keep an integer.
+// Per-question score is already 0..10 integer; overall is the mean,
+// rounded to 1 decimal. Caller persists `Math.round(overall * 10)` so
+// `overall_score` INTEGER in DB stays in the 0..100 range (no float
+// round-trip drift through pg).
 
 export function computeOverallScore10(grades: InterviewGrade[]): number {
   if (grades.length === 0) return 0;
   const sum = grades.reduce((acc, g) => acc + g.score, 0);
-  const avg = sum / grades.length; // 0..3
-  return Math.round((avg * 10) / 3 * 10) / 10; // 0..10, 1 decimal
+  const avg = sum / grades.length; // 0..10
+  return Math.round(avg * 10) / 10; // 1 decimal
 }

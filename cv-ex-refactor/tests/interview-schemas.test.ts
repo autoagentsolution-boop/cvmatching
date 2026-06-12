@@ -99,20 +99,26 @@ describe('interviewGenOutputSchema', () => {
 function makeValidGrades() {
   return Array.from({ length: 10 }, (_, i) => ({
     id: `q${i + 1}`,
-    score: ((i % 4) as 0 | 1 | 2 | 3),
+    score: (i % 11) as number,
     feedback: 'A concrete feedback that exceeds twenty characters easily.',
     improvements: ['be more specific about the trade-offs you considered'],
   }));
 }
 
 describe('interviewGradeOutputSchema', () => {
-  it('accepts 10 grades with mixed scores', () => {
+  it('accepts 10 grades with integer scores 0..10', () => {
     expect(interviewGradeOutputSchema.safeParse(makeValidGrades()).success).toBe(true);
   });
 
-  it('rejects a score of 4', () => {
+  it('rejects a score of 11 (out of range)', () => {
     const grades = makeValidGrades();
-    grades[0] = { ...grades[0]!, score: 4 as unknown as 3 };
+    grades[0] = { ...grades[0]!, score: 11 };
+    expect(interviewGradeOutputSchema.safeParse(grades).success).toBe(false);
+  });
+
+  it('rejects a non-integer score', () => {
+    const grades = makeValidGrades();
+    grades[0] = { ...grades[0]!, score: 5.5 };
     expect(interviewGradeOutputSchema.safeParse(grades).success).toBe(false);
   });
 
@@ -131,24 +137,24 @@ describe('interviewGradeOutputSchema', () => {
 
 describe('computeOverallScore10', () => {
   it('returns 0 when all scores are 0', () => {
-    const grades = makeValidGrades().map((g) => ({ ...g, score: 0 as const }));
+    const grades = makeValidGrades().map((g) => ({ ...g, score: 0 }));
     expect(computeOverallScore10(grades)).toBe(0);
   });
 
-  it('returns 10 when all scores are 3', () => {
-    const grades = makeValidGrades().map((g) => ({ ...g, score: 3 as const }));
+  it('returns 10 when all scores are 10', () => {
+    const grades = makeValidGrades().map((g) => ({ ...g, score: 10 }));
     expect(computeOverallScore10(grades)).toBe(10);
   });
 
-  it('rounds to 1 decimal place', () => {
-    // 5 × score=2 + 5 × score=1 → avg = 1.5 → 1.5 * 10/3 = 5.0
-    const grades = makeValidGrades().map((g, i) => ({ ...g, score: (i < 5 ? 2 : 1) as 0 | 1 | 2 | 3 }));
-    expect(computeOverallScore10(grades)).toBe(5);
+  it('returns the simple average with 1-decimal rounding', () => {
+    // 5 × score=8 + 5 × score=4 → avg = 6.0
+    const grades = makeValidGrades().map((g, i) => ({ ...g, score: i < 5 ? 8 : 4 }));
+    expect(computeOverallScore10(grades)).toBe(6);
   });
 
-  it('handles uneven averages without floating-point drift', () => {
-    // 1 score of 3, 9 scores of 0 → avg = 0.3 → 0.3 * 10/3 = 1.0
-    const grades = makeValidGrades().map((g, i) => ({ ...g, score: (i === 0 ? 3 : 0) as 0 | 1 | 2 | 3 }));
-    expect(computeOverallScore10(grades)).toBe(1);
+  it('rounds 7.66… → 7.7 (1-decimal stable)', () => {
+    // 7 × 8 + 3 × 7 = 56 + 21 = 77 → avg = 7.7
+    const grades = makeValidGrades().map((g, i) => ({ ...g, score: i < 7 ? 8 : 7 }));
+    expect(computeOverallScore10(grades)).toBe(7.7);
   });
 });

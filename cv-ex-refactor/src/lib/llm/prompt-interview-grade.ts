@@ -32,18 +32,19 @@ export interface BuiltInterviewPrompts {
 const SCHEMA = `[
   {
     "id": "q1",
-    "score": 0 | 1 | 2 | 3,
+    "score": "integer 0..10",
     "feedback": "1-3 sentences on what the answer did well and what was missing",
     "improvements": ["1-4 specific, actionable improvements"]
   }
   // ... 10 grades total, one per question, ids must match input
 ]`;
 
-const SCORE_KEY = `Score scale (anchor strictly):
-- 0 = fail — off-topic, factually wrong, or refuses to engage
-- 1 = weak — surface-level, generic, missing trade-offs / metrics / specifics
-- 2 = solid — competent answer covering the rubric criteria with concrete examples
-- 3 = excellent — senior-grade signal: trade-offs called out, metrics, second-order effects, candor about limitations`;
+const SCORE_KEY = `Score scale (integer 0..10, anchor strictly — do NOT cluster around 5):
+- 0-2 = fail — off-topic, factually wrong, refuses to engage, or empty
+- 3-5 = weak — surface-level, generic, missing trade-offs / metrics / specifics; matches rubric.failSignals
+- 6-7 = solid — competent answer covering the rubric criteria with concrete examples
+- 8-10 = excellent — senior-grade signal: trade-offs called out, metrics, second-order effects, candor about limitations; matches rubric.excellentSignals
+Anchors within a band: a barely-passing weak answer is a 3; a strong-weak (almost solid) is a 5. A textbook-solid answer is a 7; a near-excellent answer is an 8. Reserve 10 for truly outstanding answers.`;
 
 const truncate = (s: string, n: number) =>
   s.length <= n ? s : `${s.slice(0, n - 1)}…`;
@@ -89,7 +90,7 @@ ${SCORE_KEY}
 
 === GRADING RULES ===
 - Return exactly 10 grade objects, one per question, ids matching input (q1..q10).
-- Score strictly against the rubric — match \`failSignals\` → 0 or 1; match \`excellentSignals\` → 3.
+- Score strictly against the rubric — answers matching \`failSignals\` land in 0-5; answers matching \`excellentSignals\` land in 8-10.
 - A blank or "(no answer provided)" answer → score 0 with feedback noting the omission.
 - \`feedback\` (1-3 sentences): name what the answer did well, what it missed. Be specific — cite the rubric.
 - \`improvements\` (1-4 bullets): actionable, candidate-can-act-on-tomorrow. No "study more X" — say "next time, quantify the impact of …" or "explain why you chose React over Vue, not just that you used React".
