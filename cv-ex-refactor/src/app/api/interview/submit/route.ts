@@ -123,11 +123,16 @@ export async function POST(req: NextRequest) {
     ? (persisted.roleTitle ?? persisted.anchorRoleTitle)
     : persisted.anchorRoleTitle;
 
+  // Prefer the locale resolved + persisted at start time so grade follows
+  // the language the questions were written in. Falls back to body.locale
+  // for legacy sessions created before locale persistence shipped.
+  const sessionLocale = persisted.locale ?? (body.locale === 'en' || body.locale === 'vi' ? body.locale : 'vi');
+
   const { system, user } = buildInterviewGradePrompt({
     questions: persisted.questions,
     answers: body.answers.map((a) => ({ id: a.id, userAnswer: a.answer })),
     targetRole,
-    locale: body.locale,
+    locale: sessionLocale,
   });
 
   const inputChars = system.length + user.length;

@@ -8,9 +8,15 @@
 import { and, desc, eq, isNotNull, isNull, lt, sql } from 'drizzle-orm';
 import { getDb, interviewSessions } from '@/db';
 import type { InterviewQuestion, DualLens } from '@/lib/llm/schemas-interview';
+import type { ResolvedLocale } from '@/lib/llm/detect-locale';
 
 export type SessionMode = 'job_fit' | 'standalone';
 export type SessionStatus = 'in_progress' | 'completed' | 'abandoned';
+
+// Locale is persisted as a sibling key on the `dual_lens` JSONB to avoid
+// a schema migration just for one text column. Read-back strips it
+// before exposing the typed DualLens to callers.
+type StoredDualLens = DualLens & { __locale?: ResolvedLocale };
 
 export interface PersistedSession {
   id: string;
@@ -22,6 +28,8 @@ export interface PersistedSession {
   status: SessionStatus;
   questions: InterviewQuestion[];
   dualLens: DualLens;
+  /** Resolved at start time; null on legacy sessions created before locale persistence shipped. */
+  locale: ResolvedLocale | null;
   overallScore: number | null;
   createdAt: Date;
   completedAt: Date | null;
@@ -35,9 +43,13 @@ export interface CreateSessionInput {
   anchorRoleTitle: string;
   questions: InterviewQuestion[];
   dualLens: DualLens;
+  /** Resolved locale ('vi' | 'en') — persisted so grade follows same language. */
+  locale: ResolvedLocale;
 }
 
 function rowToSession(r: typeof interviewSessions.$inferSelect): PersistedSession {
+  const stored = r.dualLens as StoredDualLens;
+  const { __locale, ...dualLens } = stored;
   return {
     id: r.id,
     userId: r.userId,
@@ -47,7 +59,8 @@ function rowToSession(r: typeof interviewSessions.$inferSelect): PersistedSessio
     anchorRoleTitle: r.anchorRoleTitle,
     status: r.status as SessionStatus,
     questions: r.questions as InterviewQuestion[],
-    dualLens: r.dualLens as DualLens,
+    dualLens: dualLens as DualLens,
+    locale: __locale ?? null,
     overallScore: r.overallScore,
     createdAt: r.createdAt,
     completedAt: r.completedAt,
@@ -57,6 +70,7 @@ function rowToSession(r: typeof interviewSessions.$inferSelect): PersistedSessio
 export async function createSession(input: CreateSessionInput): Promise<PersistedSession> {
   const id = crypto.randomUUID();
   const db = getDb();
+  const dualLensWithLocale: StoredDualLens = { ...input.dualLens, __locale: input.locale };
   const [row] = await db
     .insert(interviewSessions)
     .values({
@@ -67,7 +81,7 @@ export async function createSession(input: CreateSessionInput): Promise<Persiste
       roleTitle: input.roleTitle ?? null,
       anchorRoleTitle: input.anchorRoleTitle,
       questions: input.questions,
-      dualLens: input.dualLens,
+      dualLens: dualLensWithLocale,
     })
     .returning();
   if (!row) throw new Error('createSession: insert returned no row');
@@ -160,7 +174,7 @@ export async function updateGrades(
     .where(and(eq(interviewSessions.id, id), eq(interviewSessions.userId, userId)));
 }
 
-export type HistoryRow = Omit<PersistedSession, 'questions' | 'dualLens'>;
+export type HistoryRow = Omit<PersistedSession, 'questions' | 'dualLens' | 'locale'>;
 
 export async function listUserHistory(userId: string, limit: number): Promise<HistoryRow[]> {
   const db = getDb();

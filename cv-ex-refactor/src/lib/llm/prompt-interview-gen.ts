@@ -27,7 +27,16 @@ export interface InterviewGenInputs {
   anchorRoleTitle: string;
   /** Bullet/summary excerpt for the anchor role from the CV (truncated to 600 chars). */
   anchorRoleSummary?: string;
-  /** Output language. JSON keys stay English regardless. */
+  /**
+   * Output language — MUST be resolved to a concrete `'vi' | 'en'` before
+   * calling this builder. The route layer detects the CV language via
+   * `detectLocaleFromText` when the client passes 'auto'. Letting the LLM
+   * decide produces inconsistent output (defaulted to English on Vietnamese
+   * CVs 2026-06-12 — caught in prod by operator).
+   *
+   * `Language` is kept here for backward TS compat but 'auto' is treated
+   * as 'vi' (Vietnamese-first product default) if accidentally passed.
+   */
   locale?: Language;
 }
 
@@ -75,20 +84,25 @@ export function buildInterviewGenPrompt(inputs: InterviewGenInputs): BuiltInterv
     locale = 'auto',
   } = inputs;
 
-  const langInstr =
-    locale === 'vi'
-      ? 'Respond in Vietnamese for all human-readable text fields; keep JSON keys English.'
-      : locale === 'en'
-        ? 'Respond in English.'
-        : 'Respond in the candidate CV / role description language; keep JSON keys English.';
+  // Treat 'auto' defensively as Vietnamese — caller is supposed to have
+  // resolved it server-side already.
+  const lang: 'vi' | 'en' = locale === 'en' ? 'en' : 'vi';
+
+  const langName = lang === 'vi' ? 'Vietnamese' : 'English';
 
   const viRegisterLock =
-    locale === 'vi' || locale === 'auto'
-      ? '\n- If output is Vietnamese: recruiter-Vietnamese register only. Action verbs (xây dựng, dẫn dắt, triển khai). No honorifics (em xin gửi). No marketing puffery (đầy nhiệt huyết, chuyên gia hàng đầu). Keep proper nouns + tools in English (Spark, React, GCP).'
+    lang === 'vi'
+      ? '\n- Recruiter-Vietnamese register only. Action verbs (xây dựng, dẫn dắt, triển khai). No honorifics (em xin gửi). No marketing puffery (đầy nhiệt huyết, chuyên gia hàng đầu). Keep proper nouns + tools in English (Spark, React, GCP).'
       : '';
 
-  const system =
-    'You are a former Big-Tech senior interviewer + recruiter who has run 1000+ interviews across role families. You produce interview prep artifacts that are honest, calibrated to the candidate\'s real CV experience, and medium-hard (no trivia, no gotchas). Always return ONE valid JSON object matching the requested schema — no commentary, no markdown fences. Never invent candidate experience. Never recycle generic interview questions; anchor each behavioral / scenario question to a specific CV signal.';
+  // Language directive in BOTH system + top of user prompt. Buried at the
+  // bottom of the user prompt (where it used to live) loses out to the
+  // English-by-default LLM bias for negative-quadrant content like
+  // recruiterNoHire.risks. Verified 2026-06-12: pushing it up + repeating
+  // fixed the dual-lens English leak.
+  const system = `You are a former Big-Tech senior interviewer + recruiter who has run 1000+ interviews across role families. You produce interview prep artifacts that are honest, calibrated to the candidate's real CV experience, and medium-hard (no trivia, no gotchas). Always return ONE valid JSON object matching the requested schema — no commentary, no markdown fences. Never invent candidate experience. Never recycle generic interview questions; anchor each behavioral / scenario question to a specific CV signal.
+
+OUTPUT LANGUAGE: ${langName}. Every human-readable string value in the JSON (questions, rubric text, dualLens bullets — including the negative quadrants recruiterNoHire and candidateNoHire) MUST be in ${langName}. JSON keys + enum values + role/tool/platform proper nouns stay English regardless.`;
 
   const modeBlock =
     mode === 'job_fit'
@@ -102,6 +116,15 @@ Role: ${targetRole}
 No specific JD — use industry-standard expectations for this role family.`;
 
   const user = `Generate Dual Lens analysis + 10 interview questions for this candidate practicing for the target role.
+
+=== OUTPUT LANGUAGE — STRICT ===
+Write every human-readable string value in ${langName}. This includes ALL of:
+- questions[*].question, questions[*].rubric.criteria, questions[*].rubric.excellentSignals[*], questions[*].rubric.failSignals[*]
+- dualLens.recruiterHire.reasons[*] + .signals[*]
+- dualLens.recruiterNoHire.risks[*] + .gaps[*]
+- dualLens.candidateHire.opportunities[*] + .growth[*]
+- dualLens.candidateNoHire.risks[*] + .mismatches[*]
+JSON keys + question.type enum values + tooling proper nouns (Spark, React, GCP, Kafka, …) stay English regardless.${viRegisterLock}
 
 ${modeBlock}
 
@@ -127,7 +150,7 @@ ${truncate(anchorRoleSummary, 600) || '(no excerpt provided — infer scope from
 - Each question: standalone, self-contained — do not refer to other questions.
 
 === OUTPUT PARAMS ===
-- ${langInstr}${viRegisterLock}
+- All human-readable text in ${langName} (per the strict block at the top of this prompt).
 - Return ONLY one valid JSON object matching this schema (no commentary, no markdown fences):
 ${SCHEMA}`;
 

@@ -80,6 +80,7 @@ describe.skipIf(!hasEnv)('interview storage — integration', () => {
       anchorRoleTitle: 'Backend Engineer',
       questions: makeQs(),
       dualLens: DUAL_LENS,
+      locale: 'vi',
     });
     expect(created.id).toBeTruthy();
     expect(created.status).toBe('in_progress');
@@ -100,6 +101,7 @@ describe.skipIf(!hasEnv)('interview storage — integration', () => {
       anchorRoleTitle: 'Engineer',
       questions: makeQs(),
       dualLens: DUAL_LENS,
+      locale: 'vi',
     });
 
     const hit = await findActiveSessionByUniqueKey({
@@ -125,6 +127,7 @@ describe.skipIf(!hasEnv)('interview storage — integration', () => {
       anchorRoleTitle: 'Eng',
       questions: makeQs(),
       dualLens: DUAL_LENS,
+      locale: 'vi',
     });
 
     await updateGrades(created.id, TEST_USER_ID, {
@@ -147,6 +150,7 @@ describe.skipIf(!hasEnv)('interview storage — integration', () => {
       anchorRoleTitle: 'Eng',
       questions: makeQs(),
       dualLens: DUAL_LENS,
+      locale: 'vi',
     });
     // Backdate the row by 25 hours.
     const past = new Date(Date.now() - 25 * 3600 * 1000);
@@ -161,6 +165,7 @@ describe.skipIf(!hasEnv)('interview storage — integration', () => {
       anchorRoleTitle: 'Eng',
       questions: makeQs(),
       dualLens: DUAL_LENS,
+      locale: 'vi',
     });
 
     const cutoff = new Date(Date.now() - 24 * 3600 * 1000);
@@ -189,6 +194,7 @@ describe.skipIf(!hasEnv)('interview storage — integration', () => {
       anchorRoleTitle: 'Eng',
       questions: makeQs(),
       dualLens: DUAL_LENS,
+      locale: 'vi',
     });
     const aRows = await listUserHistory(TEST_USER_ID, 50);
     const bRows = await listUserHistory(TEST_USER_ID_B, 50);

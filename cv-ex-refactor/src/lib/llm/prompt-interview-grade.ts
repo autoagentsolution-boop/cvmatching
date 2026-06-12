@@ -52,16 +52,15 @@ const truncate = (s: string, n: number) =>
 export function buildInterviewGradePrompt(inputs: InterviewGradeInputs): BuiltInterviewPrompts {
   const { questions, answers, targetRole, locale = 'auto' } = inputs;
 
-  const langInstr =
-    locale === 'vi'
-      ? 'Respond in Vietnamese for all human-readable text fields; keep JSON keys English.'
-      : locale === 'en'
-        ? 'Respond in English.'
-        : 'Match the language of the candidate answers; keep JSON keys English.';
+  // Same defense as gen prompt — resolve 'auto' to vi (Vietnamese-first
+  // default). Caller is supposed to pass concrete vi/en after server-side
+  // detection on start; submit picks up the persisted locale.
+  const lang: 'vi' | 'en' = locale === 'en' ? 'en' : 'vi';
+  const langName = lang === 'vi' ? 'Vietnamese' : 'English';
 
   const viRegisterLock =
-    locale === 'vi' || locale === 'auto'
-      ? '\n- If output is Vietnamese: direct coaching register. No honorifics, no marketing puffery. Keep proper nouns + tools in English.'
+    lang === 'vi'
+      ? '\n- Direct coaching register. No honorifics, no marketing puffery. Keep proper nouns + tools in English.'
       : '';
 
   // Zip questions with answers by id (caller already guarantees same length
@@ -81,10 +80,14 @@ ${ansText}`;
     })
     .join('\n\n');
 
-  const system =
-    'You are a former Big-Tech senior interviewer grading practice-interview answers against rubrics. You are strict but fair — you do not inflate scores. You produce concise, specific feedback that names what the candidate missed and how to fix it. Always return ONE valid JSON array matching the requested schema — no commentary, no markdown fences. Never invent achievements that the candidate did not state in their answer.';
+  const system = `You are a former Big-Tech senior interviewer grading practice-interview answers against rubrics. You are strict but fair — you do not inflate scores. You produce concise, specific feedback that names what the candidate missed and how to fix it. Always return ONE valid JSON array matching the requested schema — no commentary, no markdown fences. Never invent achievements that the candidate did not state in their answer.
+
+OUTPUT LANGUAGE: ${langName}. Every grade[i].feedback and grade[i].improvements[*] MUST be in ${langName}. JSON keys + grade[i].id stay English regardless.`;
 
   const user = `Grade all 10 candidate answers below against their rubrics. Target role: ${targetRole}.
+
+=== OUTPUT LANGUAGE — STRICT ===
+Write every grade[i].feedback and grade[i].improvements[*] in ${langName}. JSON keys + grade[i].id ("q1".."q10") + role/tool proper nouns stay English regardless.${viRegisterLock}
 
 ${SCORE_KEY}
 
@@ -99,7 +102,7 @@ ${SCORE_KEY}
 ${qaBlocks}
 
 === OUTPUT PARAMS ===
-- ${langInstr}${viRegisterLock}
+- All human-readable text in ${langName} (per the strict block at the top of this prompt).
 - Return ONLY one valid JSON array matching this schema (no commentary, no markdown fences):
 ${SCHEMA}`;
 

@@ -31,6 +31,7 @@ import { recordCost, checkKillSwitch } from '@/lib/cost/guard';
 import { microUsdCost } from '@/lib/llm/model-prices';
 import { buildInterviewGenPrompt } from '@/lib/llm/prompt-interview-gen';
 import { interviewGenOutputSchema } from '@/lib/llm/schemas-interview';
+import { detectLocaleFromText, type ResolvedLocale } from '@/lib/llm/detect-locale';
 import {
   createSession,
   findActiveSessionByUniqueKey,
@@ -127,6 +128,23 @@ export async function POST(req: NextRequest) {
     companyName = job.company;
   }
 
+  // Resolve 'auto' to a concrete locale server-side. Priority:
+  //   1) user setting (body.locale === 'vi' | 'en') wins
+  //   2) else heuristic-detect from anchor CV content (with fallback to
+  //      role title + JD as additional signal)
+  // The LLM is then forbidden from "deciding" the language — caught
+  // 2026-06-12 when negative-quadrant content drifted to English on VN
+  // CVs because the directive was buried at the bottom of the user
+  // prompt and 'auto' explicitly let the model pick.
+  const resolvedLocale: ResolvedLocale =
+    body.locale === 'vi' || body.locale === 'en'
+      ? body.locale
+      : detectLocaleFromText(
+          [cv.content, body.anchorRoleTitle, body.roleTitle ?? '', jobDescription ?? '']
+            .filter(Boolean)
+            .join(' '),
+        );
+
   const { system, user } = buildInterviewGenPrompt({
     mode: body.mode,
     targetRole: body.mode === 'job_fit' ? 'TARGET ROLE FROM JD' : body.roleTitle!,
@@ -134,7 +152,7 @@ export async function POST(req: NextRequest) {
     ...(companyName ? { companyName } : {}),
     anchorRoleTitle: body.anchorRoleTitle,
     anchorRoleSummary: cv.content,
-    locale: body.locale,
+    locale: resolvedLocale,
   });
 
   const inputChars = system.length + user.length;
@@ -204,6 +222,7 @@ export async function POST(req: NextRequest) {
         anchorRoleTitle: body.anchorRoleTitle,
         questions: validated.data.questions,
         dualLens: validated.data.dualLens,
+        locale: resolvedLocale,
       });
 
       return NextResponse.json({
