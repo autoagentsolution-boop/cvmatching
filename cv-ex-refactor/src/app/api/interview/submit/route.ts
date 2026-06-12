@@ -105,9 +105,16 @@ export async function POST(req: NextRequest) {
   if (!resolved.ok) return err(resolved.code, resolved.message, resolved.status);
 
   if (!resolved.byok && !resolved.isAdmin) {
+    // Distinguish "never set" vs "set but expired/cleared". The BYOK
+    // vault TTL is 4h (BYOK_COOKIE_MAX_AGE) — sessions older than that
+    // come back here with cookie still set but vault entry gone, which
+    // is confusing if we collapse both into one message.
+    const cookiePresent = !!byokToken;
     return err(
-      'byok_required',
-      'Interview Practice tạm thời yêu cầu API key riêng. Mở Settings → BYOK để dán key.',
+      cookiePresent ? 'byok_expired' : 'byok_required',
+      cookiePresent
+        ? 'API key BYOK của bạn đã hết hạn (vault TTL 4h) hoặc đã bị xóa. Vào Settings → BYOK dán lại key, rồi bấm Submit lại — session vẫn đang mở.'
+        : 'Interview Practice yêu cầu API key riêng. Mở Settings → BYOK để dán key Gemini / OpenAI / Anthropic.',
       402,
     );
   }

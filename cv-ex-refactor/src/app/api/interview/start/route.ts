@@ -86,9 +86,12 @@ export async function POST(req: NextRequest) {
   // actionable BYOK CTA. Admin keeps shared access so the operator can
   // test in prod without burning BYOK quota.
   if (!resolved.byok && !resolved.isAdmin) {
+    const cookiePresent = !!byokToken;
     return err(
-      'byok_required',
-      'Interview Practice tạm thời yêu cầu API key riêng. Mở Settings → BYOK để dán key Gemini / OpenAI / Anthropic.',
+      cookiePresent ? 'byok_expired' : 'byok_required',
+      cookiePresent
+        ? 'API key BYOK của bạn đã hết hạn (vault TTL 4h) hoặc đã bị xóa. Vào Settings → BYOK dán lại key, rồi bắt đầu lại.'
+        : 'Interview Practice yêu cầu API key riêng. Mở Settings → BYOK để dán key Gemini / OpenAI / Anthropic.',
       402,
     );
   }

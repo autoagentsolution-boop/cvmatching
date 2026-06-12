@@ -115,9 +115,12 @@ export async function POST(
   // testing. Non-admin shared-key callers get a hard 402 with actionable
   // copy pointing at Settings BYOK.
   if (!resolved.byok && !resolved.isAdmin) {
+    const cookiePresent = !!byokToken;
     return err(
-      'byok_required',
-      'Tính năng Lộ trình học yêu cầu API key riêng. Mở Settings → BYOK để dán key.',
+      cookiePresent ? 'byok_expired' : 'byok_required',
+      cookiePresent
+        ? 'API key BYOK đã hết hạn (vault TTL 4h) hoặc đã bị xóa. Vào Settings → BYOK dán lại key, rồi bấm Tạo lộ trình lại.'
+        : 'Tính năng Lộ trình học yêu cầu API key riêng. Mở Settings → BYOK để dán key.',
       402,
     );
   }
