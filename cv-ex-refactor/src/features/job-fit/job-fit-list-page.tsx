@@ -74,9 +74,11 @@ export interface JobFitListPageProps {
   cvText?: string;
   /** Human label for the active CV — surfaced in the "Đang dùng CV: …" banner. */
   cvName?: string;
+  /** Interview Practice kill-switch — hides the inline-detail CTA. */
+  interviewEnabled?: boolean;
 }
 
-export function JobFitListPage({ mode, cvText: cvTextProp, cvName }: JobFitListPageProps = {}) {
+export function JobFitListPage({ mode, cvText: cvTextProp, cvName, interviewEnabled = true }: JobFitListPageProps = {}) {
   void mode;
   // Per-field selectors only — see feedback_zustand_object_literal_selector.
   const jobs = useJobFit((s) => s.jobs);
@@ -239,7 +241,7 @@ export function JobFitListPage({ mode, cvText: cvTextProp, cvName }: JobFitListP
                     onToggleDetail={() => toggleExpanded(match.jobId)}
                   />
                   {expandedJobId === match.jobId && (
-                    <JobFitInlineDetail match={match} onClose={() => toggleExpanded(match.jobId)} />
+                    <JobFitInlineDetail match={match} onClose={() => toggleExpanded(match.jobId)} interviewEnabled={interviewEnabled} />
                   )}
                 </div>
               ))}

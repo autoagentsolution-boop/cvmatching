@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { getSessionById } from '@/lib/interview/storage';
+import { isInterviewEnabled } from '@/lib/maintenance/interview-flag';
 
 export const runtime = 'nodejs';
 
@@ -19,6 +20,9 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  if (!(await isInterviewEnabled())) {
+    return err('service_unavailable', 'Tính năng đang tạm thời không khả dụng.', 503);
+  }
   const session = await auth();
   if (!session?.user?.id) return err('auth_required', 'Authentication required.', 401);
   const userId = session.user.id;

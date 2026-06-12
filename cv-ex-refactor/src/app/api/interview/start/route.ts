@@ -27,11 +27,12 @@ import { enforceIpRateLimit, rateLimitedResponse } from '@/lib/quota/enforce-ip-
 import { callLLM, callLLMWithFallback, geminiFallbackChain } from '@/lib/llm/providers';
 import { safeParseJson } from '@/lib/llm/safe-parse-json';
 import { logLlmCall } from '@/lib/llm/safe-logger';
-import { recordCost, checkKillSwitch } from '@/lib/cost/guard';
+import { recordCost } from '@/lib/cost/guard';
 import { microUsdCost } from '@/lib/llm/model-prices';
 import { buildInterviewGenPrompt } from '@/lib/llm/prompt-interview-gen';
 import { interviewGenOutputSchema } from '@/lib/llm/schemas-interview';
 import { detectLocaleFromText, type ResolvedLocale } from '@/lib/llm/detect-locale';
+import { isInterviewEnabled } from '@/lib/maintenance/interview-flag';
 import {
   createSession,
   findActiveSessionByUniqueKey,
@@ -52,6 +53,11 @@ export async function POST(req: NextRequest) {
   // could hammer this and drain the user's own provider quota.
   const rate = await enforceIpRateLimit(req, { endpoint: '/api/interview/start', max: 6, windowSec: 60 });
   if (!rate.ok) return rateLimitedResponse(rate.retryAfterSec);
+
+  // Admin kill-switch — flip OFF in /admin/maintenance to dark the feature.
+  if (!(await isInterviewEnabled())) {
+    return err('service_unavailable', 'Tính năng đang tạm thời không khả dụng.', 503);
+  }
 
   const session = await auth();
   if (!session?.user?.id) {
@@ -82,10 +88,10 @@ export async function POST(req: NextRequest) {
   const resolved = await resolveApiKey(body.llm, 'interview-gen', { byokToken, ip });
   if (!resolved.ok) return err(resolved.code, resolved.message, resolved.status);
 
-  // v1 BYOK-only: shared-key callers (non-admin) are bounced with an
-  // actionable BYOK CTA. Admin keeps shared access so the operator can
-  // test in prod without burning BYOK quota.
-  if (!resolved.byok && !resolved.isAdmin) {
+  // BYOK-only — operator decision 2026-06-12: even admin must use their
+  // own key. Dropping the previous `|| isAdmin` bypass closes the
+  // shared-key path entirely for this surface.
+  if (!resolved.byok) {
     const cookiePresent = !!byokToken;
     console.warn('[interview/start] byok_gate_blocked', {
       cookiePresent,
@@ -101,13 +107,6 @@ export async function POST(req: NextRequest) {
         : 'Tính năng này cần khóa AI cá nhân. Mở Cài đặt để nhập khóa của bạn.',
       402,
     );
-  }
-
-  if (!resolved.byok && resolved.isAdmin) {
-    const killCheck = await checkKillSwitch('interview-gen');
-    if (!killCheck.ok) {
-      return err('service_unavailable', 'Tính năng này tạm thời không khả dụng. Thử lại sau ít phút.', 503);
-    }
   }
 
   // Resume existing active session (partial-unique-index predicate match).

@@ -7,6 +7,7 @@ import { CvAnalyzeContent } from '@/features/cv-analyze/cv-analyze-content';
 import { RefinedCvPage } from '@/features/refined-cv/refined-cv-page';
 import { CareerPathPage } from '@/features/career-path/career-path-page';
 import { JobFitListPage } from '@/features/job-fit/job-fit-list-page';
+import { isInterviewEnabled } from '@/lib/maintenance/interview-flag';
 
 const VALID_STEPS = ['score', 'refined', 'roadmap', 'jobfit'] as const;
 type CvAnalyzeStep = (typeof VALID_STEPS)[number];
@@ -48,7 +49,17 @@ export default async function CvAnalyzeStepPage({
   const cv = await loadUserCv(session.user.id, cvId);
   if (!cv) notFound();
 
-  return <StepContent step={step} cvContent={cv.content} cvId={cvId} cvName={cv.name} />;
+  const interviewEnabled = step === 'jobfit' ? await isInterviewEnabled() : true;
+
+  return (
+    <StepContent
+      step={step}
+      cvContent={cv.content}
+      cvId={cvId}
+      cvName={cv.name}
+      interviewEnabled={interviewEnabled}
+    />
+  );
 }
 
 function StepContent({
@@ -56,11 +67,13 @@ function StepContent({
   cvContent,
   cvId,
   cvName,
+  interviewEnabled,
 }: {
   step: CvAnalyzeStep;
   cvContent: string;
   cvId: string;
   cvName: string;
+  interviewEnabled: boolean;
 }) {
   switch (step) {
     case 'score':
@@ -74,6 +87,6 @@ function StepContent({
         </Suspense>
       );
     case 'jobfit':
-      return <JobFitListPage mode="cv-solo" cvText={cvContent} cvName={cvName} />;
+      return <JobFitListPage mode="cv-solo" cvText={cvContent} cvName={cvName} interviewEnabled={interviewEnabled} />;
   }
 }

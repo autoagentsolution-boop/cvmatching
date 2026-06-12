@@ -14,6 +14,7 @@ interface AppShellProps {
   session: Session | null;
   isAdmin: boolean;
   loginEnabled: boolean;
+  interviewEnabled: boolean;
   children: ReactNode;
   upgradeSlot?: ReactNode;
 }
@@ -45,7 +46,7 @@ function deriveActiveNav(pathname: string): ActiveNav {
   return 'dashboard';
 }
 
-export function AppShell({ session, isAdmin, loginEnabled, children, upgradeSlot }: AppShellProps) {
+export function AppShell({ session, isAdmin, loginEnabled, interviewEnabled, children, upgradeSlot }: AppShellProps) {
   const pathname = usePathname();
   const isAuthed = session !== null;
 
@@ -66,6 +67,7 @@ export function AppShell({ session, isAdmin, loginEnabled, children, upgradeSlot
       activeNav={activeNav}
       isAdmin={isAdmin}
       isAuthed={isAuthed}
+      interviewEnabled={interviewEnabled}
       topnavActions={
         <>
           {upgradeSlot}

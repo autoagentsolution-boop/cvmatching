@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { InterviewHistoryQuery } from '@/lib/schemas/interview-request';
 import { listUserHistory } from '@/lib/interview/storage';
+import { isInterviewEnabled } from '@/lib/maintenance/interview-flag';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'sin1';
@@ -13,6 +14,9 @@ function err(code: string, message: string, status: number) {
 }
 
 export async function GET(req: NextRequest) {
+  if (!(await isInterviewEnabled())) {
+    return err('service_unavailable', 'Tính năng đang tạm thời không khả dụng.', 503);
+  }
   const session = await auth();
   if (!session?.user?.id) return err('auth_required', 'Authentication required.', 401);
 

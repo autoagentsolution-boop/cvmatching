@@ -9,6 +9,7 @@ import type { Metadata } from 'next';
 import { getSession } from '@/lib/get-session';
 import { getSessionById } from '@/lib/interview/storage';
 import { getJob } from '@/lib/jobs/repo-postgres';
+import { isInterviewEnabled } from '@/lib/maintenance/interview-flag';
 import { DualLensCard } from '@/features/interview/dual-lens-card';
 import { QuestionCard } from '@/features/interview/question-card';
 import { ResultsSummary } from '@/features/interview/results-summary';
@@ -35,6 +36,8 @@ export default async function InterviewResultsPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  if (!(await isInterviewEnabled())) notFound();
+
   const session = await getSession();
   if (!session?.user?.id) redirect('/sign-in');
   const { id } = await params;

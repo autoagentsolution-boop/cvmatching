@@ -12,6 +12,7 @@ import { getSessionById } from '@/lib/interview/storage';
 import { InterviewAnswerForm } from '@/features/interview/answer-form';
 import { PageHeader } from '@/components/ui/page-header';
 import { getJob } from '@/lib/jobs/repo-postgres';
+import { isInterviewEnabled } from '@/lib/maintenance/interview-flag';
 
 export const metadata: Metadata = { title: 'Interview in progress — Resume Refactor' };
 
@@ -22,6 +23,8 @@ export default async function InterviewInProgressPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  if (!(await isInterviewEnabled())) notFound();
+
   const session = await getSession();
   if (!session?.user?.id) redirect('/sign-in');
   const { id } = await params;

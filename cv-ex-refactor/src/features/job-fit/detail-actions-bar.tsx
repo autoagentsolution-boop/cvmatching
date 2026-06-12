@@ -11,6 +11,8 @@ interface DetailActionsBarProps {
   job: JobMatchOut;
   /** Source platform name shown in the Apply button label. */
   source?: string;
+  /** When false, hide the "Luyện phỏng vấn" CTA (admin kill-switch). */
+  interviewEnabled?: boolean;
 }
 
 // Sticky action bar at bottom of /job-fit/[jobId] detail page.
@@ -19,7 +21,7 @@ interface DetailActionsBarProps {
 // Tier B:   "Quick Fix" → /refined-cv?mode=fill-gaps
 // Tier C:   "Improve CV" → /refined-cv?mode=stretch
 // Tier D/E: "Roadmap" → /career-path with pre-fill
-export function DetailActionsBar({ job, source }: DetailActionsBarProps) {
+export function DetailActionsBar({ job, source, interviewEnabled = true }: DetailActionsBarProps) {
   const sourceLabel = source ?? 'trang tuyển dụng';
   const lowTier: TierLetter[] = ['D', 'E'];
   const showSourceApply = !lowTier.includes(job.tier);
@@ -51,19 +53,21 @@ export function DetailActionsBar({ job, source }: DetailActionsBarProps) {
             <MdOpenInNew size={16} aria-hidden="true" />
           </a>
         )}
-        <Link
-          href={`/interview?jobId=${encodeURIComponent(job.jobId)}`}
-          aria-label="Luyện phỏng vấn cho job này"
-          className={[
-            'inline-flex items-center gap-2 rounded-lg border border-outline-variant px-4 py-2',
-            'text-label-md font-medium text-primary',
-            'transition-opacity hover:bg-surface-container-low',
-            'focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-on-tertiary-container/10',
-          ].join(' ')}
-        >
-          <MdRecordVoiceOver size={16} aria-hidden="true" />
-          Luyện phỏng vấn
-        </Link>
+        {interviewEnabled && (
+          <Link
+            href={`/interview?jobId=${encodeURIComponent(job.jobId)}`}
+            aria-label="Luyện phỏng vấn cho job này"
+            className={[
+              'inline-flex items-center gap-2 rounded-lg border border-outline-variant px-4 py-2',
+              'text-label-md font-medium text-primary',
+              'transition-opacity hover:bg-surface-container-low',
+              'focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-on-tertiary-container/10',
+            ].join(' ')}
+          >
+            <MdRecordVoiceOver size={16} aria-hidden="true" />
+            Luyện phỏng vấn
+          </Link>
+        )}
         <ActionButton tier={job.tier} job={job} size="md" />
       </div>
     </div>

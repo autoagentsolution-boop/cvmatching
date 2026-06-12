@@ -110,6 +110,8 @@ export interface DashboardSidebarProps {
   isAdmin?: boolean;
   /** When true, sidebar shows Logout; otherwise shows Sign-in link. */
   isAuthed?: boolean;
+  /** Interview Practice kill-switch state — false hides the nav entry. */
+  interviewEnabled?: boolean;
 }
 
 /** Private sidebar content — consumed by DashboardLayout (desktop) and its mobile Drawer. */
@@ -118,6 +120,7 @@ export function DashboardSidebar({
   onNavClick,
   isAdmin = false,
   isAuthed = false,
+  interviewEnabled = true,
 }: DashboardSidebarProps) {
   const t = useT();
   return (
@@ -132,14 +135,17 @@ export function DashboardSidebar({
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2" aria-label="Primary navigation">
-        {NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin).map((item) => (
-          <NavLink
-            key={item.key}
-            item={item}
-            active={activeNav === item.key}
-            onClick={onNavClick}
-          />
-        ))}
+        {NAV_ITEMS
+          .filter((item) => !item.adminOnly || isAdmin)
+          .filter((item) => item.key !== 'interview' || interviewEnabled)
+          .map((item) => (
+            <NavLink
+              key={item.key}
+              item={item}
+              active={activeNav === item.key}
+              onClick={onNavClick}
+            />
+          ))}
       </nav>
 
       {/* Pro CTA — always visible, Phase 2 upgrade affordance */}

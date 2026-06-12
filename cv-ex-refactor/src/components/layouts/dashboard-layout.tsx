@@ -15,6 +15,7 @@ export interface DashboardLayoutProps {
   children: ReactNode;
   isAdmin?: boolean;
   isAuthed?: boolean;
+  interviewEnabled?: boolean;
 }
 
 /**
@@ -35,6 +36,7 @@ export function DashboardLayout({
   children,
   isAdmin = false,
   isAuthed = false,
+  interviewEnabled = true,
 }: DashboardLayoutProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -45,7 +47,7 @@ export function DashboardLayout({
         className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-outline-variant bg-surface-container-low lg:flex"
         aria-label="Sidebar"
       >
-        <DashboardSidebar activeNav={activeNav} proCtaSlot={proCtaSlot} isAdmin={isAdmin} isAuthed={isAuthed} />
+        <DashboardSidebar activeNav={activeNav} proCtaSlot={proCtaSlot} isAdmin={isAdmin} isAuthed={isAuthed} interviewEnabled={interviewEnabled} />
       </aside>
 
       {/* Mobile/tablet drawer */}
@@ -60,6 +62,7 @@ export function DashboardLayout({
           proCtaSlot={proCtaSlot}
           isAdmin={isAdmin}
           isAuthed={isAuthed}
+          interviewEnabled={interviewEnabled}
           onNavClick={() => setDrawerOpen(false)}
         />
       </Drawer>

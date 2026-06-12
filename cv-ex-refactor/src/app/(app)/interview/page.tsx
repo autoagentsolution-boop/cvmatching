@@ -3,7 +3,7 @@
 // Pre-fills `mode=job_fit` + Job header when arriving from Job Fit chevron
 // (?jobId=…). Otherwise renders the standalone path with a free-text role.
 
-import { redirect } from 'next/navigation';
+import { redirect, notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getSession } from '@/lib/get-session';
 import { listUserCvs } from '@/lib/cvs/repo';
@@ -11,6 +11,7 @@ import { getJob } from '@/lib/jobs/repo-postgres';
 import { InterviewStartForm } from '@/features/interview/start-form';
 import { HistoryWidget } from '@/features/interview/history-widget';
 import { PageHeader } from '@/components/ui/page-header';
+import { isInterviewEnabled } from '@/lib/maintenance/interview-flag';
 
 export const metadata: Metadata = { title: 'Interview Practice — Resume Refactor' };
 
@@ -25,6 +26,8 @@ export default async function InterviewLandingPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
+  if (!(await isInterviewEnabled())) notFound();
+
   const session = await getSession();
   if (!session?.user?.id) redirect('/sign-in');
   const userId = session.user.id;

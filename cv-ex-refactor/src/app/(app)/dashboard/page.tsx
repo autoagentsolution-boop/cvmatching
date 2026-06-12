@@ -7,6 +7,7 @@ import { listUserCvs } from '@/lib/cvs/repo';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { HistoryWidget } from '@/features/interview/history-widget';
+import { isInterviewEnabled } from '@/lib/maintenance/interview-flag';
 
 export const metadata: Metadata = { title: 'Dashboard — Resume Refactor' };
 
@@ -48,7 +49,10 @@ export default async function DashboardPage() {
   const session = await getSession();
   if (!session?.user?.id) redirect('/sign-in');
 
-  const cvs = await listUserCvs(session.user.id);
+  const [cvs, interviewEnabled] = await Promise.all([
+    listUserCvs(session.user.id),
+    isInterviewEnabled(),
+  ]);
   const defaultCvId = cvs.length > 0 ? (cvs.find((c) => c.isDefault)?.id ?? cvs[0]?.id ?? null) : null;
 
   const startCvAnalyzeHref = defaultCvId ? `/cv-analyze/${defaultCvId}/score` : '/cvs';
@@ -213,10 +217,12 @@ export default async function DashboardPage() {
         )}
       </section>
 
-      {/* Recent interview practice sessions */}
-      <section className="mt-10">
-        <HistoryWidget userId={session.user.id} limit={5} />
-      </section>
+      {/* Recent interview practice sessions — hidden when admin kill-switch off */}
+      {interviewEnabled && (
+        <section className="mt-10">
+          <HistoryWidget userId={session.user.id} limit={5} />
+        </section>
+      )}
 
       {/* Secondary CTA — preserved from original landing */}
       <section className="mt-10 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-outline-variant p-8 text-center">

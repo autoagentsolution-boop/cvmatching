@@ -13,6 +13,7 @@ import { CoverLetterBlock } from '@/features/refined-cv/cover-letter-block';
 
 interface JobFitDetailPageProps {
   jobId: string;
+  interviewEnabled?: boolean;
 }
 
 /**
@@ -21,7 +22,7 @@ interface JobFitDetailPageProps {
  * Reads match from zustand store (hydrated from sessionStorage).
  * If absent (direct link, cleared session) → EmptyStateBackToList.
  */
-export function JobFitDetailPage({ jobId }: JobFitDetailPageProps) {
+export function JobFitDetailPage({ jobId, interviewEnabled = true }: JobFitDetailPageProps) {
   const { jobs } = useJobFit();
   const match = jobs.find((j) => j.jobId === jobId) ?? null;
 
@@ -60,6 +61,7 @@ export function JobFitDetailPage({ jobId }: JobFitDetailPageProps) {
         <CoverLetterBlock jobId={match.jobId} />
         <DetailActionsBar
           job={match}
+          interviewEnabled={interviewEnabled}
           {...(match.sourceUrl ? { source: extractSource(match.sourceUrl) } : {})}
         />
     </div>

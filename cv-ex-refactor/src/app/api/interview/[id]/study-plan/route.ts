@@ -15,7 +15,8 @@ import { resolveApiKey } from '@/lib/llm/resolve-api-key';
 import { callLLM } from '@/lib/llm/providers';
 import { safeParseJson } from '@/lib/llm/safe-parse-json';
 import { logLlmCall } from '@/lib/llm/safe-logger';
-import { recordCost, checkKillSwitch } from '@/lib/cost/guard';
+import { recordCost } from '@/lib/cost/guard';
+import { isInterviewEnabled } from '@/lib/maintenance/interview-flag';
 import { microUsdCost } from '@/lib/llm/model-prices';
 import { enforceIpRateLimit, rateLimitedResponse } from '@/lib/quota/enforce-ip-rate-limit';
 import { buildStudyPlanPrompt } from '@/lib/llm/prompt-study-plan';
@@ -59,6 +60,10 @@ export async function POST(
 ) {
   const rate = await enforceIpRateLimit(req, { endpoint: '/api/interview/study-plan', max: 4, windowSec: 60 });
   if (!rate.ok) return rateLimitedResponse(rate.retryAfterSec);
+
+  if (!(await isInterviewEnabled())) {
+    return err('service_unavailable', 'Tính năng đang tạm thời không khả dụng.', 503);
+  }
 
   const session = await auth();
   if (!session?.user?.id) {
@@ -111,10 +116,8 @@ export async function POST(
   const resolved = await resolveApiKey(body.llm, 'interview-study-plan', { byokToken, ip });
   if (!resolved.ok) return err(resolved.code, resolved.message, resolved.status);
 
-  // BYOK-only v1 — operator design intent. Admin can use shared key for
-  // testing. Non-admin shared-key callers get a hard 402 with actionable
-  // copy pointing at Settings BYOK.
-  if (!resolved.byok && !resolved.isAdmin) {
+  // BYOK-only — admin also required to bring own key.
+  if (!resolved.byok) {
     const cookiePresent = !!byokToken;
     console.warn('[interview/study-plan] byok_gate_blocked', {
       cookiePresent,
@@ -130,13 +133,6 @@ export async function POST(
         : 'Tính năng này cần khóa AI cá nhân. Mở Cài đặt để nhập khóa của bạn.',
       402,
     );
-  }
-
-  if (!resolved.byok && resolved.isAdmin) {
-    const killCheck = await checkKillSwitch('interview-study-plan');
-    if (!killCheck.ok) {
-      return err('service_unavailable', 'Tính năng này tạm thời không khả dụng. Thử lại sau ít phút.', 503);
-    }
   }
 
   const targetRole = persisted.mode === 'standalone'

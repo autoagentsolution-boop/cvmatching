@@ -14,6 +14,7 @@ import type { JobMatchOut } from '@/lib/llm/normalize-job-recommend';
 interface JobFitInlineDetailProps {
   match: JobMatchOut;
   onClose: () => void;
+  interviewEnabled?: boolean;
 }
 
 /**
@@ -25,7 +26,7 @@ interface JobFitInlineDetailProps {
  * Legacy /job-fit/[id] route still serves direct deep-links for shareable
  * URLs; this component is the in-list expansion that the JobCard toggles.
  */
-export function JobFitInlineDetail({ match, onClose }: JobFitInlineDetailProps) {
+export function JobFitInlineDetail({ match, onClose, interviewEnabled = true }: JobFitInlineDetailProps) {
   return (
     <section
       id={`job-detail-${match.jobId}`}
@@ -63,6 +64,7 @@ export function JobFitInlineDetail({ match, onClose }: JobFitInlineDetailProps) 
       <CoverLetterBlock jobId={match.jobId} />
       <DetailActionsBar
         job={match}
+        interviewEnabled={interviewEnabled}
         {...(match.sourceUrl ? { source: extractSource(match.sourceUrl) } : {})}
       />
     </section>

@@ -4,6 +4,7 @@ import { AppShell } from '@/features/nav/app-shell';
 import { UpgradeLink } from '@/features/nav/upgrade-link';
 import { isAdminUser } from '@/lib/usage/admin-auth';
 import { isLoginEnabled } from '@/lib/maintenance/login-flag';
+import { isInterviewEnabled } from '@/lib/maintenance/interview-flag';
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   let session = null;
@@ -14,13 +15,17 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   }
 
   const isAdmin = isAdminUser(session?.user);
-  const loginEnabled = await isLoginEnabled();
+  const [loginEnabled, interviewEnabled] = await Promise.all([
+    isLoginEnabled(),
+    isInterviewEnabled(),
+  ]);
 
   return (
     <AppShell
       session={session}
       isAdmin={isAdmin}
       loginEnabled={loginEnabled}
+      interviewEnabled={interviewEnabled}
       upgradeSlot={<UpgradeLink session={session} />}
     >
       {children}
