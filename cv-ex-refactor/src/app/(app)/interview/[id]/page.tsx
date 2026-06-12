@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { getSession } from '@/lib/get-session';
 import { getSessionById } from '@/lib/interview/storage';
 import { InterviewAnswerForm } from '@/features/interview/answer-form';
+import { PageHeader } from '@/components/ui/page-header';
 
 export const metadata: Metadata = { title: 'Interview in progress — Resume Refactor' };
 
@@ -56,16 +57,18 @@ export default async function InterviewInProgressPage({
     question: q.question,
   }));
 
+  const titleText = persisted.mode === 'standalone' ? (persisted.roleTitle ?? 'Practice session') : 'Job Fit interview';
+  const breadcrumb = persisted.mode === 'standalone' ? 'Luyện phỏng vấn · Standalone' : 'Luyện phỏng vấn · Job Fit';
+
   return (
     <div className="mx-auto max-w-4xl py-8 px-4 md:px-6">
-      <header className="mb-6 space-y-2">
-        <h1 className="font-display text-headline-md font-bold text-on-surface">
-          {persisted.mode === 'standalone' ? persisted.roleTitle : 'Job Fit interview'}
-        </h1>
-        <p className="text-body-sm text-on-surface-variant">
-          Anchor: {persisted.anchorRoleTitle}
-        </p>
-      </header>
+      <div className="mb-8 border-b border-outline-variant">
+        <PageHeader
+          breadcrumb={breadcrumb}
+          title={titleText}
+          subtitle={`Anchor role từ CV: ${persisted.anchorRoleTitle}`}
+        />
+      </div>
 
       <InterviewAnswerForm
         sessionId={persisted.id}

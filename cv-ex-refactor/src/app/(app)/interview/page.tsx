@@ -10,6 +10,7 @@ import { listUserCvs } from '@/lib/cvs/repo';
 import { getJob } from '@/lib/jobs/repo-postgres';
 import { InterviewStartForm } from '@/features/interview/start-form';
 import { HistoryWidget } from '@/features/interview/history-widget';
+import { PageHeader } from '@/components/ui/page-header';
 
 export const metadata: Metadata = { title: 'Interview Practice — Resume Refactor' };
 
@@ -41,12 +42,12 @@ export default async function InterviewLandingPage({
 
   return (
     <div className="mx-auto max-w-3xl space-y-8 py-8 px-4 md:px-6">
-      <header className="space-y-2">
-        <h1 className="font-display text-headline-md font-bold text-on-surface">Luyện phỏng vấn</h1>
-        <p className="text-body-md text-on-surface-variant leading-relaxed">
-          AI phân tích góc nhìn recruiter và của bạn cho vị trí mục tiêu, rồi sinh 10 câu hỏi medium-hard có rubric. Trả lời xong, AI chấm theo thang 0-3.
-        </p>
-      </header>
+      <div className="border-b border-outline-variant">
+        <PageHeader
+          title="Luyện phỏng vấn"
+          subtitle="AI phân tích góc nhìn recruiter và của bạn cho vị trí mục tiêu, rồi sinh 10 câu hỏi medium-hard có rubric. Trả lời xong, AI chấm theo thang 0-10."
+        />
+      </div>
 
       <InterviewStartForm
         initialJobId={job ? jobId : null}

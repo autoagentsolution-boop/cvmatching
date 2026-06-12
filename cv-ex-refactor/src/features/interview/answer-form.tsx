@@ -91,10 +91,16 @@ export function InterviewAnswerForm({ sessionId, dualLens, questions }: AnswerFo
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       <DualLensCard dualLens={dualLens} />
 
       <section aria-label="Interview questions" className="space-y-4">
+        <header className="border-b border-outline-variant pb-3">
+          <h2 className="text-title-lg font-bold text-on-surface">10 câu hỏi</h2>
+          <p className="mt-1 text-body-sm text-on-surface-variant">
+            4 behavioral · 4 technical · 2 scenario. Trả lời từng câu rồi bấm Nộp ở cuối trang.
+          </p>
+        </header>
         {questions.map((q, i) => (
           <QuestionCard
             key={q.id}

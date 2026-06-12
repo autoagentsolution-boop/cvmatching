@@ -10,6 +10,7 @@ import { getSessionById } from '@/lib/interview/storage';
 import { DualLensCard } from '@/features/interview/dual-lens-card';
 import { QuestionCard } from '@/features/interview/question-card';
 import { ResultsSummary } from '@/features/interview/results-summary';
+import { PageHeader } from '@/components/ui/page-header';
 import type { InterviewGrade } from '@/lib/llm/schemas-interview';
 
 export const metadata: Metadata = { title: 'Interview results — Resume Refactor' };
@@ -51,8 +52,18 @@ export default async function InterviewResultsPage({
     ? (persisted.roleTitle ?? '—')
     : (persisted.jobId ? `Job ${persisted.jobId.slice(0, 12)}` : '—');
 
+  const titleText = persisted.mode === 'standalone' ? (persisted.roleTitle ?? 'Practice results') : 'Job Fit interview · Kết quả';
+
   return (
     <div className="mx-auto max-w-4xl space-y-8 py-8 px-4 md:px-6">
+      <div className="border-b border-outline-variant">
+        <PageHeader
+          breadcrumb="Luyện phỏng vấn · Kết quả"
+          title={titleText}
+          subtitle={`Anchor role từ CV: ${persisted.anchorRoleTitle}`}
+        />
+      </div>
+
       <ResultsSummary
         overallScore={overallScore}
         modeLabel={modeLabel}
