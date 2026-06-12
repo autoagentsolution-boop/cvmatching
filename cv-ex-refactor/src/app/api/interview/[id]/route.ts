@@ -25,7 +25,7 @@ export async function GET(
 
   const { id } = await params;
   const persisted = await getSessionById(id, userId);
-  if (!persisted) return err('not_found', 'Session không tồn tại.', 404);
+  if (!persisted) return err('not_found', 'Phiên không tồn tại.', 404);
 
   // In progress: strip rubric so the user can't see grading criteria before
   // submitting. Completed: keep rubric so results page renders criteria +

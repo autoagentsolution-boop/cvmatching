@@ -11,6 +11,7 @@ import { getSession } from '@/lib/get-session';
 import { getSessionById } from '@/lib/interview/storage';
 import { InterviewAnswerForm } from '@/features/interview/answer-form';
 import { PageHeader } from '@/components/ui/page-header';
+import { getJob } from '@/lib/jobs/repo-postgres';
 
 export const metadata: Metadata = { title: 'Interview in progress — Resume Refactor' };
 
@@ -57,8 +58,18 @@ export default async function InterviewInProgressPage({
     question: q.question,
   }));
 
-  const titleText = persisted.mode === 'standalone' ? (persisted.roleTitle ?? 'Practice session') : 'Job Fit interview';
-  const breadcrumb = persisted.mode === 'standalone' ? 'Luyện phỏng vấn · Standalone' : 'Luyện phỏng vấn · Job Fit';
+  const job = persisted.mode === 'job_fit' && persisted.jobId
+    ? await getJob(persisted.jobId).catch(() => null)
+    : null;
+
+  const titleText = persisted.mode === 'standalone'
+    ? (persisted.roleTitle ?? 'Phiên luyện')
+    : job
+      ? `${job.title}${job.company ? ` · ${job.company}` : ''}`
+      : 'Luyện phỏng vấn';
+  const breadcrumb = persisted.mode === 'standalone'
+    ? 'Luyện phỏng vấn · Theo vị trí mục tiêu'
+    : 'Luyện phỏng vấn · Theo job đã apply';
 
   return (
     <div className="mx-auto max-w-4xl py-8 px-4 md:px-6">

@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
 
   const session = await auth();
   if (!session?.user?.id) {
-    return err('auth_required', 'Bạn cần đăng nhập để dùng Interview Practice.', 401);
+    return err('auth_required', 'Bạn cần đăng nhập để dùng Luyện phỏng vấn.', 401);
   }
   const userId = session.user.id;
 
@@ -76,10 +76,12 @@ export async function POST(req: NextRequest) {
   const persisted = await getSessionById(body.sessionId, userId);
   // 404 (not 403) on ownership mismatch — see security note in plan: avoids
   // existence-leak about other users' sessions.
-  if (!persisted) return err('not_found', 'Session không tồn tại.', 404);
+  if (!persisted) return err('not_found', 'Phiên không tồn tại.', 404);
 
   if (persisted.status !== 'in_progress') {
-    return err('session_not_in_progress', `Session đã ${persisted.status}. Không thể submit lại.`, 409);
+    const statusLabel =
+      persisted.status === 'completed' ? 'đã hoàn thành' : 'đã hết hạn';
+    return err('session_not_in_progress', `Phiên ${statusLabel}. Không thể nộp lại.`, 409);
   }
 
   // Defensive: IDs in answers MUST match the question set exactly. UI
@@ -120,8 +122,8 @@ export async function POST(req: NextRequest) {
     return err(
       cookiePresent ? 'byok_expired' : 'byok_required',
       cookiePresent
-        ? 'API key BYOK của bạn đã hết hạn (vault TTL 4h) hoặc đã bị xóa. Vào Settings → BYOK dán lại key, rồi bấm Submit lại — session vẫn đang mở.'
-        : 'Interview Practice yêu cầu API key riêng. Mở Settings → BYOK để dán key Gemini / OpenAI / Anthropic.',
+        ? 'Khóa AI của bạn đã hết hạn. Vào Cài đặt nhập lại khóa rồi bấm Nộp lại — câu trả lời vẫn được giữ.'
+        : 'Tính năng này cần khóa AI cá nhân. Mở Cài đặt để nhập khóa của bạn.',
       402,
     );
   }
@@ -129,7 +131,7 @@ export async function POST(req: NextRequest) {
   if (!resolved.byok && resolved.isAdmin) {
     const killCheck = await checkKillSwitch('interview-grade');
     if (!killCheck.ok) {
-      return err('service_unavailable', 'Interview Practice tạm tắt do vượt ngưỡng chi phí.', 503);
+      return err('service_unavailable', 'Tính năng này tạm thời không khả dụng. Thử lại sau ít phút.', 503);
     }
   }
 
@@ -178,7 +180,7 @@ export async function POST(req: NextRequest) {
         completionTokens: llmRes.completionTokens,
         error: 'schema_validation_failed',
       });
-      return err('llm_bad_output', 'LLM trả grade JSON không hợp lệ. Thử lại lần nữa.', 502);
+      return err('llm_bad_output', 'AI trả định dạng không hợp lệ. Thử lại.', 502);
     }
     const grades = validated.data;
 
@@ -199,7 +201,7 @@ export async function POST(req: NextRequest) {
           outputChars: llmRes.text.length,
           error: 'grade_id_mismatch',
         });
-        return err('llm_bad_output', 'LLM trả grade với id sai. Thử lại lần nữa.', 502);
+        return err('llm_bad_output', 'AI trả kết quả không khớp câu hỏi. Thử lại.', 502);
       }
     }
 
@@ -265,17 +267,17 @@ export async function POST(req: NextRequest) {
       error: message.slice(0, 200),
     });
     if (/Gemini\s+5(?:0[023])|UNAVAILABLE|high demand|overload/i.test(message)) {
-      return err('upstream_overloaded', 'Provider đang quá tải. Session vẫn mở — bấm Submit lại sau ít phút.', 503);
+      return err('upstream_overloaded', 'AI đang quá tải. Phiên vẫn được giữ — bấm Nộp lại sau ít phút.', 503);
     }
     if (/Gemini\s+429|RESOURCE_EXHAUSTED|rate.?limit/i.test(message)) {
-      return err('upstream_rate_limit', 'Provider đang giới hạn rate. Đợi 30-60s rồi submit lại.', 429);
+      return err('upstream_rate_limit', 'AI đang giới hạn tốc độ. Đợi 30-60 giây rồi nộp lại.', 429);
     }
     // 401/403/PERMISSION_DENIED + literal "API key" → BYOK invalid.
     // INVALID_ARGUMENT alone is too broad (params, format, model
     // mismatch) — misclassifying it as BYOK confused users 2026-06-12.
     if (/(?:^|\s)40[13]\b|API key|PERMISSION_DENIED|unauthorized/i.test(message)) {
-      return err('byok_invalid', 'API key không hợp lệ — kiểm tra lại trong Settings.', 402);
+      return err('byok_invalid', 'Khóa AI không hợp lệ — kiểm tra lại trong Cài đặt.', 402);
     }
-    return err('llm_provider_error', `LLM lỗi: ${message.slice(0, 200)}`, 502);
+    return err('llm_provider_error', 'AI gặp lỗi. Thử lại sau ít phút.', 502);
   }
 }

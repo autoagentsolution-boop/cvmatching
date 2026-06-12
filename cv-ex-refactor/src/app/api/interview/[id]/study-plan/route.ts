@@ -62,7 +62,7 @@ export async function POST(
 
   const session = await auth();
   if (!session?.user?.id) {
-    return err('auth_required', 'Bạn cần đăng nhập để dùng Study Plan.', 401);
+    return err('auth_required', 'Bạn cần đăng nhập để tạo lộ trình học.', 401);
   }
   const userId = session.user.id;
 
@@ -81,10 +81,10 @@ export async function POST(
   const body = parsed.data;
 
   const persisted = await getSessionById(id, userId);
-  if (!persisted) return err('not_found', 'Session không tồn tại.', 404);
+  if (!persisted) return err('not_found', 'Phiên không tồn tại.', 404);
 
   if (persisted.status !== 'completed') {
-    return err('not_completed', 'Cần hoàn thành phỏng vấn (nộp đủ 10 câu) trước khi tạo lộ trình học.', 409);
+    return err('not_completed', 'Cần nộp đủ 10 câu trả lời trước khi tạo lộ trình học.', 409);
   }
 
   // 1-time-per-session contract — return 200 with existing plan instead
@@ -97,7 +97,7 @@ export async function POST(
   // submit; bail with 409 if shape doesn't match (legacy/corrupt session).
   const gradedGuard = z.array(GradedQuestionGuard).length(10).safeParse(persisted.questions);
   if (!gradedGuard.success) {
-    return err('session_not_graded', 'Session chưa được chấm hoặc dữ liệu hỏng.', 409);
+    return err('session_not_graded', 'Phiên chưa được chấm điểm hoặc dữ liệu lỗi.', 409);
   }
   const gradedQuestions = gradedGuard.data as Array<
     InterviewQuestion & { user_answer: string; grade: InterviewGrade }
@@ -126,8 +126,8 @@ export async function POST(
     return err(
       cookiePresent ? 'byok_expired' : 'byok_required',
       cookiePresent
-        ? 'API key BYOK đã hết hạn (vault TTL 4h) hoặc đã bị xóa. Vào Settings → BYOK dán lại key, rồi bấm Tạo lộ trình lại.'
-        : 'Tính năng Lộ trình học yêu cầu API key riêng. Mở Settings → BYOK để dán key.',
+        ? 'Khóa AI của bạn đã hết hạn. Vào Cài đặt nhập lại khóa rồi bấm Tạo lộ trình lại.'
+        : 'Tính năng này cần khóa AI cá nhân. Mở Cài đặt để nhập khóa của bạn.',
       402,
     );
   }
@@ -135,7 +135,7 @@ export async function POST(
   if (!resolved.byok && resolved.isAdmin) {
     const killCheck = await checkKillSwitch('interview-study-plan');
     if (!killCheck.ok) {
-      return err('service_unavailable', 'Study Plan tạm tắt do vượt ngưỡng chi phí.', 503);
+      return err('service_unavailable', 'Tính năng này tạm thời không khả dụng. Thử lại sau ít phút.', 503);
     }
   }
 
@@ -181,7 +181,7 @@ export async function POST(
         completionTokens: llmRes.completionTokens,
         error: 'schema_validation_failed',
       });
-      return err('llm_bad_output', 'LLM trả Study Plan JSON không hợp lệ. Thử lại lần nữa.', 502);
+      return err('llm_bad_output', 'AI trả định dạng không hợp lệ. Thử lại.', 502);
     }
 
     await logLlmCall({
@@ -219,14 +219,14 @@ export async function POST(
       error: message.slice(0, 200),
     });
     if (/Gemini\s+5(?:0[023])|UNAVAILABLE|high demand|overload/i.test(message)) {
-      return err('upstream_overloaded', 'Provider đang quá tải. Thử lại sau ít phút.', 503);
+      return err('upstream_overloaded', 'AI đang quá tải. Thử lại sau 1-2 phút.', 503);
     }
     if (/Gemini\s+429|RESOURCE_EXHAUSTED|rate.?limit/i.test(message)) {
-      return err('upstream_rate_limit', 'Provider đang giới hạn rate. Đợi 30-60s rồi thử lại.', 429);
+      return err('upstream_rate_limit', 'AI đang giới hạn tốc độ. Đợi 30-60 giây rồi thử lại.', 429);
     }
     if (/(?:^|\s)40[13]\b|API key|PERMISSION_DENIED|unauthorized/i.test(message)) {
-      return err('byok_invalid', 'API key không hợp lệ — kiểm tra lại trong Settings.', 402);
+      return err('byok_invalid', 'Khóa AI không hợp lệ — kiểm tra lại trong Cài đặt.', 402);
     }
-    return err('llm_provider_error', `LLM lỗi: ${message.slice(0, 200)}`, 502);
+    return err('llm_provider_error', 'AI gặp lỗi. Thử lại sau ít phút.', 502);
   }
 }

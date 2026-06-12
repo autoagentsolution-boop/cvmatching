@@ -57,7 +57,7 @@ export async function HistoryWidget({ userId, limit = 5, labels = DEFAULT_LABELS
       ) : (
         <ul className="space-y-2">
           {rows.map((r) => {
-            const target = r.mode === 'standalone' ? (r.roleTitle ?? '—') : (r.jobId ? `Job ${r.jobId.slice(0, 8)}` : '—');
+            const target = r.mode === 'standalone' ? (r.roleTitle ?? '—') : (r.jobId ? 'Job đã apply' : '—');
             const href = r.status === 'completed' ? `/interview/${r.id}/results` : `/interview/${r.id}`;
             const cta = r.status === 'completed' ? labels.viewResults : labels.resume;
             const scoreText = r.overallScore == null ? '—' : r.overallScore.toFixed(1);

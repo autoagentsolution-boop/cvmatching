@@ -8,6 +8,7 @@ import { cookies } from 'next/headers';
 import type { Metadata } from 'next';
 import { getSession } from '@/lib/get-session';
 import { getSessionById } from '@/lib/interview/storage';
+import { getJob } from '@/lib/jobs/repo-postgres';
 import { DualLensCard } from '@/features/interview/dual-lens-card';
 import { QuestionCard } from '@/features/interview/question-card';
 import { ResultsSummary } from '@/features/interview/results-summary';
@@ -50,12 +51,26 @@ export default async function InterviewResultsPage({
   const overallScore = persisted.overallScore == null ? null : persisted.overallScore / 10;
   const gradedQuestions = persisted.questions as unknown as GradedQuestion[];
 
-  const modeLabel = persisted.mode === 'standalone' ? 'Standalone' : 'Job Fit';
+  const modeLabel = persisted.mode === 'standalone' ? 'Theo vị trí mục tiêu' : 'Theo job đã apply';
+
+  // For job_fit mode, show a real job title instead of leaking the raw
+  // jobId. One Postgres lookup; falls back gracefully if the job was
+  // since removed from the pool.
+  const job = persisted.mode === 'job_fit' && persisted.jobId
+    ? await getJob(persisted.jobId).catch(() => null)
+    : null;
+
   const targetLabel = persisted.mode === 'standalone'
     ? (persisted.roleTitle ?? '—')
-    : (persisted.jobId ? `Job ${persisted.jobId.slice(0, 12)}` : '—');
+    : job
+      ? `${job.title}${job.company ? ` · ${job.company}` : ''}`
+      : '—';
 
-  const titleText = persisted.mode === 'standalone' ? (persisted.roleTitle ?? 'Practice results') : 'Job Fit interview · Kết quả';
+  const titleText = persisted.mode === 'standalone'
+    ? (persisted.roleTitle ?? 'Kết quả luyện phỏng vấn')
+    : job
+      ? job.title
+      : 'Kết quả luyện phỏng vấn';
 
   // BYOK gate for the study-plan section: operator decision is to HIDE
   // the section entirely when the user has no BYOK token, not show a

@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { MdArrowForward, MdInfoOutline } from 'react-icons/md';
+import { MdArrowForward } from 'react-icons/md';
 import { Button } from '@/components/ui/button';
 import { useT } from '@/lib/i18n/use-t';
 import { useSettings } from '@/features/analyze/settings-store';
@@ -158,7 +158,7 @@ export function InterviewStartForm({
       <Field label={t('interview.field.anchorCv')} help={t('interview.field.anchorCv.help')}>
         {cvs.length === 0 ? (
           <p className="text-body-sm text-on-surface-variant">
-            Bạn chưa có CV trong thư viện. Hãy upload ở trang <a className="text-primary underline" href="/cvs">My CVs</a> trước.
+            Bạn chưa có CV trong thư viện. Hãy upload ở trang <a className="text-primary underline" href="/cvs">CV của tôi</a> trước.
           </p>
         ) : (
           <select
@@ -186,13 +186,10 @@ export function InterviewStartForm({
         />
       </Field>
 
-      <p className="flex items-start gap-2 rounded-lg bg-tertiary-container/40 px-4 py-3 text-body-sm text-on-tertiary-container">
-        <MdInfoOutline className="mt-0.5 flex-shrink-0" size={18} aria-hidden="true" />
-        <span>
-          {t('interview.field.provider')}: <strong>{settings.provider}</strong> · {settings.model}.
-          {' '}{t('interview.start.cost.notice')}
-        </span>
-      </p>
+      {/* Removed the provider+model debug banner that previously surfaced
+          internal identifiers (provider name, raw model string) on the
+          user-facing form. Settings drawer is the right place for those.
+          See memory: feedback_no_dev_jargon_in_ui. */}
 
       {errorMsg && (
         <p role="alert" className="rounded-lg border border-error/30 bg-error-container/30 px-4 py-3 text-body-sm text-on-error-container">

@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
 
   const session = await auth();
   if (!session?.user?.id) {
-    return err('auth_required', 'Bạn cần đăng nhập để dùng Interview Practice.', 401);
+    return err('auth_required', 'Bạn cần đăng nhập để dùng Luyện phỏng vấn.', 401);
   }
   const userId = session.user.id;
 
@@ -97,8 +97,8 @@ export async function POST(req: NextRequest) {
     return err(
       cookiePresent ? 'byok_expired' : 'byok_required',
       cookiePresent
-        ? 'API key BYOK của bạn đã hết hạn (vault TTL 4h) hoặc đã bị xóa. Vào Settings → BYOK dán lại key, rồi bắt đầu lại.'
-        : 'Interview Practice yêu cầu API key riêng. Mở Settings → BYOK để dán key Gemini / OpenAI / Anthropic.',
+        ? 'Khóa AI của bạn đã hết hạn. Vào Cài đặt nhập lại khóa rồi bắt đầu lại.'
+        : 'Tính năng này cần khóa AI cá nhân. Mở Cài đặt để nhập khóa của bạn.',
       402,
     );
   }
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
   if (!resolved.byok && resolved.isAdmin) {
     const killCheck = await checkKillSwitch('interview-gen');
     if (!killCheck.ok) {
-      return err('service_unavailable', 'Interview Practice tạm tắt do vượt ngưỡng chi phí. Thử lại sau hoặc dùng BYOK.', 503);
+      return err('service_unavailable', 'Tính năng này tạm thời không khả dụng. Thử lại sau ít phút.', 503);
     }
   }
 
@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
   });
   if (existing) {
     return NextResponse.json(
-      { ok: false, error: { code: 'resume_existing', message: 'Đã có session đang mở cho mục tiêu này — bấm để tiếp tục.' }, sessionId: existing.id },
+      { ok: false, error: { code: 'resume_existing', message: 'Bạn có phiên đang mở cho mục tiêu này — bấm để tiếp tục.' }, sessionId: existing.id },
       { status: 409 },
     );
   }
@@ -133,7 +133,7 @@ export async function POST(req: NextRequest) {
   let companyName: string | undefined;
   if (body.mode === 'job_fit') {
     const job = await getJob(body.jobId!);
-    if (!job) return err('unknown_job', 'Job không tồn tại trong pool.', 404);
+    if (!job) return err('unknown_job', 'Không tìm thấy job này.', 404);
     jobDescription = job.description;
     companyName = job.company;
   }
@@ -198,7 +198,7 @@ export async function POST(req: NextRequest) {
         completionTokens: llmRes.completionTokens,
         error: 'schema_validation_failed',
       });
-      return err('llm_bad_output', 'LLM trả về định dạng không hợp lệ. Thử lại lần nữa.', 502);
+      return err('llm_bad_output', 'AI trả định dạng không hợp lệ. Thử lại.', 502);
     }
 
     await logLlmCall({
@@ -252,7 +252,7 @@ export async function POST(req: NextRequest) {
         });
         if (raced) {
           return NextResponse.json(
-            { ok: false, error: { code: 'resume_existing', message: 'Session đang mở — bấm để tiếp tục.' }, sessionId: raced.id },
+            { ok: false, error: { code: 'resume_existing', message: 'Phiên đang mở — bấm để tiếp tục.' }, sessionId: raced.id },
             { status: 409 },
           );
         }
@@ -273,14 +273,14 @@ export async function POST(req: NextRequest) {
       error: message.slice(0, 200),
     });
     if (/Gemini\s+5(?:0[023])|UNAVAILABLE|high demand|overload/i.test(message)) {
-      return err('upstream_overloaded', 'Provider đang quá tải. Thử lại 1-2 phút hoặc đổi model trong Settings.', 503);
+      return err('upstream_overloaded', 'AI đang quá tải. Thử lại sau 1-2 phút.', 503);
     }
     if (/Gemini\s+429|RESOURCE_EXHAUSTED|rate.?limit/i.test(message)) {
-      return err('upstream_rate_limit', 'Provider đang giới hạn rate. Đợi 30-60s rồi thử lại.', 429);
+      return err('upstream_rate_limit', 'AI đang giới hạn tốc độ. Đợi 30-60 giây rồi thử lại.', 429);
     }
     if (/(?:^|\s)40[13]\b|API key|PERMISSION_DENIED|unauthorized/i.test(message)) {
-      return err('byok_invalid', 'API key không hợp lệ — kiểm tra lại trong Settings.', 402);
+      return err('byok_invalid', 'Khóa AI không hợp lệ — kiểm tra lại trong Cài đặt.', 402);
     }
-    return err('llm_provider_error', `LLM lỗi: ${message.slice(0, 200)}`, 502);
+    return err('llm_provider_error', 'AI gặp lỗi. Thử lại sau ít phút.', 502);
   }
 }

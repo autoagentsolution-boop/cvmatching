@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     // exist in our pool. Return 409 so client treats as data error, not 5xx.
     if (message.includes('23503')) {
       console.warn('[api/jobs/apply] unknown_job', { userId, jobId, source });
-      return err('unknown_job', 'Job not found in pool.', 409);
+      return err('unknown_job', 'Không tìm thấy job này.', 409);
     }
     console.error('[api/jobs/apply] insert_failed', { userId, jobId, source, message });
     return err('internal_error', 'Failed to record apply click.', 500);
