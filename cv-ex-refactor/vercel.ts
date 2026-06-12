@@ -23,5 +23,12 @@ export const config: VercelConfig = {
       path: '/api/cron/ingest-reminder',
       schedule: '0 19 */3 * *', // 19:00 UTC every 3rd day = 02:00 ICT next day
     },
+    {
+      // Interview Practice abandon sweep — flips status=in_progress rows
+      // older than 24h to abandoned so the unique-active index unblocks
+      // re-attempt. Daily at 02:00 UTC = 09:00 ICT (low-traffic morning).
+      path: '/api/cron/interview-abandon',
+      schedule: '0 2 * * *',
+    },
   ],
 };

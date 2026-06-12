@@ -7,6 +7,7 @@ export type ActiveNav =
   | 'cvs'
   | 'analyze'
   | 'jd-matching'
+  | 'interview'
   | 'history'
   | 'admin-usage'
   | 'admin-pool'
@@ -36,6 +37,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: 'cvs', labelKey: 'nav.myCVs', icon: 'description', href: '/cvs' },
   { key: 'analyze', labelKey: 'nav.analyze', icon: 'analytics', href: '/analyze' },
   { key: 'jd-matching', labelKey: 'nav.jdMatching', icon: 'compare_arrows', href: '/jd-matching' },
+  { key: 'interview', labelKey: 'nav.interview', icon: 'record_voice_over', href: '/interview' },
   { key: 'history', labelKey: 'nav.history', icon: 'history', href: '/history', adminOnly: true },
   // Admin-only pages stay English-labelled for now.
   { key: 'admin-usage', labelKey: 'nav.dashboard', rawLabel: 'Usage', icon: 'bar_chart', href: '/admin/usage', adminOnly: true },

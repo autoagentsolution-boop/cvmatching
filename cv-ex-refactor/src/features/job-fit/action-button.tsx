@@ -87,6 +87,21 @@ export function ActionButton({ tier, job, size = 'md' }: ActionButtonProps) {
         rel="noopener noreferrer"
         className={cls}
         aria-label={`${action.label} cho job ${job.title} tại ${job.company} (mở tab mới)`}
+        onClick={() => {
+          // Fire-and-forget apply tracker. Idempotent on the server side
+          // (composite PK + ON CONFLICT DO NOTHING) so double-clicks are
+          // a no-op. Never blocks navigation: failure is logged silently
+          // — surfacing a toast here would interrupt the user mid-action
+          // and the data is best-effort analytics.
+          void fetch('/api/jobs/apply', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ jobId: job.jobId, source: 'job_fit' }),
+            keepalive: true,
+          }).catch(() => {
+            // Swallow — analytics is non-critical.
+          });
+        }}
       >
         {action.label}
         <MdOpenInNew size={16} aria-hidden="true" />

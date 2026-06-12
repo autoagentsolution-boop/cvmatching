@@ -6,6 +6,7 @@ import { getSession } from '@/lib/get-session';
 import { listUserCvs } from '@/lib/cvs/repo';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { HistoryWidget } from '@/features/interview/history-widget';
 
 export const metadata: Metadata = { title: 'Dashboard — Resume Refactor' };
 
@@ -210,6 +211,11 @@ export default async function DashboardPage() {
             ))}
           </ul>
         )}
+      </section>
+
+      {/* Recent interview practice sessions */}
+      <section className="mt-10">
+        <HistoryWidget userId={session.user.id} limit={5} />
       </section>
 
       {/* Secondary CTA — preserved from original landing */}

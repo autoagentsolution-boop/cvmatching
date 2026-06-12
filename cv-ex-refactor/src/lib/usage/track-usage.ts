@@ -16,7 +16,14 @@ export type UsageAction =
   // Gemini call (~4k output tokens, ~$0.005/call shared key). Tracked
   // separately from analyze so per-user reports surface enrichment cost
   // and cost buckets stay independent for kill-switch tuning.
-  | 'company-enrich';
+  | 'company-enrich'
+  // Interview Practice — two LLM calls per session. interview-gen produces
+  // 10 questions + Dual Lens (single Gemini/Anthropic call ~6-8k output
+  // tokens). interview-grade is the batched grading call after the user
+  // submits all 10 answers (~3-4k output tokens). Tracked separately so
+  // admin can see gen-to-grade conversion and per-user cost split.
+  | 'interview-gen'
+  | 'interview-grade';
 export type UsageStatus = 'ok' | 'error';
 
 /**

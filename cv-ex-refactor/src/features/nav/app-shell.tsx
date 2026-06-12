@@ -37,6 +37,7 @@ function deriveActiveNav(pathname: string): ActiveNav {
   if (pathname.startsWith('/admin/maintenance')) return 'admin-maintenance';
   if (pathname.startsWith('/admin/pool')) return 'admin-pool';
   if (pathname.startsWith('/admin/usage')) return 'admin-usage';
+  if (pathname.startsWith('/interview')) return 'interview';
   // Workflow detail routes highlight their entry-workflow nav item.
   if (pathname.startsWith('/cv-analyze')) return 'analyze';
   if (pathname.startsWith('/jd-matching')) return 'jd-matching';

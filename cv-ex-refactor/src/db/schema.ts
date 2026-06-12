@@ -19,6 +19,7 @@ import {
   index,
   integer,
   jsonb,
+  pgEnum,
   pgTable,
   primaryKey,
   text,
@@ -229,3 +230,115 @@ export const userCvs = pgTable(
 
 export type UserCvRow = typeof userCvs.$inferSelect;
 export type NewUserCvRow = typeof userCvs.$inferInsert;
+
+// ---------- applied_jobs --------------------------------------------------
+//
+// User explicitly clicked "Apply ngay" on a Job Fit detail page. Tracked so
+// Interview Practice can offer "practice for a job you applied to" without
+// re-running Job Fit. PK is composite (user_id, job_id) so a second click is
+// a no-op via ON CONFLICT DO NOTHING — idempotent fire-and-forget from the
+// client. `source` distinguishes the entry surface; check constraint enforces
+// the enum in the DB layer (TS does it at the API boundary).
+
+export const appliedJobs = pgTable(
+  'applied_jobs',
+  {
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    jobId: text('job_id')
+      .notNull()
+      .references(() => jobs.id, { onDelete: 'cascade' }),
+    source: text('source').notNull(), // 'job_fit' | 'manual'
+    appliedAt: timestamp('applied_at', { withTimezone: true, mode: 'date' })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.jobId] }),
+    // Hot path: dashboard "your applied jobs" list ordered by recency.
+    index('idx_applied_jobs_user_recent').on(t.userId, t.appliedAt),
+  ],
+);
+
+export type AppliedJobRow = typeof appliedJobs.$inferSelect;
+export type NewAppliedJobRow = typeof appliedJobs.$inferInsert;
+
+// ---------- interview_sessions --------------------------------------------
+//
+// Interview Practice session. Two modes share one table — `mode='job_fit'`
+// rows reference a real `jobs.id`; `mode='standalone'` rows carry only a
+// `role_title` (free-text). Uniqueness is split via two partial unique
+// indexes so re-attempt is allowed after a session is abandoned by the 24h
+// cron (status='abandoned' excluded from the predicate).
+//
+// `role_title_hash` is a STORED generated column — sha256(lower(trim(...)))
+// hex — so equality lookups in the standalone partial unique do not depend
+// on whitespace/case. Drizzle 0.31 cannot emit GENERATED ALWAYS AS STORED
+// for text/sql expressions, so the migration SQL is hand-tuned (see the
+// generated SQL file under cv-ex-refactor/drizzle/).
+//
+// `questions` JSONB carries the 10-question payload from the LLM gen call;
+// after grading, each question is mutated in place with `user_answer` +
+// `grade` so the gen+grade lineage stays in one document. `dual_lens` is
+// the 4-quadrant analysis written alongside questions on the gen call.
+
+export const interviewStatus = pgEnum('interview_status', ['in_progress', 'completed', 'abandoned']);
+export const interviewMode = pgEnum('interview_mode', ['job_fit', 'standalone']);
+
+export const interviewSessions = pgTable(
+  'interview_sessions',
+  {
+    id: text('id').primaryKey(), // crypto.randomUUID()
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    mode: interviewMode('mode').notNull(),
+    // job_fit mode: FK to jobs. standalone mode: null.
+    jobId: text('job_id').references(() => jobs.id, { onDelete: 'set null' }),
+    // standalone mode: free-text role label entered by user. null in job_fit mode.
+    roleTitle: text('role_title'),
+    // STORED generated column — see migration SQL for the GENERATED ALWAYS AS clause.
+    // `.generatedAlwaysAs` flags the column non-insertable in $inferInsert so
+    // callers cannot try to write the hash directly. drizzle-kit 0.31 does not
+    // emit STORED for this expression so the migration SQL is hand-tuned.
+    roleTitleHash: text('role_title_hash').generatedAlwaysAs(
+      sql`encode(sha256(lower(btrim(coalesce("role_title", '')))::bytea), 'hex')`,
+    ),
+    // CV anchor role: which role within the user's CV the practice targets.
+    anchorRoleTitle: text('anchor_role_title').notNull(),
+    status: interviewStatus('status').notNull().default('in_progress'),
+    // LLM gen output — { questions: [...10], dualLens: {...} }. After grading,
+    // each question gains user_answer + grade keys merged in place.
+    questions: jsonb('questions').notNull(),
+    dualLens: jsonb('dual_lens').notNull(),
+    // Per-session overall score (0..100) computed by the grade call. null
+    // while status='in_progress'.
+    overallScore: integer('overall_score'),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
+      .notNull()
+      .defaultNow(),
+    completedAt: timestamp('completed_at', { withTimezone: true, mode: 'date' }),
+  },
+  (t) => [
+    // Partial unique — one active session per (user, job) in job_fit mode.
+    // Excludes abandoned so the 24h cron sweep unblocks re-attempt.
+    uniqueIndex('uq_interview_jobfit_active')
+      .on(t.userId, t.jobId)
+      .where(sql`mode = 'job_fit' AND job_id IS NOT NULL AND status <> 'abandoned'`),
+    // Partial unique — one active session per (user, role_title_hash) in standalone.
+    uniqueIndex('uq_interview_standalone_active')
+      .on(t.userId, t.roleTitleHash)
+      .where(sql`mode = 'standalone' AND role_title_hash IS NOT NULL AND status <> 'abandoned'`),
+    // History page hot path: list user's sessions ordered by recency.
+    index('idx_interview_user_recent').on(t.userId, t.createdAt),
+    // Cron sweep: pick up stale in_progress rows. Partial b-tree minimizes
+    // scan to only the rows the cron cares about.
+    index('idx_interview_in_progress_for_cron')
+      .on(t.createdAt)
+      .where(sql`status = 'in_progress'`),
+  ],
+);
+
+export type InterviewSessionRow = typeof interviewSessions.$inferSelect;
+export type NewInterviewSessionRow = typeof interviewSessions.$inferInsert;

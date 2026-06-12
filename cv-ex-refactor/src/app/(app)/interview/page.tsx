@@ -1,0 +1,62 @@
+// Interview Practice landing — server component.
+//
+// Pre-fills `mode=job_fit` + Job header when arriving from Job Fit chevron
+// (?jobId=…). Otherwise renders the standalone path with a free-text role.
+
+import { redirect } from 'next/navigation';
+import type { Metadata } from 'next';
+import { getSession } from '@/lib/get-session';
+import { listUserCvs } from '@/lib/cvs/repo';
+import { getJob } from '@/lib/jobs/repo-postgres';
+import { InterviewStartForm } from '@/features/interview/start-form';
+import { HistoryWidget } from '@/features/interview/history-widget';
+
+export const metadata: Metadata = { title: 'Interview Practice — Resume Refactor' };
+
+export const preferredRegion = 'sin1';
+
+interface SearchParams {
+  jobId?: string | string[];
+}
+
+export default async function InterviewLandingPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const session = await getSession();
+  if (!session?.user?.id) redirect('/sign-in');
+  const userId = session.user.id;
+
+  const params = await searchParams;
+  const rawJobId = Array.isArray(params.jobId) ? params.jobId[0] : params.jobId;
+  const jobId = typeof rawJobId === 'string' && rawJobId.length > 0 ? rawJobId : null;
+
+  const [cvs, job] = await Promise.all([
+    listUserCvs(userId),
+    jobId ? getJob(jobId).catch(() => null) : Promise.resolve(null),
+  ]);
+
+  const defaultCvId = cvs.find((c) => c.isDefault)?.id ?? cvs[0]?.id ?? null;
+
+  return (
+    <div className="mx-auto max-w-3xl space-y-8 py-8 px-4 md:px-6">
+      <header className="space-y-2">
+        <h1 className="font-display text-headline-md font-bold text-on-surface">Luyện phỏng vấn</h1>
+        <p className="text-body-md text-on-surface-variant leading-relaxed">
+          AI sinh Dual Lens + 10 câu hỏi medium-hard có rubric. Trả lời xong, AI chấm batched theo thang 0-3.
+        </p>
+      </header>
+
+      <InterviewStartForm
+        initialJobId={job ? jobId : null}
+        initialJobTitle={job?.title ?? null}
+        initialCompany={job?.company ?? null}
+        cvs={cvs.map((c) => ({ id: c.id, name: c.name }))}
+        defaultCvId={defaultCvId}
+      />
+
+      <HistoryWidget userId={userId} limit={5} />
+    </div>
+  );
+}

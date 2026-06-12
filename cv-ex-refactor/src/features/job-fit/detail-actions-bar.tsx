@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { MdArrowBack, MdOpenInNew } from 'react-icons/md';
+import { MdArrowBack, MdOpenInNew, MdRecordVoiceOver } from 'react-icons/md';
 import { Button } from '@/components/ui';
 import { ActionButton } from './action-button';
 import type { TierLetter } from '@/lib/jobs/fit-tier';
@@ -51,6 +51,19 @@ export function DetailActionsBar({ job, source }: DetailActionsBarProps) {
             <MdOpenInNew size={16} aria-hidden="true" />
           </a>
         )}
+        <Link
+          href={`/interview?jobId=${encodeURIComponent(job.jobId)}`}
+          aria-label="Luyện phỏng vấn cho job này"
+          className={[
+            'inline-flex items-center gap-2 rounded-lg border border-outline-variant px-4 py-2',
+            'text-label-md font-medium text-primary',
+            'transition-opacity hover:bg-surface-container-low',
+            'focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-on-tertiary-container/10',
+          ].join(' ')}
+        >
+          <MdRecordVoiceOver size={16} aria-hidden="true" />
+          Luyện phỏng vấn
+        </Link>
         <ActionButton tier={job.tier} job={job} size="md" />
       </div>
     </div>

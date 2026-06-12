@@ -32,7 +32,12 @@ export type QuotaAction =
   | 'extract-must-haves'
   | 'career-path-suggest'
   | 'company-enrich'
-  | 'jd-insights';
+  | 'jd-insights'
+  // Interview Practice (v1 BYOK-only) — pass-through, no quota debit. Listed
+  // here so resolveApiKey accepts them; consumeQuotaForUser is a no-op for
+  // non-QuotaKind actions.
+  | 'interview-gen'
+  | 'interview-grade';
 
 export interface QuotaResult {
   ok: boolean;
