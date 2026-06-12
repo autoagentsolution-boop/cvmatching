@@ -105,11 +105,18 @@ export async function POST(req: NextRequest) {
   if (!resolved.ok) return err(resolved.code, resolved.message, resolved.status);
 
   if (!resolved.byok && !resolved.isAdmin) {
-    // Distinguish "never set" vs "set but expired/cleared". The BYOK
-    // vault TTL is 4h (BYOK_COOKIE_MAX_AGE) — sessions older than that
-    // come back here with cookie still set but vault entry gone, which
-    // is confusing if we collapse both into one message.
     const cookiePresent = !!byokToken;
+    // Structured diagnostic — without this we can't tell from Vercel
+    // logs whether the gate fired because the cookie was absent vs
+    // present-but-vault-miss vs admin allowlist out of date.
+    console.warn('[interview/submit] byok_gate_blocked', {
+      cookiePresent,
+      cookieLen: byokToken?.length ?? 0,
+      resolvedByok: resolved.byok,
+      resolvedIsAdmin: resolved.isAdmin,
+      hasUserId: !!resolved.userId,
+      sessionId: persisted.id,
+    });
     return err(
       cookiePresent ? 'byok_expired' : 'byok_required',
       cookiePresent

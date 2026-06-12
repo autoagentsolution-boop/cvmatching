@@ -116,6 +116,13 @@ export async function POST(
   // copy pointing at Settings BYOK.
   if (!resolved.byok && !resolved.isAdmin) {
     const cookiePresent = !!byokToken;
+    console.warn('[interview/study-plan] byok_gate_blocked', {
+      cookiePresent,
+      cookieLen: byokToken?.length ?? 0,
+      resolvedByok: resolved.byok,
+      resolvedIsAdmin: resolved.isAdmin,
+      hasUserId: !!resolved.userId,
+    });
     return err(
       cookiePresent ? 'byok_expired' : 'byok_required',
       cookiePresent

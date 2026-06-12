@@ -87,6 +87,13 @@ export async function POST(req: NextRequest) {
   // test in prod without burning BYOK quota.
   if (!resolved.byok && !resolved.isAdmin) {
     const cookiePresent = !!byokToken;
+    console.warn('[interview/start] byok_gate_blocked', {
+      cookiePresent,
+      cookieLen: byokToken?.length ?? 0,
+      resolvedByok: resolved.byok,
+      resolvedIsAdmin: resolved.isAdmin,
+      hasUserId: !!resolved.userId,
+    });
     return err(
       cookiePresent ? 'byok_expired' : 'byok_required',
       cookiePresent
