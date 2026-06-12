@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AnalyzeBody, AnalyzeV3Body } from '@/lib/schemas/llm-request';
 import { resolveApiKey } from '@/lib/llm/resolve-api-key';
+import { enforceIpRateLimit, rateLimitedResponse } from '@/lib/quota/enforce-ip-rate-limit';
 import { buildAnalyzePrompts } from '@/lib/llm/prompt-analyze';
 import { callLLMWithFallback, geminiFallbackChain } from '@/lib/llm/providers';
 import { safeParseJson } from '@/lib/llm/safe-parse-json';
@@ -20,6 +21,12 @@ function err(code: string, message: string, status: number) {
 }
 
 export async function POST(req: NextRequest) {
+  // Burst rate limit on top of the daily quota — prevents a single IP from
+  // bursting all daily quota in a few seconds or hammering 5xx-on-cold-start
+  // to surface unintended errors. Daily/per-user cap stays via resolveApiKey.
+  const rate = await enforceIpRateLimit(req, { endpoint: '/api/analyze', max: 12, windowSec: 60 });
+  if (!rate.ok) return rateLimitedResponse(rate.retryAfterSec);
+
   const json = await req.json().catch(() => null);
 
   const byokToken = req.cookies.get('byok-token')?.value;

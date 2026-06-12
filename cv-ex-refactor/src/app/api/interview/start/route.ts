@@ -23,6 +23,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { InterviewStartBody } from '@/lib/schemas/interview-request';
 import { resolveApiKey } from '@/lib/llm/resolve-api-key';
+import { enforceIpRateLimit, rateLimitedResponse } from '@/lib/quota/enforce-ip-rate-limit';
 import { callLLM, callLLMWithFallback, geminiFallbackChain } from '@/lib/llm/providers';
 import { safeParseJson } from '@/lib/llm/safe-parse-json';
 import { logLlmCall } from '@/lib/llm/safe-logger';
@@ -45,6 +46,12 @@ function err(code: string, message: string, status: number, extra?: Record<strin
 }
 
 export async function POST(req: NextRequest) {
+  // Burst limit — interview-gen is the most expensive single LLM call in
+  // the app (~6-8k output tokens). Even though BYOK-gated, a buggy client
+  // could hammer this and drain the user's own provider quota.
+  const rate = await enforceIpRateLimit(req, { endpoint: '/api/interview/start', max: 6, windowSec: 60 });
+  if (!rate.ok) return rateLimitedResponse(rate.retryAfterSec);
+
   const session = await auth();
   if (!session?.user?.id) {
     return err('auth_required', 'Bạn cần đăng nhập để dùng Interview Practice.', 401);

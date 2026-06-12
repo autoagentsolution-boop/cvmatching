@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GenerateCvBody, GenerateCvV3Body } from '@/lib/schemas/llm-request';
 import { resolveApiKey } from '@/lib/llm/resolve-api-key';
+import { enforceIpRateLimit, rateLimitedResponse } from '@/lib/quota/enforce-ip-rate-limit';
 import { buildGenerateCvPrompts } from '@/lib/llm/prompt-generate-cv';
 import { buildGenerateCvV3Prompts } from '@/lib/llm/prompt-generate-cv-v3';
 import { callLLM } from '@/lib/llm/providers';
@@ -49,6 +50,10 @@ function isV3Shape(json: unknown): boolean {
 }
 
 export async function POST(req: NextRequest) {
+  // Burst rate limit on top of the daily quota — see analyze/route.ts.
+  const rate = await enforceIpRateLimit(req, { endpoint: '/api/generate-cv', max: 8, windowSec: 60 });
+  if (!rate.ok) return rateLimitedResponse(rate.retryAfterSec);
+
   const json = await req.json().catch(() => null);
   const byokToken = req.cookies.get('byok-token')?.value;
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()

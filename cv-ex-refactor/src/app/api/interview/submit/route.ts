@@ -21,6 +21,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { InterviewSubmitBody } from '@/lib/schemas/interview-request';
 import { resolveApiKey } from '@/lib/llm/resolve-api-key';
+import { enforceIpRateLimit, rateLimitedResponse } from '@/lib/quota/enforce-ip-rate-limit';
 import { callLLM } from '@/lib/llm/providers';
 import { safeParseJson } from '@/lib/llm/safe-parse-json';
 import { logLlmCall } from '@/lib/llm/safe-logger';
@@ -48,6 +49,9 @@ interface GradedQuestion extends InterviewQuestion {
 }
 
 export async function POST(req: NextRequest) {
+  const rate = await enforceIpRateLimit(req, { endpoint: '/api/interview/submit', max: 6, windowSec: 60 });
+  if (!rate.ok) return rateLimitedResponse(rate.retryAfterSec);
+
   const session = await auth();
   if (!session?.user?.id) {
     return err('auth_required', 'Bạn cần đăng nhập để dùng Interview Practice.', 401);

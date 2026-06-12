@@ -64,8 +64,9 @@ async function isAdminRequest(request: NextRequest): Promise<boolean> {
  * - form-action accounts.google.com — Google OAuth redirect.
  *
  * Set CSP_REPORT_ONLY=1 to send Content-Security-Policy-Report-Only instead
- * of enforcing. Useful for staged rollout — deploy report-only first, collect
- * violations, then flip the env var to enforce.
+ * of enforcing — DEV/PREVIEW ONLY. The flag is IGNORED in production so a
+ * stale env var can't accidentally leave prod in report-only mode (caught
+ * by external passive scan 2026-06-12: prod was serving Report-Only).
  */
 function buildCsp(nonce: string): string {
   const isDev = process.env.NODE_ENV !== 'production';
@@ -112,8 +113,11 @@ export async function proxy(request: NextRequest) {
 
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
   const csp = buildCsp(nonce);
+  // Report-only is dev/preview only. Production ALWAYS enforces — even
+  // if CSP_REPORT_ONLY=1 leaked into prod env, ignore it.
+  const isProd = process.env.NODE_ENV === 'production';
   const headerName =
-    process.env.CSP_REPORT_ONLY === '1'
+    !isProd && process.env.CSP_REPORT_ONLY === '1'
       ? 'Content-Security-Policy-Report-Only'
       : 'Content-Security-Policy';
 
