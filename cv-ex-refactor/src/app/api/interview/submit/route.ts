@@ -270,7 +270,10 @@ export async function POST(req: NextRequest) {
     if (/Gemini\s+429|RESOURCE_EXHAUSTED|rate.?limit/i.test(message)) {
       return err('upstream_rate_limit', 'Provider đang giới hạn rate. Đợi 30-60s rồi submit lại.', 429);
     }
-    if (/40[013]|API key|INVALID_ARGUMENT|unauthorized/i.test(message)) {
+    // 401/403/PERMISSION_DENIED + literal "API key" → BYOK invalid.
+    // INVALID_ARGUMENT alone is too broad (params, format, model
+    // mismatch) — misclassifying it as BYOK confused users 2026-06-12.
+    if (/(?:^|\s)40[13]\b|API key|PERMISSION_DENIED|unauthorized/i.test(message)) {
       return err('byok_invalid', 'API key không hợp lệ — kiểm tra lại trong Settings.', 402);
     }
     return err('llm_provider_error', `LLM lỗi: ${message.slice(0, 200)}`, 502);

@@ -68,7 +68,16 @@ export async function callGemini(opts: GeminiCallOpts): Promise<LlmCallResult> {
         // thinkingBudget: 0 disables the 2.5-series thinking phase entirely.
         // For structured-JSON tasks (scoring, extraction) it cuts wall-clock
         // by 30-50s. Omit the field to keep Gemini's default behavior.
-        ...(opts.disableThinking ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+        //
+        // CAVEAT: gemini-2.5-pro REQUIRES thinking mode ON. Sending
+        // thinkingBudget: 0 to pro returns 400 INVALID_ARGUMENT "Budget 0
+        // is invalid. This model only works in thinking mode." — caught
+        // 2026-06-12 prod when a Pro-only fallback path hit submit.
+        // Silently skip the budget for pro so callers don't need to
+        // hand-thread model awareness.
+        ...(opts.disableThinking && !/2\.5-pro/i.test(opts.model)
+          ? { thinkingConfig: { thinkingBudget: 0 } }
+          : {}),
       },
     }),
     ...(opts.signal ? { signal: opts.signal } : {}),

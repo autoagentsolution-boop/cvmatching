@@ -278,7 +278,7 @@ export async function POST(req: NextRequest) {
     if (/Gemini\s+429|RESOURCE_EXHAUSTED|rate.?limit/i.test(message)) {
       return err('upstream_rate_limit', 'Provider đang giới hạn rate. Đợi 30-60s rồi thử lại.', 429);
     }
-    if (/40[013]|API key|INVALID_ARGUMENT|unauthorized/i.test(message)) {
+    if (/(?:^|\s)40[13]\b|API key|PERMISSION_DENIED|unauthorized/i.test(message)) {
       return err('byok_invalid', 'API key không hợp lệ — kiểm tra lại trong Settings.', 402);
     }
     return err('llm_provider_error', `LLM lỗi: ${message.slice(0, 200)}`, 502);
